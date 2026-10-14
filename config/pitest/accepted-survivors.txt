@@ -19,7 +19,7 @@ SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holdsAt-impl L88 remov
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holdsAt-impl L88 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet releaseFrom-impl L72 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target matches L27 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Window occurrencesStartingWithin$knockoff_domain L20 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Window occurrencesStartingWithin$knockoff_domain L26 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule ruleName L66 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule schedule$lambda$1 L85 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredWindow weekDays L45 removed conditional - replaced equality check with true

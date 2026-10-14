@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.settings
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
+import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -42,4 +43,44 @@ class SettingsStore(
         } catch (exception: IOException) {
             SettingsSave.WriteFailed(exception.toString())
         }
+
+    suspend fun update(change: (Settings) -> RuleSetParse): SettingsUpdate {
+        var outcome: SettingsUpdate = SettingsUpdate.Saved
+
+        return try {
+            dataStore.updateData { file ->
+                val current =
+                    when (file) {
+                        SettingsFile.Absent -> {
+                            Settings.DEFAULT
+                        }
+
+                        is SettingsFile.Loaded -> {
+                            file.settings
+                        }
+
+                        is SettingsFile.Corrupt -> {
+                            outcome = SettingsUpdate.NotLoaded(file.failure.detail)
+                            return@updateData file
+                        }
+                    }
+
+                when (val parse = change(current)) {
+                    is RuleSetParse.Valid -> {
+                        outcome = SettingsUpdate.Saved
+                        SettingsFile.Loaded(Settings(parse.rules))
+                    }
+
+                    is RuleSetParse.DuplicateNames -> {
+                        outcome = SettingsUpdate.DuplicateNames(parse.names)
+                        file
+                    }
+                }
+            }
+
+            outcome
+        } catch (exception: IOException) {
+            SettingsUpdate.IoFailed(exception.toString())
+        }
+    }
 }

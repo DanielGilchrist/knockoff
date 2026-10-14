@@ -5,9 +5,7 @@ import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
-import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
-import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -15,7 +13,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.intOrNull
-import java.time.LocalTime
 
 data class Settings(
     val rules: RuleSet,
@@ -33,13 +30,7 @@ data class Settings(
                             name = RuleName.WORK,
                             state = RuleState.Enabled,
                             policy = Policy.DeliverOnlyDuring,
-                            schedule =
-                                Schedule.of(
-                                    Window(
-                                        WeekDays.WORKING_WEEK,
-                                        DailyHours.between(LocalTime.of(8, 0), LocalTime.of(17, 0)),
-                                    ),
-                                ),
+                            schedule = Schedule.of(Window.WORKING_HOURS),
                             targets = emptySet(),
                         ),
                     ),

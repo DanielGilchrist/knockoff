@@ -5,6 +5,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import dev.danielgilchrist.knockoff.KnockoffApplication
+import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule.Decision
@@ -23,7 +24,6 @@ import kotlin.time.Duration.Companion.seconds
 
 class KnockoffListener : NotificationListenerService() {
     companion object {
-        private const val TAG = "Knockoff"
         private val CONFIRMATION_DELAY = 1.seconds
     }
 
@@ -34,16 +34,16 @@ class KnockoffListener : NotificationListenerService() {
             try {
                 activeNotifications
             } catch (exception: SecurityException) {
-                Log.e(TAG, "listener connected, but reading active notifications was refused: $exception")
+                Log.e(LOG_TAG, "listener connected, but reading active notifications was refused: $exception")
                 return
             }
 
-        Log.i(TAG, "listener connected, sweeping ${active.size} active notifications")
+        Log.i(LOG_TAG, "listener connected, sweeping ${active.size} active notifications")
         active.forEach(::handle)
     }
 
     override fun onListenerDisconnected() {
-        Log.w(TAG, "listener disconnected")
+        Log.w(LOG_TAG, "listener disconnected")
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -74,7 +74,7 @@ class KnockoffListener : NotificationListenerService() {
                     }
 
                     is SettingsLoad.Failure -> {
-                        Log.e(TAG, "$described not evaluated, settings failed to load: ${load.detail}")
+                        Log.e(LOG_TAG, "$described not evaluated, settings failed to load: ${load.detail}")
                         return@launch
                     }
                 }
@@ -88,7 +88,7 @@ class KnockoffListener : NotificationListenerService() {
         decision: Decision,
         described: String,
     ) {
-        Log.i(TAG, "$described -> ${decision.describe()}")
+        Log.i(LOG_TAG, "$described -> ${decision.describe()}")
 
         when (decision) {
             is Decision.Leave -> {}
@@ -104,9 +104,9 @@ class KnockoffListener : NotificationListenerService() {
         outcome: SnoozeOutcome,
     ) {
         when (outcome) {
-            SnoozeOutcome.Confirmed -> Log.i(TAG, "key=${key.value} snooze confirmed")
-            is SnoozeOutcome.Rejected -> Log.e(TAG, "key=${key.value} snooze rejected: ${outcome.detail}")
-            is SnoozeOutcome.Unconfirmed -> Log.w(TAG, "key=${key.value} snooze unconfirmed: ${outcome.detail}")
+            SnoozeOutcome.Confirmed -> Log.i(LOG_TAG, "key=${key.value} snooze confirmed")
+            is SnoozeOutcome.Rejected -> Log.e(LOG_TAG, "key=${key.value} snooze rejected: ${outcome.detail}")
+            is SnoozeOutcome.Unconfirmed -> Log.w(LOG_TAG, "key=${key.value} snooze unconfirmed: ${outcome.detail}")
         }
     }
 

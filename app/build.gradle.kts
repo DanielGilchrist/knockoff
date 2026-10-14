@@ -62,3 +62,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
+
+detekt {
+    config.from(rootProject.file("config/detekt/compose.yml"))
+}
