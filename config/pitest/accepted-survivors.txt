@@ -1,18 +1,38 @@
-# Mutants pitest cannot kill, one per line as "<STATUS> <class> <method> L<line> <mutator>".
-# Every entry needs a justification comment directly above it. Line numbers are part of the key on purpose:
+# Mutants PIT cannot kill, one per line as "<STATUS> <class> <method> L<call-site line> <PIT description>".
+# Every group needs a justification comment directly above it. Line numbers are part of the key on purpose:
 # moving the code forces a fresh look at whether the mutant is still equivalent.
+
+# Kotlin passes @JvmInline value classes unboxed, so their generated getValue() is only reachable from Java.
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.AccountAddress getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/AccountAddress::getValue
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ChannelId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ChannelId::getValue
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.NotificationKey getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/NotificationKey::getValue
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.PackageName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/PackageName::getValue
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.rule.RuleName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/rule/RuleName::getValue
+
+# The last branch of an exhaustive when compiles to equality checks whose only alternative is an unreachable
+# NoWhenBranchMatchedException. Forcing those checks towards the branch is equivalent.
+SURVIVED dev.danielgilchrist.knockoff.domain.notification.PostedNotification describe L28 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Decision describe L26 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule scheduledVerdictAt L48 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holdsAt-impl L86 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holdsAt-impl L86 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet releaseFrom-impl L70 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target matches L27 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Window occurrencesStartingWithin$knockoff_domain L20 removed conditional - replaced equality check with true
+
+# Inlined Iterable.none: the empty-collection shortcut and the Collection type check only skip a loop that would
+# return the same answer.
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictFor L26 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictFor L26 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictFor L26 removed conditional - replaced equality check with true
 
 # The predicate always matches before the list runs out: a weekly schedule that isn't always covered has a stretch
 # ending within the next fortnight. Forcing the inlined first() loop on only changes which NoSuchElementException
 # is thrown on a path that can't be reached.
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L34 RemoveConditionalMutator_EQUAL_IF
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L34 removed conditional - replaced equality check with true
 
 # The check guards an invariant that the fortnight of generated dates always satisfies, so it never fails and
 # weakening it changes nothing observable. It stays so a broken invariant crashes instead of returning a wrong time.
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 ConditionalsBoundaryMutator
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 RemoveConditionalMutator_EQUAL_ELSE
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 RemoveConditionalMutator_ORDER_IF
-
-# The last branch of an exhaustive when compiles to an equality check guarding NoWhenBranchMatchedException.
-# Forcing that check true is equivalent because no other value can reach it.
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Window occurrencesStartingWithin$knockoff_domain L20 RemoveConditionalMutator_EQUAL_IF
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 changed conditional boundary
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 removed conditional - replaced comparison check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 removed conditional - replaced equality check with false
