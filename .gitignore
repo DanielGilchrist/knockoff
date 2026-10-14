@@ -7,3 +7,4 @@ local.properties
 .DS_Store
 captures/
 .agent-review.md
+.claude/
