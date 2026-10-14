@@ -10,6 +10,8 @@ data class Schedule private constructor(
     companion object {
         private const val DAYS_AHEAD = 14L
 
+        internal fun of(window: Window): Schedule = Schedule(listOf(window))
+
         fun parse(windows: List<Window>): ScheduleParse =
             when {
                 windows.isEmpty() -> ScheduleParse.Empty

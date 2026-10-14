@@ -5,6 +5,8 @@ value class RuleName private constructor(
     val value: String,
 ) {
     companion object {
+        internal val WORK = RuleName("Work")
+
         fun parse(raw: String): RuleNameParse {
             val trimmed = raw.trim()
 

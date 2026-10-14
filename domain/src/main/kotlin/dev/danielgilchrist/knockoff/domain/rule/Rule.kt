@@ -7,10 +7,10 @@ import java.time.ZonedDateTime
 
 data class Rule(
     val name: RuleName,
-    private val state: RuleState,
-    private val policy: Policy,
-    private val schedule: Schedule,
-    private val targets: Set<Target>,
+    val state: RuleState,
+    val policy: Policy,
+    val schedule: Schedule,
+    val targets: Set<Target>,
 ) {
     fun verdictFor(
         origin: Origin,

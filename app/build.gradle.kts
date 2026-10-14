@@ -27,7 +27,10 @@ android {
     }
 
     testOptions {
-        unitTests.all { it.useJUnitPlatform() }
+        unitTests.all {
+            it.useJUnitPlatform()
+            it.systemProperty("junit.jupiter.execution.timeout.default", "10s")
+        }
     }
 }
 

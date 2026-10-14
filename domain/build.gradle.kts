@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.pitest)
 }
 
@@ -12,6 +13,8 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.kotlinx.serialization.json)
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.junit.jupiter.params)
@@ -27,6 +30,7 @@ pitest {
     pitestVersion = libs.versions.pitest
     junit5PluginVersion = libs.versions.pitestJunit5
     targetClasses = setOf("dev.danielgilchrist.knockoff.domain.*")
+    excludedClasses = setOf("*\$\$serializer")
     mutators = setOf("STRONGER", "-VOID_METHOD_CALLS")
     threads = 4
     outputFormats = setOf("HTML", "XML")

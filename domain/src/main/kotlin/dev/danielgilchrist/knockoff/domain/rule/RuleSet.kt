@@ -7,10 +7,12 @@ import java.time.ZonedDateTime
 
 @JvmInline
 value class RuleSet private constructor(
-    private val rules: List<Rule>,
+    val rules: List<Rule>,
 ) {
     companion object {
         val SNOOZE_CEILING: Duration = Duration.ofDays(7)
+
+        internal fun of(rule: Rule): RuleSet = RuleSet(listOf(rule))
 
         fun parse(rules: List<Rule>): RuleSetParse {
             val duplicates =
