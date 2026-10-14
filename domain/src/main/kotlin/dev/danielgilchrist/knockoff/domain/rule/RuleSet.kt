@@ -44,7 +44,7 @@ value class RuleSet private constructor(
         val permitting = rules.filter { it.verdictFor(origin, now) == RuleVerdict.Permits }.map { it.name }.toSet()
 
         return when {
-            holding.isNotEmpty() -> releaseFrom(origin, now, at = now, heldBy = holding.map { it.first }.toSet())
+            holding.isNotEmpty() -> releaseFrom(origin, now, at = now, heldBy = holding.map { it.rule }.toSet())
             permitting.isEmpty() -> Decision.Leave(LeaveReason.NoRuleTargets)
             else -> Decision.Leave(LeaveReason.Permitted(by = permitting))
         }
@@ -58,7 +58,7 @@ value class RuleSet private constructor(
     ): Decision.Snooze {
         val ceiling = now.plus(SNOOZE_CEILING)
 
-        return when (val release = holdsAt(origin, at).firstOrNull()?.second) {
+        return when (val release = holdsAt(origin, at).firstOrNull()?.release) {
             null -> {
                 Decision.Snooze(now, at, SnoozeEnd.RulesPermit, heldBy)
             }
@@ -79,10 +79,10 @@ value class RuleSet private constructor(
     private fun holdsAt(
         origin: Origin,
         at: ZonedDateTime,
-    ): List<Pair<RuleName, Release>> =
+    ): List<Hold> =
         rules.flatMap { rule ->
             when (val verdict = rule.verdictFor(origin, at)) {
-                is RuleVerdict.Holds -> listOf(rule.name to verdict.release)
+                is RuleVerdict.Holds -> listOf(Hold(rule.name, verdict.release))
                 RuleVerdict.Abstains, RuleVerdict.Permits -> emptyList()
             }
         }
