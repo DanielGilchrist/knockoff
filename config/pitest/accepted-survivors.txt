@@ -1,0 +1,18 @@
+# Mutants pitest cannot kill, one per line as "<STATUS> <class> <method> L<line> <mutator>".
+# Every entry needs a justification comment directly above it. Line numbers are part of the key on purpose:
+# moving the code forces a fresh look at whether the mutant is still equivalent.
+
+# The predicate always matches before the list runs out: a weekly schedule that isn't always covered has a stretch
+# ending within the next fortnight. Forcing the inlined first() loop on only changes which NoSuchElementException
+# is thrown on a path that can't be reached.
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L34 RemoveConditionalMutator_EQUAL_IF
+
+# The check guards an invariant that the fortnight of generated dates always satisfies, so it never fails and
+# weakening it changes nothing observable. It stays so a broken invariant crashes instead of returning a wrong time.
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 ConditionalsBoundaryMutator
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 RemoveConditionalMutator_EQUAL_ELSE
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 RemoveConditionalMutator_ORDER_IF
+
+# The last branch of an exhaustive when compiles to an equality check guarding NoWhenBranchMatchedException.
+# Forcing that check true is equivalent because no other value can reach it.
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Window occurrencesStartingWithin$knockoff_domain L20 RemoveConditionalMutator_EQUAL_IF
