@@ -1,7 +1,14 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
+import dev.danielgilchrist.knockoff.domain.channel.ChannelPlan
+import dev.danielgilchrist.knockoff.domain.channel.ChannelState
+import dev.danielgilchrist.knockoff.domain.channel.Importance
+import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
+import dev.danielgilchrist.knockoff.domain.schedule.Coverage
 import java.time.Duration
 import java.time.ZonedDateTime
 
@@ -61,6 +68,40 @@ value class RuleSet private constructor(
             }
         }
     }
+
+    fun channelPackages(silenced: SilencedChannels): Set<PackageName> =
+        enabled().flatMap { rule -> rule.targets.map { it.packageName } }.toSet() + silenced.packages
+
+    fun nextBoundary(now: ZonedDateTime): Boundary =
+        enabled()
+            .filter { it.targets.isNotEmpty() }
+            .flatMap { rule ->
+                when (val coverage = rule.schedule.coverageAt(now)) {
+                    is Coverage.Inside -> listOf(coverage.endsAt)
+                    is Coverage.Outside -> listOf(coverage.startsAt)
+                    Coverage.Always -> emptyList()
+                }
+            }.minOrNull()
+            .let { time ->
+                when (time) {
+                    null -> Boundary.None
+                    else -> Boundary.At(time)
+                }
+            }
+
+    fun planChannels(
+        read: Map<ChannelKey, Importance>,
+        silenced: SilencedChannels,
+        now: ZonedDateTime,
+    ): ChannelPlan =
+        silenced.plan(read) { key ->
+            when {
+                holdsAt(key.origin, now).isEmpty() -> ChannelState.Permitted
+                else -> ChannelState.Held
+            }
+        }
+
+    private fun enabled(): List<Rule> = rules.filter { it.state == RuleState.Enabled }
 
     private fun decide(
         origin: Origin,

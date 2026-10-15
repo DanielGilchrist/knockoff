@@ -6,13 +6,17 @@ import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 
 sealed interface Target {
+    val packageName: PackageName
+
     data class App(
-        val packageName: PackageName,
+        override val packageName: PackageName,
     ) : Target
 
     data class GmailInbox(
         val address: AccountAddress,
-    ) : Target
+    ) : Target {
+        override val packageName: PackageName get() = PackageName.GMAIL
+    }
 
     fun matches(origin: Origin): Boolean =
         when (this) {
@@ -21,7 +25,7 @@ sealed interface Target {
             }
 
             is GmailInbox -> {
-                origin.packageName == PackageName.GMAIL &&
+                origin.packageName == packageName &&
                     when (val channel = origin.channel) {
                         is Channel.Named -> channel.id.endsWithAccount(address)
                         Channel.Unnamed -> false
