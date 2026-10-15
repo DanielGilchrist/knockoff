@@ -7,6 +7,8 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.SettingsDecode
+import dev.danielgilchrist.knockoff.domain.settings.Theme
+import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.Channel
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.time.ZoneId
 
 class SettingsStoreTest {
     @TempDir
@@ -75,7 +78,7 @@ class SettingsStoreTest {
     fun `a collector sees each saved change`() =
         runTest {
             val store = store()
-            val evenings = Settings(ruleSet(work(), evenings()))
+            val evenings = Settings(ruleSet(work(), evenings()), Theme.System)
             val loads = collect(store)
 
             assertEquals(SettingsLoad.Empty, loads.receive())
@@ -91,7 +94,7 @@ class SettingsStoreTest {
             settingsFile().writeText(Settings.DEFAULT.toJson())
             settingsFile().setReadable(false)
             val store = store()
-            val evenings = Settings(ruleSet(work(), evenings()))
+            val evenings = Settings(ruleSet(work(), evenings()), Theme.System)
             val loads = collect(store)
 
             assertInstanceOf(SettingsLoad.ReadFailed::class.java, loads.receive())
@@ -105,7 +108,7 @@ class SettingsStoreTest {
             settingsFile().writeText(Settings.DEFAULT.toJson())
             directory.setWritable(false)
 
-            val update = store().update { RuleSet.parse(it.rules.rules + evenings()) }
+            val update = store().update { it.rules.withRules(it.rules.rules + evenings()) }
 
             directory.setWritable(true)
             assertInstanceOf(SettingsUpdate.IoFailed::class.java, update)
@@ -147,8 +150,11 @@ class SettingsStoreTest {
         runTest {
             val store = store()
 
-            assertEquals(SettingsUpdate.Saved, store.update { RuleSet.parse(it.rules.rules + evenings()) })
-            assertEquals(SettingsLoad.Loaded(Settings(ruleSet(work(), evenings()))), store.loads.first())
+            assertEquals(
+                SettingsUpdate.Saved,
+                store.update { it.rules.withRules(it.rules.rules + evenings()) },
+            )
+            assertEquals(SettingsLoad.Loaded(Settings(ruleSet(work(), evenings()), Theme.System)), store.loads.first())
         }
 
     @Test
@@ -156,15 +162,18 @@ class SettingsStoreTest {
         runTest {
             val store = store()
 
-            assertEquals(SettingsUpdate.Saved, store.update { RuleSet.parse(it.rules.rules + evenings()) })
+            assertEquals(
+                SettingsUpdate.Saved,
+                store.update { it.rules.withRules(it.rules.rules + evenings()) },
+            )
             assertEquals(
                 SettingsUpdate.Saved,
                 store.update {
-                    RuleSet.parse(it.rules.rules - work())
+                    it.rules.withRules(it.rules.rules - work())
                 },
             )
 
-            assertEquals(SettingsLoad.Loaded(Settings(ruleSet(evenings()))), store.loads.first())
+            assertEquals(SettingsLoad.Loaded(Settings(ruleSet(evenings()), Theme.System)), store.loads.first())
         }
 
     @Test
@@ -176,7 +185,9 @@ class SettingsStoreTest {
             names
                 .map { name ->
                     async {
-                        store.update { RuleSet.parse(it.rules.rules + work().copy(name = ruleName(name))) }
+                        store.update {
+                            it.rules.withRules(it.rules.rules + work().copy(name = ruleName(name)))
+                        }
                     }
                 }.awaitAll()
 
@@ -194,7 +205,7 @@ class SettingsStoreTest {
         runTest {
             val store = store()
 
-            val update = store.update { RuleSet.parse(it.rules.rules + work()) }
+            val update = store.update { it.rules.withRules(it.rules.rules + work()) }
 
             assertEquals(SettingsUpdate.DuplicateNames(setOf(work().name)), update)
             assertEquals(SettingsLoad.Empty, store.loads.first())
@@ -206,7 +217,12 @@ class SettingsStoreTest {
             settingsFile().writeText("not json")
 
             val update =
-                assertInstanceOf(SettingsUpdate.NotLoaded::class.java, store().update { RuleSet.parse(it.rules.rules) })
+                assertInstanceOf(
+                    SettingsUpdate.NotLoaded::class.java,
+                    store().update {
+                        it.rules.withRules(it.rules.rules)
+                    },
+                )
 
             assertEquals("not json", settingsFile().readText())
             assertEquals(true, update.detail.isNotEmpty())
@@ -218,7 +234,26 @@ class SettingsStoreTest {
             settingsFile().writeText(Settings.DEFAULT.toJson())
             settingsFile().setReadable(false)
 
-            assertInstanceOf(SettingsUpdate.IoFailed::class.java, store().update { RuleSet.parse(it.rules.rules) })
+            assertInstanceOf(
+                SettingsUpdate.IoFailed::class.java,
+                store().update {
+                    it.rules.withRules(it.rules.rules)
+                },
+            )
+        }
+
+    @Test
+    fun `an update keeps the theme and default zone`() =
+        runTest {
+            val tokyo = ZoneChoice.Fixed(ZoneId.of("Asia/Tokyo"))
+            val store = store()
+            store.save(Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.Dark))
+
+            store.update { it.rules.withRules(it.rules.rules + evenings()) }
+
+            val loaded = assertInstanceOf(SettingsLoad.Loaded::class.java, store.loads.first()).settings
+            assertEquals(Theme.Dark, loaded.theme)
+            assertEquals(tokyo, loaded.rules.defaultZone)
         }
 
     private fun work(): Rule =
@@ -231,7 +266,7 @@ class SettingsStoreTest {
         assertInstanceOf(RuleNameParse.Valid::class.java, RuleName.parse(raw)).name
 
     private fun ruleSet(vararg rules: Rule): RuleSet =
-        assertInstanceOf(RuleSetParse.Valid::class.java, RuleSet.parse(rules.toList())).rules
+        assertInstanceOf(RuleSetParse.Valid::class.java, Settings.DEFAULT.rules.withRules(rules.toList())).rules
 
     private fun settingsFile(): File = File(directory, "settings.json")
 

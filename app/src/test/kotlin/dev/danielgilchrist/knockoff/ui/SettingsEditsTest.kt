@@ -7,9 +7,12 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.settings.Settings
+import dev.danielgilchrist.knockoff.domain.settings.Theme
+import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import java.time.ZoneId
 
 class SettingsEditsTest {
     private val work: Rule =
@@ -37,7 +40,7 @@ class SettingsEditsTest {
 
     @Test
     fun `renaming a rule onto another rule's name is a duplicate`() {
-        val settings = Settings(valid(Settings.DEFAULT.withRule(EditTarget.New, evenings)))
+        val settings = Settings(valid(Settings.DEFAULT.withRule(EditTarget.New, evenings)), Theme.System)
 
         val duplicates =
             assertInstanceOf(
@@ -55,7 +58,7 @@ class SettingsEditsTest {
 
     @Test
     fun `changing state touches only the named rule`() {
-        val settings = Settings(valid(Settings.DEFAULT.withRule(EditTarget.New, evenings)))
+        val settings = Settings(valid(Settings.DEFAULT.withRule(EditTarget.New, evenings)), Theme.System)
 
         assertEquals(
             listOf(work.copy(state = RuleState.Disabled), evenings),
@@ -69,4 +72,15 @@ class SettingsEditsTest {
 
     private fun name(raw: String): RuleName =
         assertInstanceOf(RuleNameParse.Valid::class.java, RuleName.parse(raw)).name
+
+    @Test
+    fun `edits keep the default zone`() {
+        val tokyo = ZoneChoice.Fixed(ZoneId.of("Asia/Tokyo"))
+        val settings = Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.System)
+        val work = settings.rules.rules.single()
+
+        assertEquals(tokyo, valid(settings.withRule(EditTarget.New, evenings)).defaultZone)
+        assertEquals(tokyo, valid(settings.withoutRule(work.name)).defaultZone)
+        assertEquals(tokyo, valid(settings.withRuleState(work.name, RuleState.Disabled)).defaultZone)
+    }
 }

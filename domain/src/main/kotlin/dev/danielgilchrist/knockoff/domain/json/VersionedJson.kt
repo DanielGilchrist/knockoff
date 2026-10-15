@@ -14,8 +14,7 @@ internal object VersionedJson {
 
     fun <T> decode(
         text: String,
-        currentVersion: Int,
-        deserializer: DeserializationStrategy<T>,
+        readers: Map<Int, DeserializationStrategy<T>>,
     ): VersionedDecode<T> {
         val root =
             try {
@@ -25,15 +24,14 @@ internal object VersionedJson {
             }
 
         return when (root) {
-            is JsonObject -> versioned(root, currentVersion, deserializer)
+            is JsonObject -> versioned(root, readers)
             else -> VersionedDecode.Unreadable("not a JSON object")
         }
     }
 
     private fun <T> versioned(
         document: JsonObject,
-        currentVersion: Int,
-        deserializer: DeserializationStrategy<T>,
+        readers: Map<Int, DeserializationStrategy<T>>,
     ): VersionedDecode<T> {
         val version =
             when (val element = document[VERSION]) {
@@ -43,18 +41,26 @@ internal object VersionedJson {
 
         return when (version) {
             null -> VersionedDecode.Unreadable("missing or non-integer \"$VERSION\"")
-            currentVersion -> current(document, deserializer)
-            else -> VersionedDecode.UnsupportedVersion(version)
+            else -> read(document, version, readers)
         }
     }
 
-    private fun <T> current(
+    private fun <T> read(
         document: JsonObject,
-        deserializer: DeserializationStrategy<T>,
+        version: Int,
+        readers: Map<Int, DeserializationStrategy<T>>,
     ): VersionedDecode<T> =
-        try {
-            VersionedDecode.Decoded(json.decodeFromJsonElement(deserializer, document))
-        } catch (exception: SerializationException) {
-            VersionedDecode.Unreadable(exception.toString())
+        when (val reader = readers[version]) {
+            null -> {
+                VersionedDecode.UnsupportedVersion(version)
+            }
+
+            else -> {
+                try {
+                    VersionedDecode.Decoded(json.decodeFromJsonElement(reader, document))
+                } catch (exception: SerializationException) {
+                    VersionedDecode.Unreadable(exception.toString())
+                }
+            }
         }
 }

@@ -3,6 +3,8 @@ package dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.schedule.Coverage
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
+import dev.danielgilchrist.knockoff.domain.zone.RuleZone
+import dev.danielgilchrist.knockoff.domain.zone.ZoneContext
 import java.time.ZonedDateTime
 
 data class Rule(
@@ -11,10 +13,17 @@ data class Rule(
     val policy: Policy,
     val schedule: Schedule,
     val targets: Set<Target>,
+    val zone: RuleZone,
 ) {
+    fun localised(
+        at: ZonedDateTime,
+        zones: ZoneContext,
+    ): ZonedDateTime = at.withZoneSameInstant(zones.zoneFor(zone))
+
     fun verdictFor(
         origin: Origin,
         at: ZonedDateTime,
+        zones: ZoneContext,
     ): RuleVerdict =
         when (state) {
             RuleState.Disabled -> {
@@ -24,7 +33,7 @@ data class Rule(
             RuleState.Enabled -> {
                 when {
                     targets.none { it.matches(origin) } -> RuleVerdict.Abstains
-                    else -> scheduledVerdictAt(at)
+                    else -> scheduledVerdictAt(localised(at, zones))
                 }
             }
         }

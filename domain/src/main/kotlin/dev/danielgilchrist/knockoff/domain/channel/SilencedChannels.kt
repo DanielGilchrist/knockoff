@@ -19,8 +19,7 @@ data class SilencedChannels private constructor(
                 val decode =
                     VersionedJson.decode(
                         text,
-                        StoredSilencedChannels.CURRENT_VERSION,
-                        StoredSilencedChannels.serializer(),
+                        mapOf(StoredSilencedChannels.CURRENT_VERSION to StoredSilencedChannels.serializer()),
                     )
             ) {
                 is VersionedDecode.Decoded -> decode.value.toSilencedChannels()

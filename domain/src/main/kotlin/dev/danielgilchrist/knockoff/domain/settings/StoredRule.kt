@@ -11,6 +11,8 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
+import dev.danielgilchrist.knockoff.domain.zone.RuleZone
+import dev.danielgilchrist.knockoff.domain.zone.RuleZoneParse
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -21,6 +23,7 @@ internal data class StoredRule(
     private val windows: List<StoredWindow>,
     private val apps: List<String>,
     private val gmailAccounts: List<String>,
+    private val zone: String,
 ) {
     companion object {
         fun from(rule: Rule): StoredRule =
@@ -43,6 +46,7 @@ internal data class StoredRule(
                             is Target.GmailInbox -> listOf(target.address.value)
                         }
                     },
+                zone = rule.zone.stored(),
             )
     }
 
@@ -53,7 +57,9 @@ internal data class StoredRule(
                     rulePolicy().then { rulePolicy ->
                         schedule().then { schedule ->
                             targets().then { targets ->
-                                Parsed.Ok(Rule(ruleName, ruleState, rulePolicy, schedule, targets))
+                                ruleZone().then { ruleZone ->
+                                    Parsed.Ok(Rule(ruleName, ruleState, rulePolicy, schedule, targets, ruleZone))
+                                }
                             }
                         }
                     }
@@ -84,6 +90,12 @@ internal data class StoredRule(
                 is ScheduleParse.Valid -> Parsed.Ok(parse.schedule)
                 ScheduleParse.Empty -> Parsed.Failed("no windows")
             }
+        }
+
+    private fun ruleZone(): Parsed<RuleZone> =
+        when (val parse = RuleZone.parse(zone)) {
+            is RuleZoneParse.Valid -> Parsed.Ok(parse.zone)
+            is RuleZoneParse.Unknown -> Parsed.Failed("unknown zone \"${parse.cause.raw}\": ${parse.cause.detail}")
         }
 
     private fun targets(): Parsed<Set<Target>> =

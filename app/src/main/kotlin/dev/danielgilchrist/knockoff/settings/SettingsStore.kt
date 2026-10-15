@@ -41,7 +41,7 @@ class SettingsStore(
                 }
 
                 is RuleSetParse.Valid -> {
-                    when (val save = write(Settings(parse.rules))) {
+                    when (val save = write(current.copy(rules = parse.rules))) {
                         SettingsSave.Saved -> SettingsUpdate.Saved
                         is SettingsSave.WriteFailed -> SettingsUpdate.IoFailed(save.detail)
                     }

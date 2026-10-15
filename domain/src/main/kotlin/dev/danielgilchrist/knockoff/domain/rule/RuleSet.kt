@@ -9,19 +9,28 @@ import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.schedule.Coverage
+import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
+import dev.danielgilchrist.knockoff.domain.zone.ZoneContext
 import java.time.Duration
 import java.time.ZonedDateTime
 
-@JvmInline
-value class RuleSet private constructor(
+@ConsistentCopyVisibility
+data class RuleSet private constructor(
     val rules: List<Rule>,
+    val defaultZone: ZoneChoice,
 ) {
     companion object {
         val SNOOZE_CEILING: Duration = Duration.ofDays(7)
 
-        internal fun of(rule: Rule): RuleSet = RuleSet(listOf(rule))
+        internal fun of(
+            rule: Rule,
+            defaultZone: ZoneChoice,
+        ): RuleSet = RuleSet(listOf(rule), defaultZone)
 
-        fun parse(rules: List<Rule>): RuleSetParse {
+        internal fun parse(
+            rules: List<Rule>,
+            defaultZone: ZoneChoice,
+        ): RuleSetParse {
             val duplicates =
                 rules
                     .groupingBy { it.name }
@@ -30,11 +39,15 @@ value class RuleSet private constructor(
                     .keys
 
             return when {
-                duplicates.isEmpty() -> RuleSetParse.Valid(RuleSet(rules.toList()))
+                duplicates.isEmpty() -> RuleSetParse.Valid(RuleSet(rules.toList(), defaultZone))
                 else -> RuleSetParse.DuplicateNames(duplicates)
             }
         }
     }
+
+    fun withRules(rules: List<Rule>): RuleSetParse = parse(rules, defaultZone)
+
+    fun withDefaultZone(zone: ZoneChoice): RuleSet = RuleSet(rules, zone)
 
     fun decide(
         notification: PostedNotification,
@@ -76,9 +89,14 @@ value class RuleSet private constructor(
         enabled()
             .filter { it.targets.isNotEmpty() }
             .flatMap { rule ->
-                when (val coverage = rule.schedule.coverageAt(now)) {
-                    is Coverage.Inside -> listOf(coverage.endsAt)
-                    is Coverage.Outside -> listOf(coverage.startsAt)
+                when (
+                    val coverage =
+                        rule.schedule.coverageAt(
+                            rule.localised(now, ZoneContext(now.zone, defaultZone)),
+                        )
+                ) {
+                    is Coverage.Inside -> listOf(coverage.endsAt.withZoneSameInstant(now.zone))
+                    is Coverage.Outside -> listOf(coverage.startsAt.withZoneSameInstant(now.zone))
                     Coverage.Always -> emptyList()
                 }
             }.minOrNull()
@@ -96,7 +114,7 @@ value class RuleSet private constructor(
     ): ChannelPlan =
         silenced.plan(read) { key ->
             when {
-                holdsAt(key.origin, now).isEmpty() -> ChannelState.Permitted
+                holdsAt(key.origin, now, ZoneContext(now.zone, defaultZone)).isEmpty() -> ChannelState.Permitted
                 else -> ChannelState.Held
             }
         }
@@ -107,11 +125,21 @@ value class RuleSet private constructor(
         origin: Origin,
         now: ZonedDateTime,
     ): Decision {
-        val holding = holdsAt(origin, now)
-        val permitting = rules.filter { it.verdictFor(origin, now) == RuleVerdict.Permits }.map { it.name }.toSet()
+        val zones = ZoneContext(now.zone, defaultZone)
+        val holding = holdsAt(origin, now, zones)
+        val permitting =
+            rules
+                .filter {
+                    it.verdictFor(
+                        origin,
+                        now,
+                        zones,
+                    ) == RuleVerdict.Permits
+                }.map { it.name }
+                .toSet()
 
         return when {
-            holding.isNotEmpty() -> releaseFrom(origin, now, at = now, heldBy = holding.map { it.rule }.toSet())
+            holding.isNotEmpty() -> releaseFrom(origin, now, at = now, heldBy = holding.map { it.rule }.toSet(), zones)
             permitting.isEmpty() -> Decision.Leave(LeaveReason.NoRuleTargets)
             else -> Decision.Leave(LeaveReason.Permitted(by = permitting))
         }
@@ -122,10 +150,11 @@ value class RuleSet private constructor(
         now: ZonedDateTime,
         at: ZonedDateTime,
         heldBy: Set<RuleName>,
+        zones: ZoneContext,
     ): Decision.Snooze {
         val ceiling = now.plus(SNOOZE_CEILING)
 
-        return when (val release = holdsAt(origin, at).firstOrNull()?.release) {
+        return when (val release = holdsAt(origin, at, zones).firstOrNull()?.release) {
             null -> {
                 Decision.Snooze(now, at, SnoozeEnd.RulesPermit, heldBy)
             }
@@ -137,7 +166,7 @@ value class RuleSet private constructor(
             is Release.At -> {
                 when {
                     release.time.isAfter(ceiling) -> Decision.Snooze(now, ceiling, SnoozeEnd.CeilingReached, heldBy)
-                    else -> releaseFrom(origin, now, release.time, heldBy)
+                    else -> releaseFrom(origin, now, release.time.withZoneSameInstant(now.zone), heldBy, zones)
                 }
             }
         }
@@ -146,9 +175,10 @@ value class RuleSet private constructor(
     private fun holdsAt(
         origin: Origin,
         at: ZonedDateTime,
+        zones: ZoneContext,
     ): List<Hold> =
         rules.flatMap { rule ->
-            when (val verdict = rule.verdictFor(origin, at)) {
+            when (val verdict = rule.verdictFor(origin, at, zones)) {
                 is RuleVerdict.Holds -> listOf(Hold(rule.name, verdict.release))
                 RuleVerdict.Abstains, RuleVerdict.Permits -> emptyList()
             }

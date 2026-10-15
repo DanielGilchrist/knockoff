@@ -15,6 +15,8 @@ import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
 import dev.danielgilchrist.knockoff.domain.window
+import dev.danielgilchrist.knockoff.domain.zone.RuleZone
+import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
@@ -23,8 +25,10 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.Arguments
 import org.junit.jupiter.params.provider.MethodSource
 import org.junit.jupiter.params.provider.ValueSource
+import java.time.DayOfWeek
 import java.time.DayOfWeek.SATURDAY
 import java.time.DayOfWeek.SUNDAY
+import java.time.ZoneId
 
 class SettingsTest {
     companion object {
@@ -88,8 +92,17 @@ class SettingsTest {
                         Policy.HoldDuring,
                         schedule(window(EVERY_DAY, "12:00:30", "12:00:00.5")),
                         emptySet(),
+                        zone = RuleZone.Chosen(ZoneChoice.Fixed(ZoneId.of("Asia/Tokyo"))),
                     ),
-                ),
+                    rule(
+                        "Local",
+                        Policy.HoldDuring,
+                        WORK_HOURS,
+                        emptySet(),
+                        zone = RuleZone.Chosen(ZoneChoice.Device),
+                    ),
+                ).withDefaultZone(ZoneChoice.Fixed(ZoneId.of("Europe/London"))),
+                Theme.Dark,
             )
 
         Settings.fromJson(settings.toJson()) shouldBe SettingsDecode.Decoded(settings)
@@ -97,7 +110,7 @@ class SettingsTest {
 
     @Test
     fun `no rules round-trips`() {
-        val empty = Settings(ruleSet())
+        val empty = Settings(ruleSet(), Theme.Light)
 
         Settings.fromJson(empty.toJson()) shouldBe SettingsDecode.Decoded(empty)
     }
@@ -107,7 +120,9 @@ class SettingsTest {
         Settings.DEFAULT.toJson() shouldBe
             """
             {
-                "version": 1,
+                "version": 2,
+                "defaultZone": "device",
+                "theme": "System",
                 "rules": [
                     {
                         "name": "Work",
@@ -127,11 +142,67 @@ class SettingsTest {
                             }
                         ],
                         "apps": [],
-                        "gmailAccounts": []
+                        "gmailAccounts": [],
+                        "zone": "default"
                     }
                 ]
             }
             """.trimIndent()
+    }
+
+    @Test
+    fun `version 1 documents migrate to the device zone and system theme`() {
+        Settings.fromJson("""{"version": 1, "rules": [${ruleJson("{}")}]}""") shouldBe
+            SettingsDecode.Decoded(
+                Settings(
+                    ruleSet(
+                        rule(
+                            "Work",
+                            Policy.DeliverOnlyDuring,
+                            schedule(window(days(DayOfWeek.MONDAY), "08:00", "17:00")),
+                            emptySet(),
+                        ),
+                    ),
+                    Theme.System,
+                ),
+            )
+    }
+
+    @Test
+    fun `unknown zones and themes are invalid`() {
+        val zoned = ruleJson("""{"zone": "Mars/Base"}""")
+        val unknown = "java.time.zone.ZoneRulesException: Unknown time-zone ID: Mars/Base"
+
+        Settings.fromJson("""{"version": 2, "defaultZone": "Mars/Base", "theme": "System", "rules": []}""") shouldBe
+            SettingsDecode.Invalid("unknown default zone \"Mars/Base\": $unknown")
+        Settings.fromJson("""{"version": 2, "defaultZone": "device", "theme": "Neon", "rules": []}""") shouldBe
+            SettingsDecode.Invalid("unknown theme \"Neon\"")
+        Settings
+            .fromJson("""{"version": 2, "defaultZone": "device", "theme": "System", "rules": [$zoned]}""")
+            .shouldBeInstanceOf<SettingsDecode.Invalid>()
+            .detail shouldBe "rule 1: \"Work\": unknown zone \"Mars/Base\": $unknown"
+    }
+
+    @Test
+    fun `a version 2 rule must say its zone and a version 1 rule can't`() {
+        Settings
+            .fromJson("""{"version": 2, "defaultZone": "device", "theme": "System", "rules": [${ruleJson("{}")}]}""")
+            .shouldBeInstanceOf<SettingsDecode.Unreadable>()
+        Settings
+            .fromJson("""{"version": 1, "rules": [${ruleJson("""{"zone": "device"}""")}]}""")
+            .shouldBeInstanceOf<SettingsDecode.Unreadable>()
+    }
+
+    @Test
+    fun `a migrated document saves as version 2`() {
+        val migrated =
+            Settings
+                .fromJson(
+                    """{"version": 1, "rules": [${ruleJson("{}")}]}""",
+                ).shouldBeInstanceOf<SettingsDecode.Decoded>()
+
+        migrated.settings.toJson().startsWith("{\n    \"version\": 2,") shouldBe true
+        Settings.fromJson(migrated.settings.toJson()) shouldBe migrated
     }
 
     @ParameterizedTest(name = "{1}")
@@ -166,10 +237,10 @@ class SettingsTest {
 
     @Test
     fun `other versions are unsupported whatever their shape`() {
-        val decode = Settings.fromJson("""{"version": 2, "profiles": [], "schedules": {}}""")
+        val decode = Settings.fromJson("""{"version": 3, "profiles": [], "schedules": {}}""")
 
-        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 2
-        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 2"
+        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 3
+        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 3"
     }
 
     @ParameterizedTest(name = "{0}")

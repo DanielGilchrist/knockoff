@@ -23,6 +23,7 @@ import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
 import dev.danielgilchrist.knockoff.domain.traits
 import dev.danielgilchrist.knockoff.domain.window
+import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek.WEDNESDAY
 import java.time.Duration
@@ -135,7 +136,12 @@ class RuleSetTest {
         val again = rule("Work", Policy.HoldDuring, lunch, work)
         val other = rule("Lunch", Policy.HoldDuring, lunch, work)
 
-        RuleSet.parse(listOf(workOnly, other, again)).shouldBeInstanceOf<RuleSetParse.DuplicateNames>().names shouldBe
+        RuleSet
+            .parse(
+                listOf(workOnly, other, again),
+                ZoneChoice.Device,
+            ).shouldBeInstanceOf<RuleSetParse.DuplicateNames>()
+            .names shouldBe
             setOf(ruleName("Work"))
     }
 
@@ -143,14 +149,19 @@ class RuleSetTest {
     fun `names differing only in surrounding space are duplicates`() {
         val padded = rule(" Work ", Policy.HoldDuring, lunch, work)
 
-        RuleSet.parse(listOf(workOnly, padded)).shouldBeInstanceOf<RuleSetParse.DuplicateNames>().names shouldBe
+        RuleSet
+            .parse(
+                listOf(workOnly, padded),
+                ZoneChoice.Device,
+            ).shouldBeInstanceOf<RuleSetParse.DuplicateNames>()
+            .names shouldBe
             setOf(ruleName("Work"))
     }
 
     @Test
     fun `parsed rules do not follow later changes to the given list`() {
         val given = mutableListOf(workOnly)
-        val parsed = RuleSet.parse(given).shouldBeInstanceOf<RuleSetParse.Valid>().rules
+        val parsed = RuleSet.parse(given, ZoneChoice.Device).shouldBeInstanceOf<RuleSetParse.Valid>().rules
 
         given.clear()
 

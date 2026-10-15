@@ -10,6 +10,8 @@ knockoff:
       - SerializationException
       # StoredWindow parses stored times into Parsed.
       - DateTimeParseException
+      # ZoneChoice.parse turns an unknown zone id into ZoneChoiceParse.Unknown.
+      - DateTimeException
   UnapprovedThrow:
     active: true
     allowedDeclarations:

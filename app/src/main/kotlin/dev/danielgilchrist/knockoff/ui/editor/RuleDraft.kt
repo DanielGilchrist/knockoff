@@ -15,6 +15,7 @@ import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
 import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
 import dev.danielgilchrist.knockoff.domain.schedule.WeekDaysParse
 import dev.danielgilchrist.knockoff.domain.schedule.Window
+import dev.danielgilchrist.knockoff.domain.zone.RuleZone
 
 data class RuleDraft(
     val name: String,
@@ -24,6 +25,7 @@ data class RuleDraft(
     val apps: Set<PackageName>,
     val gmailAccounts: Set<AccountAddress>,
     val pendingGmail: String,
+    val zone: RuleZone,
 ) {
     companion object {
         val NEW =
@@ -35,6 +37,7 @@ data class RuleDraft(
                 apps = emptySet(),
                 gmailAccounts = emptySet(),
                 pendingGmail = "",
+                zone = RuleZone.Default,
             )
 
         fun from(rule: Rule): RuleDraft =
@@ -60,6 +63,7 @@ data class RuleDraft(
                             }
                         }.toSet(),
                 pendingGmail = "",
+                zone = rule.zone,
             )
     }
 
@@ -73,6 +77,7 @@ data class RuleDraft(
                     policy,
                     schedule,
                     apps.map(Target::App).toSet() + accounts.map(Target::GmailInbox),
+                    zone,
                 )
             }
 

@@ -25,6 +25,8 @@ import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
 import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
 import dev.danielgilchrist.knockoff.domain.schedule.WeekDaysParse
 import dev.danielgilchrist.knockoff.domain.schedule.Window
+import dev.danielgilchrist.knockoff.domain.zone.RuleZone
+import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import java.time.DayOfWeek
 import java.time.DayOfWeek.FRIDAY
 import java.time.DayOfWeek.MONDAY
@@ -83,7 +85,8 @@ fun rule(
     schedule: Schedule,
     targets: Set<Target>,
     state: RuleState = RuleState.Enabled,
-): Rule = Rule(ruleName(name), state, policy, schedule, targets)
+    zone: RuleZone = RuleZone.Default,
+): Rule = Rule(ruleName(name), state, policy, schedule, targets, zone)
 
 fun ruleName(raw: String): RuleName =
     when (val parse = RuleName.parse(raw)) {
@@ -92,7 +95,7 @@ fun ruleName(raw: String): RuleName =
     }
 
 fun ruleSet(vararg rules: Rule): RuleSet =
-    when (val parse = RuleSet.parse(rules.toList())) {
+    when (val parse = RuleSet.parse(rules.toList(), ZoneChoice.Device)) {
         is RuleSetParse.Valid -> parse.rules
         is RuleSetParse.DuplicateNames -> error("Fixture rules share names: ${parse.names}")
     }
