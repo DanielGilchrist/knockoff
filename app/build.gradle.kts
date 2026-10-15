@@ -48,7 +48,6 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.datastore)
     implementation(libs.kotlinx.coroutines.android)
 
     ktlintRuleset(libs.compose.rules.ktlint)

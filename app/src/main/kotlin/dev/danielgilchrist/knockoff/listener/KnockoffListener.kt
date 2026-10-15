@@ -52,7 +52,6 @@ class KnockoffListener : NotificationListenerService() {
                             }
                         }.scan<RuleSet, RuleChange>(RuleChange.Pending) { change, rules -> change.next(rules) }
                         .collect(::apply)
-                    Log.e(LOG_TAG, "settings stopped updating, sweeps resume on the next connect")
                 },
             )
     }

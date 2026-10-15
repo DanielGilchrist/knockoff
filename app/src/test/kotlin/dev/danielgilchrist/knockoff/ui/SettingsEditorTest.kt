@@ -282,8 +282,7 @@ class SettingsEditorTest {
             )
         }
 
-    private fun TestScope.editor(): SettingsEditor =
-        SettingsEditor(SettingsStore.create(settingsFile(), backgroundScope), backgroundScope)
+    private fun TestScope.editor(): SettingsEditor = SettingsEditor(SettingsStore(settingsFile()), backgroundScope)
 
     private suspend fun SettingsEditor.readySettings(): SettingsState = settings.first { it is SettingsState.Ready }
 

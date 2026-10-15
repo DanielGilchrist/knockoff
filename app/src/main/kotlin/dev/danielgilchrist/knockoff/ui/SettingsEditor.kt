@@ -11,31 +11,26 @@ import dev.danielgilchrist.knockoff.ui.editor.Checked
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
 import dev.danielgilchrist.knockoff.ui.editor.RuleDraft
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class SettingsEditor(
     private val store: SettingsStore,
     private val scope: CoroutineScope,
 ) {
-    private val loadRequests = MutableStateFlow(0)
     private val mutableEditing = MutableStateFlow<Editing>(Editing.Closed)
     private val mutableSaveStatus = MutableStateFlow<SaveStatus>(SaveStatus.Idle)
 
     val editing: StateFlow<Editing> = mutableEditing.asStateFlow()
     val saveStatus: StateFlow<SaveStatus> = mutableSaveStatus.asStateFlow()
     val settings: StateFlow<SettingsState> =
-        loadRequests
-            .flatMapLatest { store.loads }
+        store.loads
             .map { load ->
                 when (load) {
                     is SettingsLoad.Loaded -> SettingsState.Ready(load.settings, SettingsOrigin.Saved)
@@ -111,7 +106,6 @@ class SettingsEditor(
                     SettingsSave.Saved -> SaveStatus.Idle
                     is SettingsSave.WriteFailed -> SaveStatus.Failed(save.detail)
                 }
-            loadRequests.update { it + 1 }
         }
     }
 

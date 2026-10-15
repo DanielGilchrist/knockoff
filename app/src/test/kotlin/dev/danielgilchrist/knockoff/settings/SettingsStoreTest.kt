@@ -7,13 +7,12 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.SettingsDecode
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.toList
-import kotlinx.coroutines.plus
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -35,13 +34,7 @@ class SettingsStoreTest {
     @Test
     fun `saved settings survive a new store on the same file`() =
         runTest {
-            val firstOwner = Job()
-
-            assertEquals(
-                SettingsSave.Saved,
-                SettingsStore.create(settingsFile(), this + firstOwner).save(Settings.DEFAULT),
-            )
-            firstOwner.cancelAndJoin()
+            assertEquals(SettingsSave.Saved, store().save(Settings.DEFAULT))
 
             assertEquals(SettingsLoad.Loaded(Settings.DEFAULT), store().loads.first())
         }
@@ -65,19 +58,66 @@ class SettingsStoreTest {
         }
 
     @Test
-    fun `loads end after a read failure so callers must read again`() =
+    fun `a read failure is read again by the next collector`() =
         runTest {
             settingsFile().writeText(Settings.DEFAULT.toJson())
             settingsFile().setReadable(false)
-
             val store = store()
-            val loads = store.loads.toList()
 
-            assertInstanceOf(SettingsLoad.ReadFailed::class.java, loads.single())
+            assertInstanceOf(SettingsLoad.ReadFailed::class.java, store.loads.first())
 
             settingsFile().setReadable(true)
 
             assertEquals(SettingsLoad.Loaded(Settings.DEFAULT), store.loads.first())
+        }
+
+    @Test
+    fun `a collector sees each saved change`() =
+        runTest {
+            val store = store()
+            val evenings = Settings(ruleSet(work(), evenings()))
+            val loads = collect(store)
+
+            assertEquals(SettingsLoad.Empty, loads.receive())
+            store.save(Settings.DEFAULT)
+            assertEquals(SettingsLoad.Loaded(Settings.DEFAULT), loads.receive())
+            store.save(evenings)
+            assertEquals(SettingsLoad.Loaded(evenings), loads.receive())
+        }
+
+    @Test
+    fun `a save after a read failure is seen by the same collector`() =
+        runTest {
+            settingsFile().writeText(Settings.DEFAULT.toJson())
+            settingsFile().setReadable(false)
+            val store = store()
+            val evenings = Settings(ruleSet(work(), evenings()))
+            val loads = collect(store)
+
+            assertInstanceOf(SettingsLoad.ReadFailed::class.java, loads.receive())
+            store.save(evenings)
+            assertEquals(SettingsLoad.Loaded(evenings), loads.receive())
+        }
+
+    @Test
+    fun `an update that can't be written is an input-output failure and changes nothing`() =
+        runTest {
+            settingsFile().writeText(Settings.DEFAULT.toJson())
+            directory.setWritable(false)
+
+            val update = store().update { RuleSet.parse(it.rules.rules + evenings()) }
+
+            directory.setWritable(true)
+            assertInstanceOf(SettingsUpdate.IoFailed::class.java, update)
+            assertEquals(Settings.DEFAULT.toJson(), settingsFile().readText())
+        }
+
+    @Test
+    fun `saving leaves only the settings file behind`() =
+        runTest {
+            store().save(Settings.DEFAULT)
+
+            assertEquals(listOf("settings.json"), directory.list()?.toList())
         }
 
     @Test
@@ -97,7 +137,7 @@ class SettingsStoreTest {
     fun `an unwritable location saves as a write failure`() =
         runTest {
             File(directory, "blocker").writeText("a file where a directory should be")
-            val store = SettingsStore.create(File(directory, "blocker/settings.json"), backgroundScope)
+            val store = SettingsStore(File(directory, "blocker/settings.json"))
 
             assertInstanceOf(SettingsSave.WriteFailed::class.java, store.save(Settings.DEFAULT))
         }
@@ -195,5 +235,11 @@ class SettingsStoreTest {
 
     private fun settingsFile(): File = File(directory, "settings.json")
 
-    private fun TestScope.store(): SettingsStore = SettingsStore.create(settingsFile(), backgroundScope)
+    private fun store(): SettingsStore = SettingsStore(settingsFile())
+
+    private fun TestScope.collect(store: SettingsStore): ReceiveChannel<SettingsLoad> {
+        val loads = Channel<SettingsLoad>(Channel.UNLIMITED)
+        backgroundScope.launch { store.loads.collect(loads::send) }
+        return loads
+    }
 }
