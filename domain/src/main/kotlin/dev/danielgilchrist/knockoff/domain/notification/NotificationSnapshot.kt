@@ -14,9 +14,9 @@ class NotificationSnapshot(
             }
         val origin = Origin(packageName, channel)
 
-        return when {
-            traits.isEmpty() -> PostedNotification.Snoozable(key, origin)
-            else -> PostedNotification.Unsnoozable(key, origin, traits)
+        return when (val parse = NotificationTraits.parse(traits)) {
+            NotificationTraitsParse.None -> PostedNotification.Snoozable(key, origin)
+            is NotificationTraitsParse.Present -> PostedNotification.Unsnoozable(key, origin, parse.traits)
         }
     }
 }

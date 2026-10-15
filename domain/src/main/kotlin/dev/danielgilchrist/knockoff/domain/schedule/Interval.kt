@@ -2,12 +2,20 @@ package dev.danielgilchrist.knockoff.domain.schedule
 
 import java.time.Instant
 
-internal data class Interval(
+@ConsistentCopyVisibility
+internal data class Interval private constructor(
     val start: Instant,
     val end: Instant,
 ) {
-    init {
-        require(start < end) { "Interval must end after it starts: $start..$end" }
+    companion object {
+        fun parse(
+            start: Instant,
+            end: Instant,
+        ): IntervalParse =
+            when {
+                start < end -> IntervalParse.Valid(Interval(start, end))
+                else -> IntervalParse.Empty
+            }
     }
 
     operator fun contains(instant: Instant): Boolean = instant >= start && instant < end

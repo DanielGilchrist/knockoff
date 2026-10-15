@@ -21,7 +21,7 @@ sealed interface Decision {
         when (this) {
             is Leave -> {
                 when (reason) {
-                    is LeaveReason.Unsnoozable -> "leave: unsnoozable (${reason.traits.joinToString()})"
+                    is LeaveReason.Unsnoozable -> "leave: unsnoozable (${reason.traits.values.joinToString()})"
                     LeaveReason.NoRuleTargets -> "leave: no enabled rule targets it"
                     is LeaveReason.Permitted -> "leave: permitted by ${reason.by.joinToString { it.value }}"
                 }

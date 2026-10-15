@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.domain.notification
 
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.shouldBe
+import dev.danielgilchrist.knockoff.domain.traits
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
@@ -34,15 +35,19 @@ class NotificationSnapshotTest {
     @EnumSource(NotificationTrait::class)
     fun `any blocking trait makes it unsnoozable`(trait: NotificationTrait) {
         snapshot(SLACK, "messages", setOf(trait)).parse() shouldBe
-            PostedNotification.Unsnoozable(key, Origin(SLACK, Channel.Named(ChannelId("messages"))), setOf(trait))
+            PostedNotification.Unsnoozable(key, Origin(SLACK, Channel.Named(ChannelId("messages"))), traits(trait))
     }
 
     @Test
     fun `every blocking trait is kept`() {
-        val traits = setOf(NotificationTrait.Ongoing, NotificationTrait.ForegroundService, NotificationTrait.NoClear)
+        val traits = traits(NotificationTrait.Ongoing, NotificationTrait.ForegroundService, NotificationTrait.NoClear)
 
-        snapshot(SLACK, "media", traits).parse() shouldBe
-            PostedNotification.Unsnoozable(key, Origin(SLACK, Channel.Named(ChannelId("media"))), traits)
+        snapshot(SLACK, "media", traits.values).parse() shouldBe
+            PostedNotification.Unsnoozable(
+                key,
+                Origin(SLACK, Channel.Named(ChannelId("media"))),
+                traits,
+            )
     }
 
     private fun snapshot(

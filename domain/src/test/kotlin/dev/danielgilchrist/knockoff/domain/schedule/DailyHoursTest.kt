@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.domain.schedule
 
 import dev.danielgilchrist.knockoff.domain.LONDON
+import dev.danielgilchrist.knockoff.domain.interval
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import org.junit.jupiter.api.Test
 import java.time.Instant
@@ -124,5 +125,5 @@ class DailyHoursTest {
     private fun occurs(
         start: String,
         end: String,
-    ): Occurrence = Occurrence.Occurs(Interval(Instant.parse(start), Instant.parse(end)))
+    ): Occurrence = Occurrence.Occurs(interval(Instant.parse(start), Instant.parse(end)))
 }

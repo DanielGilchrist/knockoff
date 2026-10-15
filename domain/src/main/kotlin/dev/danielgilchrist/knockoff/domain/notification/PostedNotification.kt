@@ -14,12 +14,8 @@ sealed interface PostedNotification {
     data class Unsnoozable internal constructor(
         override val key: NotificationKey,
         override val origin: Origin,
-        val traits: Set<NotificationTrait>,
-    ) : PostedNotification {
-        init {
-            require(traits.isNotEmpty()) { "An unsnoozable notification needs at least one trait: $key" }
-        }
-    }
+        val traits: NotificationTraits,
+    ) : PostedNotification
 
     fun describe(): String {
         val channel =

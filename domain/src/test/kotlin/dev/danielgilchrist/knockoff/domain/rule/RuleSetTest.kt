@@ -21,6 +21,7 @@ import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
+import dev.danielgilchrist.knockoff.domain.traits
 import dev.danielgilchrist.knockoff.domain.window
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek.WEDNESDAY
@@ -64,7 +65,7 @@ class RuleSetTest {
 
     @Test
     fun `ongoing work notification is left with its traits`() {
-        val traits = setOf(NotificationTrait.Ongoing, NotificationTrait.ForegroundService)
+        val traits = traits(NotificationTrait.Ongoing, NotificationTrait.ForegroundService)
 
         ruleSet(workOnly).decide(PostedNotification.Unsnoozable(key, SLACK_ORIGIN, traits), evening) shouldBe
             Decision.Leave(LeaveReason.Unsnoozable(traits))

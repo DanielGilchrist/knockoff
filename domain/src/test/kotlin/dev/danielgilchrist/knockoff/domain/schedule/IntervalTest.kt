@@ -1,7 +1,7 @@
 package dev.danielgilchrist.knockoff.domain.schedule
 
+import dev.danielgilchrist.knockoff.domain.interval
 import dev.danielgilchrist.knockoff.domain.shouldBe
-import dev.danielgilchrist.knockoff.domain.shouldThrow
 import org.junit.jupiter.api.Test
 import java.time.Instant
 
@@ -10,12 +10,12 @@ class IntervalTest {
     private val ten = Instant.parse("2026-10-14T10:00:00Z")
     private val eleven = Instant.parse("2026-10-14T11:00:00Z")
     private val twelve = Instant.parse("2026-10-14T12:00:00Z")
-    private val nineToTen = Interval(nine, ten)
+    private val nineToTen = interval(nine, ten)
 
     @Test
-    fun `rejects an empty or reversed interval`() {
-        shouldThrow<IllegalArgumentException> { Interval(nine, nine) }
-        shouldThrow<IllegalArgumentException> { Interval(ten, nine) }
+    fun `an empty or reversed interval is empty`() {
+        Interval.parse(nine, nine) shouldBe IntervalParse.Empty
+        Interval.parse(ten, nine) shouldBe IntervalParse.Empty
     }
 
     @Test
@@ -28,17 +28,17 @@ class IntervalTest {
 
     @Test
     fun `touches adjacent and overlapping intervals but not separate ones`() {
-        nineToTen.touches(Interval(ten, eleven)) shouldBe true
-        Interval(ten, eleven).touches(nineToTen) shouldBe true
-        nineToTen.touches(Interval(nine.plusSeconds(1), eleven)) shouldBe true
-        nineToTen.touches(Interval(eleven, twelve)) shouldBe false
-        Interval(eleven, twelve).touches(nineToTen) shouldBe false
+        nineToTen.touches(interval(ten, eleven)) shouldBe true
+        interval(ten, eleven).touches(nineToTen) shouldBe true
+        nineToTen.touches(interval(nine.plusSeconds(1), eleven)) shouldBe true
+        nineToTen.touches(interval(eleven, twelve)) shouldBe false
+        interval(eleven, twelve).touches(nineToTen) shouldBe false
     }
 
     @Test
     fun `span covers both intervals`() {
-        nineToTen.span(Interval(ten, eleven)) shouldBe Interval(nine, eleven)
-        Interval(ten, eleven).span(nineToTen) shouldBe Interval(nine, eleven)
-        Interval(nine, twelve).span(Interval(ten, eleven)) shouldBe Interval(nine, twelve)
+        nineToTen.span(interval(ten, eleven)) shouldBe interval(nine, eleven)
+        interval(ten, eleven).span(nineToTen) shouldBe interval(nine, eleven)
+        interval(nine, twelve).span(interval(ten, eleven)) shouldBe interval(nine, twelve)
     }
 }

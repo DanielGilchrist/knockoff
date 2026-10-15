@@ -1,10 +1,10 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
-import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
+import dev.danielgilchrist.knockoff.domain.notification.NotificationTraits
 
 sealed interface LeaveReason {
     data class Unsnoozable(
-        val traits: Set<NotificationTrait>,
+        val traits: NotificationTraits,
     ) : LeaveReason
 
     data object NoRuleTargets : LeaveReason

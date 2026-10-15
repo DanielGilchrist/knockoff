@@ -59,9 +59,9 @@ sealed class DailyHours {
         val first = date.atTime(start).firstInstantIn(zone)
         val last = endDate.atTime(end).lastInstantIn(zone)
 
-        return when {
-            first < last -> Occurrence.Occurs(Interval(first, last))
-            else -> Occurrence.SkippedByClockChange
+        return when (val parse = Interval.parse(first, last)) {
+            is IntervalParse.Valid -> Occurrence.Occurs(parse.interval)
+            IntervalParse.Empty -> Occurrence.SkippedByClockChange
         }
     }
 }

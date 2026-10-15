@@ -4,6 +4,9 @@ import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
+import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
+import dev.danielgilchrist.knockoff.domain.notification.NotificationTraits
+import dev.danielgilchrist.knockoff.domain.notification.NotificationTraitsParse
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
@@ -15,6 +18,8 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
+import dev.danielgilchrist.knockoff.domain.schedule.Interval
+import dev.danielgilchrist.knockoff.domain.schedule.IntervalParse
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
 import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
@@ -26,6 +31,7 @@ import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.THURSDAY
 import java.time.DayOfWeek.TUESDAY
 import java.time.DayOfWeek.WEDNESDAY
+import java.time.Instant
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -102,3 +108,18 @@ val SLACK_ORIGIN = Origin(SLACK, Channel.Named(ChannelId("messages")))
 val WORK_GMAIL_ORIGIN = gmailOrigin("^nc_1_mail_dan@work.example")
 
 val PERSONAL_GMAIL_ORIGIN = gmailOrigin("^nc_1_mail_dan@home.example")
+
+fun traits(vararg traits: NotificationTrait): NotificationTraits =
+    when (val parse = NotificationTraits.parse(traits.toSet())) {
+        is NotificationTraitsParse.Present -> parse.traits
+        NotificationTraitsParse.None -> error("Fixture needs at least one trait")
+    }
+
+internal fun interval(
+    start: Instant,
+    end: Instant,
+): Interval =
+    when (val parse = Interval.parse(start, end)) {
+        is IntervalParse.Valid -> parse.interval
+        IntervalParse.Empty -> error("Fixture interval must end after it starts")
+    }

@@ -4,12 +4,13 @@ import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.ruleName
 import dev.danielgilchrist.knockoff.domain.shouldBe
+import dev.danielgilchrist.knockoff.domain.traits
 import org.junit.jupiter.api.Test
 
 class DecisionTest {
     @Test
     fun `unsnoozable leave lists its traits`() {
-        val traits = setOf(NotificationTrait.ForegroundService, NotificationTrait.Ongoing)
+        val traits = traits(NotificationTrait.ForegroundService, NotificationTrait.Ongoing)
 
         Decision.Leave(LeaveReason.Unsnoozable(traits)).describe() shouldBe
             "leave: unsnoozable (ForegroundService, Ongoing)"

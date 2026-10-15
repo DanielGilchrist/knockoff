@@ -14,6 +14,7 @@ import dev.danielgilchrist.knockoff.domain.ruleName
 import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.shouldBe
+import dev.danielgilchrist.knockoff.domain.traits
 import dev.danielgilchrist.knockoff.domain.window
 import org.junit.jupiter.api.Test
 import java.time.DayOfWeek.FRIDAY
@@ -97,7 +98,7 @@ class RecheckTest {
 
     @Test
     fun `an unsnoozable notification is unchanged`() {
-        val unsnoozable = PostedNotification.Unsnoozable(key, SLACK_ORIGIN, setOf(NotificationTrait.Ongoing))
+        val unsnoozable = PostedNotification.Unsnoozable(key, SLACK_ORIGIN, traits(NotificationTrait.Ongoing))
 
         disabledWork.recheck(unsnoozable, before = work, evening) shouldBe Recheck.Unchanged
     }
