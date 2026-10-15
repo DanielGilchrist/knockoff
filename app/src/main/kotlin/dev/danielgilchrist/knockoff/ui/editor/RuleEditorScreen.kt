@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,6 +22,7 @@ import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.ui.EditTarget
 import dev.danielgilchrist.knockoff.ui.Editing
 import dev.danielgilchrist.knockoff.ui.InstalledApps
+import dev.danielgilchrist.knockoff.ui.RadioRow
 import dev.danielgilchrist.knockoff.ui.describe
 import dev.danielgilchrist.knockoff.ui.home.RuleStateSwitch
 import dev.danielgilchrist.knockoff.ui.removedAt
@@ -60,6 +59,7 @@ internal fun RuleEditorScreen(
                 Text(text = "Add hours")
             }
         }
+        item { ZoneEditor(zone = draft.zone, onZoneChange = { change(draft.copy(zone = it)) }) }
         item { AppsEditor(apps = apps, selected = draft.apps, onSelectedChange = { change(draft.copy(apps = it)) }) }
         item { GmailAccountsEditor(draft = draft, onDraftChange = change) }
         item { Problems(problems = editing.problems) }
@@ -94,17 +94,7 @@ private fun PolicyChoice(
 ) {
     Column {
         Policy.entries.forEach { option ->
-            Row(
-                modifier =
-                    Modifier.fillMaxWidth().selectable(
-                        selected = policy == option,
-                        onClick = { onPolicyChange(option) },
-                    ),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = policy == option, onClick = null)
-                Text(text = option.describe())
-            }
+            RadioRow(text = option.describe(), selected = policy == option, onClick = { onPolicyChange(option) })
         }
     }
 }

@@ -16,6 +16,7 @@ class KnockoffRuleSetProvider : RuleSetProvider {
                 RuleName("UnapprovedCatch") to ::UnapprovedCatch,
                 RuleName("UnapprovedThrow") to ::UnapprovedThrow,
                 RuleName("UntypedResult") to ::UntypedResult,
+                RuleName("UnusedImport") to ::UnusedImport,
             ),
         )
 }

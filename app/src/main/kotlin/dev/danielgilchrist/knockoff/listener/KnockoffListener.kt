@@ -10,7 +10,6 @@ import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.channel.BoundaryAlarm
 import dev.danielgilchrist.knockoff.channel.ChannelAccess
 import dev.danielgilchrist.knockoff.channel.ChannelSilencer
-import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule.Decision
 import dev.danielgilchrist.knockoff.domain.rule.Recheck
 import dev.danielgilchrist.knockoff.domain.rule.RuleChange

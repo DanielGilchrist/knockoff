@@ -3,6 +3,8 @@ knockoff:
   excludes: ['**/test/**']
   NoImportAlias:
     active: true
+  UnusedImport:
+    active: true
   UnapprovedCatch:
     active: true
     allowedExceptions:

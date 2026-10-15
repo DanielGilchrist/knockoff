@@ -5,8 +5,16 @@ import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
 import java.time.DayOfWeek
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.TextStyle
 import java.util.Locale
+
+internal fun ZoneId.describe(): String {
+    val offset = rules.getOffset(Instant.now()).id.replace("Z", "+00:00")
+
+    return "${id.replace('_', ' ')} (UTC$offset)"
+}
 
 internal fun Policy.describe(): String =
     when (this) {
