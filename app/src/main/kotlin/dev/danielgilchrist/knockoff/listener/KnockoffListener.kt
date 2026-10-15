@@ -13,6 +13,7 @@ import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -28,26 +29,29 @@ class KnockoffListener : NotificationListenerService() {
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var sweeps: Job? = null
+
+    private val settingsStore
+        get() = (application as KnockoffApplication).settingsStore
 
     override fun onListenerConnected() {
-        val active: Array<StatusBarNotification> =
-            try {
-                activeNotifications
-            } catch (exception: SecurityException) {
-                Log.e(LOG_TAG, "listener connected, but reading active notifications was refused: $exception")
-                return
+        Log.i(LOG_TAG, "listener connected")
+        sweeps?.cancel()
+        sweeps =
+            scope.launch {
+                settingsStore.loads.collect(::sweep)
+                Log.e(LOG_TAG, "settings stopped updating, sweeps resume on the next connect")
             }
-
-        Log.i(LOG_TAG, "listener connected, sweeping ${active.size} active notifications")
-        active.forEach(::handle)
     }
 
     override fun onListenerDisconnected() {
+        sweeps?.cancel()
+        sweeps = null
         Log.w(LOG_TAG, "listener disconnected")
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        handle(sbn)
+        scope.launch { evaluate(sbn, settingsStore.loads.first()) }
     }
 
     override fun onDestroy() {
@@ -55,32 +59,50 @@ class KnockoffListener : NotificationListenerService() {
         super.onDestroy()
     }
 
-    private fun handle(sbn: StatusBarNotification) {
+    private fun sweep(load: SettingsLoad) {
+        val active: Array<StatusBarNotification>? =
+            try {
+                activeNotifications
+            } catch (exception: SecurityException) {
+                Log.e(LOG_TAG, "reading active notifications was refused: $exception")
+                return
+            }
+
+        if (active == null) {
+            Log.w(LOG_TAG, "sweep skipped, the system did not return the active notifications")
+            return
+        }
+
+        Log.i(LOG_TAG, "sweeping ${active.size} active notifications")
+        active.forEach { sbn -> scope.launch { evaluate(sbn, load) } }
+    }
+
+    private suspend fun evaluate(
+        sbn: StatusBarNotification,
+        load: SettingsLoad,
+    ) {
+        val now = ZonedDateTime.now()
         val posted = sbn.toSnapshot().parse()
         val subText = sbn.notification.extras.getCharSequence(Notification.EXTRA_SUB_TEXT)
+        val described = "${posted.describe()} subText=$subText"
 
-        scope.launch {
-            val now = ZonedDateTime.now()
-            val described = "${posted.describe()} subText=$subText"
-
-            val rules =
-                when (val load = (application as KnockoffApplication).settingsStore.loads.first()) {
-                    is SettingsLoad.Loaded -> {
-                        load.settings.rules
-                    }
-
-                    SettingsLoad.Empty -> {
-                        Settings.DEFAULT.rules
-                    }
-
-                    is SettingsLoad.Failure -> {
-                        Log.e(LOG_TAG, "$described not evaluated, settings failed to load: ${load.detail}")
-                        return@launch
-                    }
+        val rules =
+            when (load) {
+                is SettingsLoad.Loaded -> {
+                    load.settings.rules
                 }
 
-            act(posted, rules.decide(posted, now), described)
-        }
+                SettingsLoad.Empty -> {
+                    Settings.DEFAULT.rules
+                }
+
+                is SettingsLoad.Failure -> {
+                    Log.e(LOG_TAG, "$described not evaluated, settings failed to load: ${load.detail}")
+                    return
+                }
+            }
+
+        act(posted, rules.decide(posted, now), described)
     }
 
     private suspend fun act(
