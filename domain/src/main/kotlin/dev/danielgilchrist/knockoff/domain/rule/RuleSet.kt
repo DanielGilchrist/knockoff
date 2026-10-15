@@ -38,6 +38,30 @@ value class RuleSet private constructor(
             is PostedNotification.Snoozable -> decide(notification.origin, now)
         }
 
+    fun recheck(
+        snoozed: PostedNotification,
+        before: RuleSet,
+        now: ZonedDateTime,
+    ): Recheck {
+        val previous = before.decide(snoozed, now)
+
+        return when (val current = decide(snoozed, now)) {
+            is Decision.Snooze -> {
+                when {
+                    previous is Decision.Snooze && previous.until == current.until -> Recheck.Unchanged
+                    else -> Recheck.Resnooze(current)
+                }
+            }
+
+            is Decision.Leave -> {
+                when (previous) {
+                    is Decision.Snooze -> Recheck.Release(current)
+                    is Decision.Leave -> Recheck.Unchanged
+                }
+            }
+        }
+    }
+
     private fun decide(
         origin: Origin,
         now: ZonedDateTime,

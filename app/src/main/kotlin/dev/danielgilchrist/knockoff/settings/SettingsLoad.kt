@@ -4,11 +4,17 @@ import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.SettingsDecode
 
 sealed interface SettingsLoad {
-    data class Loaded(
-        val settings: Settings,
-    ) : SettingsLoad
+    sealed interface Usable : SettingsLoad {
+        val settings: Settings
+    }
 
-    data object Empty : SettingsLoad
+    data class Loaded(
+        override val settings: Settings,
+    ) : Usable
+
+    data object Empty : Usable {
+        override val settings: Settings get() = Settings.DEFAULT
+    }
 
     sealed interface Failure : SettingsLoad {
         val detail: String

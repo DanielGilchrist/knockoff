@@ -39,7 +39,7 @@ class SettingsEditor(
             .map { load ->
                 when (load) {
                     is SettingsLoad.Loaded -> SettingsState.Ready(load.settings, SettingsOrigin.Saved)
-                    SettingsLoad.Empty -> SettingsState.Ready(Settings.DEFAULT, SettingsOrigin.Defaults)
+                    is SettingsLoad.Empty -> SettingsState.Ready(load.settings, SettingsOrigin.Defaults)
                     is SettingsLoad.Failure -> SettingsState.Failed(load.detail)
                 }
             }.stateIn(scope, SharingStarted.Eagerly, SettingsState.Loading)
