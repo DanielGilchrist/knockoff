@@ -16,4 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "knockoff"
 
-include(":domain", ":app")
+include(":domain", ":app", ":lint")

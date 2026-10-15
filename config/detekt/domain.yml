@@ -1,0 +1,20 @@
+knockoff:
+  active: true
+  excludes: ['**/test/**']
+  NoImportAlias:
+    active: true
+  UnapprovedCatch:
+    active: true
+    allowedExceptions:
+      # Settings.fromJson parses untrusted JSON into SettingsDecode.
+      - SerializationException
+      # StoredWindow parses stored times into Parsed.
+      - DateTimeParseException
+  UnapprovedThrow:
+    active: true
+    allowedDeclarations:
+      # A schedule that isn't always covered has a boundary within the generated fortnight. Types can't prove that,
+      # so running past it is a bug that must crash loudly.
+      - dev.danielgilchrist.knockoff.domain.schedule.Schedule.coverageAt(ZonedDateTime)
+  UntypedResult:
+    active: true

@@ -19,4 +19,8 @@ subprojects {
     extensions.configure<dev.detekt.gradle.extensions.DetektExtension> {
         buildUponDefaultConfig.set(true)
     }
+
+    tasks.withType<dev.detekt.gradle.Detekt>().configureEach {
+        outputs.cacheIf("A daemon can keep stale :lint rule classes, and their clean result must not be reused") { false }
+    }
 }

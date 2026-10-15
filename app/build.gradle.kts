@@ -52,6 +52,7 @@ dependencies {
 
     ktlintRuleset(libs.compose.rules.ktlint)
     detektPlugins(libs.compose.rules.detekt)
+    detektPlugins(project(":lint"))
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
@@ -60,5 +61,5 @@ dependencies {
 }
 
 detekt {
-    config.from(rootProject.file("config/detekt/compose.yml"))
+    config.from(rootProject.file("config/detekt/compose.yml"), rootProject.file("config/detekt/app.yml"))
 }

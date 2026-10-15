@@ -1,0 +1,23 @@
+knockoff:
+  active: true
+  excludes: ['**/test/**']
+  NoImportAlias:
+    active: true
+  UnapprovedCatch:
+    active: true
+    allowedExceptions:
+      # NotificationListenerService calls refuse an unbound or unapproved listener; converted to sealed outcomes.
+      - SecurityException
+      # Settings file reads and writes; converted to SettingsLoad, SettingsSave and SettingsUpdate.
+      - IOException
+      # A missing settings file is SettingsLoad.Empty, not a failure.
+      - NoSuchFileException
+      # Invalid UTF-8 in the settings file is SettingsLoad.Corrupt.
+      - CharacterCodingException
+      # Opening notification access settings on a device without that screen.
+      - ActivityNotFoundException
+  UnapprovedThrow:
+    active: true
+    allowedDeclarations: []
+  UntypedResult:
+    active: true

@@ -15,9 +15,15 @@ kotlin {
 dependencies {
     implementation(libs.kotlinx.serialization.json)
 
+    detektPlugins(project(":lint"))
+
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
+}
+
+detekt {
+    config.from(rootProject.file("config/detekt/domain.yml"))
 }
 
 tasks.test {
