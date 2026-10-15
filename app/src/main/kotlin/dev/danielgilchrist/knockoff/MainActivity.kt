@@ -7,21 +7,28 @@ import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentSender
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.danielgilchrist.knockoff.listener.KnockoffListener
+import dev.danielgilchrist.knockoff.ui.Appearance
 import dev.danielgilchrist.knockoff.ui.KnockoffScreen
 import dev.danielgilchrist.knockoff.ui.MainViewModel
 import dev.danielgilchrist.knockoff.ui.theme.KnockoffTheme
+import dev.danielgilchrist.knockoff.ui.theme.isDark
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
@@ -30,15 +37,28 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            KnockoffTheme {
-                KnockoffScreen(
-                    viewModel = viewModel,
-                    onOpenAccessSettings = ::openAccessSettings,
-                    onLinkDevice = ::linkDevice,
-                    onAllowExactAlarms = ::openExactAlarmSettings,
-                )
+            val settings by viewModel.editor.settings.collectAsStateWithLifecycle()
+
+            when (val appearance = Appearance.of(settings)) {
+                Appearance.Pending -> {}
+
+                is Appearance.Themed -> {
+                    val dark = appearance.theme.isDark()
+
+                    SideEffect {
+                        val bars = barStyle(dark)
+                        enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
+                    }
+                    KnockoffTheme(dark = dark) {
+                        KnockoffScreen(
+                            viewModel = viewModel,
+                            onOpenAccessSettings = ::openAccessSettings,
+                            onLinkDevice = ::linkDevice,
+                            onAllowExactAlarms = ::openExactAlarmSettings,
+                        )
+                    }
+                }
             }
         }
     }
@@ -84,6 +104,12 @@ class MainActivity : ComponentActivity() {
             },
         )
     }
+
+    private fun barStyle(dark: Boolean): SystemBarStyle =
+        when {
+            dark -> SystemBarStyle.dark(Color.TRANSPARENT)
+            else -> SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+        }
 
     private fun openExactAlarmSettings() {
         startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", packageName, null)))

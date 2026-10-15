@@ -256,6 +256,57 @@ class SettingsStoreTest {
             assertEquals(tokyo, loaded.rules.defaultZone)
         }
 
+    @Test
+    fun `a modification is saved over the current settings`() =
+        runTest {
+            val store = store()
+
+            assertEquals(SettingsChange.Saved, store.modify { it.copy(theme = Theme.Light) })
+            assertEquals(SettingsLoad.Loaded(Settings(Settings.DEFAULT.rules, Theme.Light)), store.loads.first())
+        }
+
+    @Test
+    fun `a modification of a corrupt file is refused and leaves it alone`() =
+        runTest {
+            settingsFile().writeText("not json")
+
+            assertInstanceOf(SettingsChange.Failed::class.java, store().modify { it.copy(theme = Theme.Light) })
+            assertEquals("not json", settingsFile().readText())
+        }
+
+    @Test
+    fun `a modification keeps the saved rules`() =
+        runTest {
+            val store = store()
+            val rules = ruleSet(work(), evenings())
+            store.save(Settings(rules, Theme.System))
+
+            store.modify { it.copy(theme = Theme.Dark) }
+
+            assertEquals(SettingsLoad.Loaded(Settings(rules, Theme.Dark)), store.loads.first())
+        }
+
+    @Test
+    fun `a modification of an unreadable file fails`() =
+        runTest {
+            settingsFile().writeText(Settings.DEFAULT.toJson())
+            settingsFile().setReadable(false)
+
+            assertInstanceOf(SettingsChange.Failed::class.java, store().modify { it.copy(theme = Theme.Dark) })
+        }
+
+    @Test
+    fun `a modification that can't be written fails`() =
+        runTest {
+            settingsFile().writeText(Settings.DEFAULT.toJson())
+            directory.setWritable(false)
+
+            val change = store().modify { it.copy(theme = Theme.Dark) }
+
+            directory.setWritable(true)
+            assertInstanceOf(SettingsChange.Failed::class.java, change)
+        }
+
     private fun work(): Rule =
         Settings.DEFAULT.rules.rules
             .single()

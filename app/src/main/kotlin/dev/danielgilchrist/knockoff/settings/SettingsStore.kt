@@ -49,6 +49,22 @@ class SettingsStore(
             }
         }
 
+    suspend fun modify(change: (Settings) -> Settings): SettingsChange =
+        mutex.withLock {
+            when (val load = read()) {
+                is SettingsLoad.Usable -> {
+                    when (val save = write(change(load.settings))) {
+                        SettingsSave.Saved -> SettingsChange.Saved
+                        is SettingsSave.WriteFailed -> SettingsChange.Failed(save.detail)
+                    }
+                }
+
+                is SettingsLoad.Failure -> {
+                    SettingsChange.Failed(load.detail)
+                }
+            }
+        }
+
     private suspend fun read(): SettingsLoad =
         when (val read = file.read()) {
             FileRead.Missing -> {

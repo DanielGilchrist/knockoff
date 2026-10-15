@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleState
 
 data class HomeActions(
     val onOpenAccessSettings: () -> Unit,
+    val onOpenPreferences: () -> Unit,
     val onLinkDevice: () -> Unit,
     val onAllowExactAlarms: () -> Unit,
     val onNewRule: () -> Unit,

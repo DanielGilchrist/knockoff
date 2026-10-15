@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -8,6 +9,7 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,8 +17,10 @@ import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.ui.SaveStatus
 import dev.danielgilchrist.knockoff.ui.SettingsOrigin
+import dev.danielgilchrist.knockoff.ui.SettingsProblemCard
 import dev.danielgilchrist.knockoff.ui.SettingsState
 import dev.danielgilchrist.knockoff.ui.Setup
+import dev.danielgilchrist.knockoff.ui.saveProblem
 
 @Composable
 internal fun HomeScreen(
@@ -39,18 +43,7 @@ internal fun HomeScreen(
                 onAllowExactAlarms = actions.onAllowExactAlarms,
             )
         }
-        when (saveStatus) {
-            SaveStatus.Idle -> {}
-
-            is SaveStatus.Failed -> {
-                item {
-                    SettingsProblemCard(
-                        title = "Couldn't save settings",
-                        detail = saveStatus.detail,
-                    )
-                }
-            }
-        }
+        saveProblem(saveStatus)
         when (settings) {
             SettingsState.Loading -> {
                 item { Text(text = "Loading settings…") }
@@ -95,5 +88,10 @@ private fun LazyListScope.rules(
             onStateChange = { state -> actions.onRuleStateChange(rule.name, state) },
         )
     }
-    item { Button(onClick = actions.onNewRule) { Text(text = "Add rule") } }
+    item {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Button(onClick = actions.onNewRule) { Text(text = "Add rule") }
+            OutlinedButton(onClick = actions.onOpenPreferences) { Text(text = "Settings") }
+        }
+    }
 }
