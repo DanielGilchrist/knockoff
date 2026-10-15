@@ -1,20 +1,45 @@
 package dev.danielgilchrist.knockoff.listener
 
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 
 internal sealed interface Connection {
-    data object Disconnected : Connection
+    data object Idle : Connection
 
     data class Connected(
-        val sweeps: Job,
+        val collector: Job,
     ) : Connection
 
-    fun stop() {
+    data class Disconnected(
+        val collector: Job,
+    ) : Connection
+
+    fun disconnected(): Connection =
         when (this) {
-            Disconnected -> {}
+            Idle -> {
+                Idle
+            }
 
             is Connected -> {
-                sweeps.cancel()
+                collector.cancel()
+                Disconnected(collector)
+            }
+
+            is Disconnected -> {
+                this
+            }
+        }
+
+    suspend fun join() {
+        when (this) {
+            Idle -> {}
+
+            is Connected -> {
+                collector.cancelAndJoin()
+            }
+
+            is Disconnected -> {
+                collector.join()
             }
         }
     }

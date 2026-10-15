@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.LONDON
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
@@ -75,10 +76,10 @@ class ZoneEvaluationTest {
 
     @Test
     fun `moving a hold to another zone with the same offset is unchanged`() {
-        val inSeoul = ruleSet(tokyoAfternoonHold.copy(zone = RuleZone.Chosen(seoul)))
+        val at = london("2026-10-14T02:00").toInstant()
+        val inSeoul = Evaluation(ruleSet(tokyoAfternoonHold.copy(zone = RuleZone.Chosen(seoul))), LONDON)
 
-        inSeoul.recheck(snoozable, before = ruleSet(tokyoAfternoonHold), london("2026-10-14T02:00")) shouldBe
-            Recheck.Unchanged
+        inSeoul.recheck(snoozable, Evaluation(ruleSet(tokyoAfternoonHold), LONDON), at) shouldBe Recheck.Unchanged
     }
 
     @Test
@@ -94,5 +95,69 @@ class ZoneEvaluationTest {
             tokyoAfternoonHold,
         ).planChannels(read, SilencedChannels.NONE, london("2026-10-14T12:00")).silence shouldBe
             emptyList()
+    }
+
+    @Test
+    fun `moving the device into a zone that's still outside hours resnoozes to its start`() {
+        val at = london("2026-10-14T20:00").toInstant()
+        val tokyoZone = ZoneId.of("Asia/Tokyo")
+
+        Evaluation(
+            ruleSet(localWork),
+            tokyoZone,
+        ).recheck(snoozable, Evaluation(ruleSet(localWork), LONDON), at) shouldBe
+            Recheck.Resnooze(
+                Decision.Snooze(
+                    at.atZone(tokyoZone),
+                    at.atZone(tokyoZone).withHour(8),
+                    SnoozeEnd.RulesPermit,
+                    setOf(localWork.name),
+                ),
+            )
+    }
+
+    @Test
+    fun `moving the device into a zone that's inside hours releases`() {
+        val at = london("2026-10-14T20:00").toInstant()
+
+        Evaluation(ruleSet(localWork), NEW_YORK).recheck(snoozable, Evaluation(ruleSet(localWork), LONDON), at) shouldBe
+            Recheck.Release(Decision.Leave(LeaveReason.Permitted(setOf(localWork.name))))
+    }
+
+    @Test
+    fun `moving the device out of hours holds a notification it had let through`() {
+        val at = london("2026-10-14T13:00").toInstant()
+
+        Evaluation(ruleSet(localWork), ZoneId.of("Asia/Tokyo"))
+            .recheck(snoozable, Evaluation(ruleSet(localWork), LONDON), at)
+            .shouldBeInstanceOf<Recheck.Resnooze>()
+    }
+
+    @Test
+    fun `a snooze no rule holds in either zone is left alone`() {
+        val at = london("2026-10-14T13:00").toInstant()
+
+        Evaluation(ruleSet(localWork), NEW_YORK).recheck(snoozable, Evaluation(ruleSet(localWork), LONDON), at) shouldBe
+            Recheck.Unchanged
+    }
+
+    @Test
+    fun `moving a device-zone hold to a zone naming the same instant is unchanged`() {
+        val winterEvening = london("2026-11-04T20:00").toInstant()
+
+        Evaluation(ruleSet(localWork), ZoneId.of("Europe/Lisbon"))
+            .recheck(snoozable, Evaluation(ruleSet(localWork), LONDON), winterEvening) shouldBe Recheck.Unchanged
+    }
+
+    @Test
+    fun `moving the device leaves fixed-zone holds alone`() {
+        val at = london("2026-10-14T02:00").toInstant()
+
+        Evaluation(ruleSet(tokyoAfternoonHold), NEW_YORK)
+            .recheck(snoozable, Evaluation(ruleSet(tokyoAfternoonHold), LONDON), at) shouldBe Recheck.Unchanged
+    }
+
+    private companion object {
+        val NEW_YORK: ZoneId = ZoneId.of("America/New_York")
     }
 }

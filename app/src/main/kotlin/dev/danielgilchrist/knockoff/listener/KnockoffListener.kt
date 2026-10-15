@@ -10,25 +10,29 @@ import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.channel.BoundaryAlarm
 import dev.danielgilchrist.knockoff.channel.ChannelAccess
 import dev.danielgilchrist.knockoff.channel.ChannelSilencer
-import dev.danielgilchrist.knockoff.domain.rule.Decision
-import dev.danielgilchrist.knockoff.domain.rule.Recheck
-import dev.danielgilchrist.knockoff.domain.rule.RuleChange
-import dev.danielgilchrist.knockoff.domain.rule.RuleSet
+import dev.danielgilchrist.knockoff.domain.change.Change
+import dev.danielgilchrist.knockoff.domain.change.next
+import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.transform
 import kotlinx.coroutines.launch
-import java.time.ZonedDateTime
+import kotlinx.coroutines.withContext
+import java.time.ZoneId
 
 class KnockoffListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val snoozer = Snoozer(this)
-    private var connection: Connection = Connection.Disconnected
+    private val sweeper = NotificationSweeper(this, scope)
+    private var connection: Connection = Connection.Idle
+    private var applied: Change<Evaluation> = Change.Pending
 
     private val knockoff
         get() = application as KnockoffApplication
@@ -48,33 +52,34 @@ class KnockoffListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         Log.i(LOG_TAG, "listener connected")
-        connection.stop()
+        val previous = connection
         connection =
             Connection.Connected(
                 scope.launch {
-                    settingsStore.loads
-                        .transform { load ->
+                    withContext(NonCancellable) { previous.join() }
+                    val rules =
+                        settingsStore.loads.transform { load ->
                             when (load) {
                                 is SettingsLoad.Usable -> {
                                     emit(load.settings.rules)
                                 }
 
                                 is SettingsLoad.Failure -> {
-                                    Log.e(
-                                        LOG_TAG,
-                                        "sweep skipped, settings failed to load: ${load.detail}",
-                                    )
+                                    Log.e(LOG_TAG, "sweep skipped, settings failed to load: ${load.detail}")
                                 }
                             }
-                        }.scan<RuleSet, RuleChange>(RuleChange.Pending) { change, rules -> change.next(rules) }
+                        }
+
+                    combine(rules, deviceZones(this@KnockoffListener), ::Evaluation)
+                        .scan(applied) { change, evaluation -> change.next(evaluation) }
+                        .drop(1)
                         .collect(::apply)
                 },
             )
     }
 
     override fun onListenerDisconnected() {
-        connection.stop()
-        connection = Connection.Disconnected
+        connection = connection.disconnected()
         Log.w(LOG_TAG, "listener disconnected")
     }
 
@@ -82,7 +87,7 @@ class KnockoffListener : NotificationListenerService() {
         scope.launch {
             when (val load = settingsStore.loads.first()) {
                 is SettingsLoad.Usable -> {
-                    evaluate(sbn, load.settings.rules)
+                    sweeper.evaluate(sbn, Evaluation(load.settings.rules, ZoneId.systemDefault()))
                 }
 
                 is SettingsLoad.Failure -> {
@@ -109,92 +114,21 @@ class KnockoffListener : NotificationListenerService() {
         super.onDestroy()
     }
 
-    private fun apply(change: RuleChange) {
+    private fun apply(change: Change<Evaluation>) {
+        applied = change
+
         when (change) {
-            RuleChange.Pending -> {}
+            Change.Pending -> {}
 
-            is RuleChange.Initial -> {
-                sweep(change.rules)
+            is Change.Initial -> {
+                sweeper.sweep(change.value)
                 silencer.request()
             }
 
-            is RuleChange.Changed -> {
-                sweep(change.after)
-                recheckSnoozed(change.before, change.after)
+            is Change.Changed -> {
+                sweeper.sweep(change.after)
+                sweeper.recheckSnoozed(change.before, change.after)
                 silencer.request()
-            }
-        }
-    }
-
-    private fun sweep(rules: RuleSet) {
-        when (val read = read(NotificationList.Active)) {
-            is NotificationRead.Read -> {
-                Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
-                read.notifications.forEach { sbn -> scope.launch { evaluate(sbn, rules) } }
-            }
-
-            is NotificationRead.Failure -> {
-                Log.e(LOG_TAG, "sweep skipped, active notifications unavailable: ${read.detail}")
-            }
-        }
-    }
-
-    private fun recheckSnoozed(
-        before: RuleSet,
-        after: RuleSet,
-    ) {
-        when (val read = read(NotificationList.Snoozed)) {
-            is NotificationRead.Read -> {
-                Log.i(LOG_TAG, "rechecking ${read.notifications.size} snoozed notifications")
-                read.notifications.forEach { sbn -> scope.launch { recheck(sbn, before, after) } }
-            }
-
-            is NotificationRead.Failure -> {
-                Log.e(LOG_TAG, "recheck skipped, snoozed notifications unavailable: ${read.detail}")
-            }
-        }
-    }
-
-    private suspend fun evaluate(
-        sbn: StatusBarNotification,
-        rules: RuleSet,
-    ) {
-        val now = ZonedDateTime.now()
-        val posted = sbn.toSnapshot().parse()
-
-        val decision = rules.decide(posted, now)
-
-        Log.i(LOG_TAG, "${sbn.describe(posted)} -> ${decision.describe()}")
-
-        when (decision) {
-            is Decision.Leave -> {}
-
-            is Decision.Snooze -> {
-                snoozer.snooze(posted.key, decision.duration)
-            }
-        }
-    }
-
-    private suspend fun recheck(
-        sbn: StatusBarNotification,
-        before: RuleSet,
-        after: RuleSet,
-    ) {
-        val now = ZonedDateTime.now()
-        val snoozed = sbn.toSnapshot().parse()
-        val recheck = after.recheck(snoozed, before, now)
-
-        Log.i(LOG_TAG, "snoozed ${sbn.describe(snoozed)} -> ${recheck.describe()}")
-
-        when (recheck) {
-            Recheck.Unchanged -> {}
-
-            is Recheck.Resnooze -> {
-                snoozer.resnooze(snoozed.key, recheck.snooze.duration)
-            }
-
-            is Recheck.Release -> {
-                snoozer.release(snoozed.key)
             }
         }
     }

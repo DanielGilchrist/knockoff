@@ -13,6 +13,8 @@ knockoff:
       - SecurityException
       # Updating a channel the app deleted since it was read; converted to ChannelUpdate.Missing.
       - IllegalArgumentException
+      # A time zone change broadcast naming an unknown zone; converted to ZoneExtra.Invalid.
+      - DateTimeException
       # StagedFile reads and writes; converted to FileRead and FileWrite.
       - IOException
       # StagedFile: a file that doesn't exist yet is FileRead.Missing, not a failure.

@@ -22,6 +22,7 @@ import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.THURSDAY
 import java.time.DayOfWeek.TUESDAY
 import java.time.DayOfWeek.WEDNESDAY
+import java.time.ZonedDateTime
 
 class RecheckTest {
     private val key = NotificationKey("0|com.Slack|1|null|10001")
@@ -113,4 +114,10 @@ class RecheckTest {
         Recheck.Resnooze(snooze).describe() shouldBe "re-${snooze.describe()}"
         Recheck.Release(leave).describe() shouldBe "release now, ${leave.describe()}"
     }
+
+    private fun RuleSet.recheck(
+        snoozed: PostedNotification,
+        before: RuleSet,
+        at: ZonedDateTime,
+    ): Recheck = Evaluation(this, at.zone).recheck(snoozed, Evaluation(before, at.zone), at.toInstant())
 }

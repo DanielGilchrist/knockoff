@@ -58,30 +58,6 @@ data class RuleSet private constructor(
             is PostedNotification.Snoozable -> decide(notification.origin, now)
         }
 
-    fun recheck(
-        snoozed: PostedNotification,
-        before: RuleSet,
-        now: ZonedDateTime,
-    ): Recheck {
-        val previous = before.decide(snoozed, now)
-
-        return when (val current = decide(snoozed, now)) {
-            is Decision.Snooze -> {
-                when {
-                    previous is Decision.Snooze && previous.until == current.until -> Recheck.Unchanged
-                    else -> Recheck.Resnooze(current)
-                }
-            }
-
-            is Decision.Leave -> {
-                when (previous) {
-                    is Decision.Snooze -> Recheck.Release(current)
-                    is Decision.Leave -> Recheck.Unchanged
-                }
-            }
-        }
-    }
-
     fun channelPackages(silenced: SilencedChannels): Set<PackageName> =
         enabled().flatMap { rule -> rule.targets.map { it.packageName } }.toSet() + silenced.packages
 
@@ -118,8 +94,6 @@ data class RuleSet private constructor(
                 else -> ChannelState.Held
             }
         }
-
-    private fun enabled(): List<Rule> = rules.filter { it.state == RuleState.Enabled }
 
     private fun decide(
         origin: Origin,
@@ -183,4 +157,6 @@ data class RuleSet private constructor(
                 RuleVerdict.Abstains, RuleVerdict.Permits -> emptyList()
             }
         }
+
+    private fun enabled(): List<Rule> = rules.filter { it.state == RuleState.Enabled }
 }
