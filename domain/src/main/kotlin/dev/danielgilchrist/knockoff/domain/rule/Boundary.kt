@@ -8,4 +8,10 @@ sealed interface Boundary {
     ) : Boundary
 
     data object None : Boundary
+
+    fun noLaterThan(latest: ZonedDateTime): Boundary =
+        when (this) {
+            None -> At(latest)
+            is At -> At(minOf(time, latest))
+        }
 }

@@ -6,13 +6,16 @@ knockoff:
   UnapprovedCatch:
     active: true
     allowedExceptions:
-      # NotificationListenerService calls refuse an unbound or unapproved listener; converted to sealed outcomes.
+      # Listener calls refuse an unapproved or unlinked listener, and exact alarms refuse without permission;
+      # converted to sealed outcomes (SnoozeOutcome, ChannelFetch, ChannelUpdate, AlarmSchedule).
       - SecurityException
-      # Settings file reads and writes; converted to SettingsLoad, SettingsSave and SettingsUpdate.
+      # Updating a channel the app deleted since it was read; converted to ChannelUpdate.Missing.
+      - IllegalArgumentException
+      # StagedFile reads and writes; converted to FileRead and FileWrite.
       - IOException
-      # A missing settings file is SettingsLoad.Empty, not a failure.
+      # StagedFile: a file that doesn't exist yet is FileRead.Missing, not a failure.
       - NoSuchFileException
-      # Invalid UTF-8 in the settings file is SettingsLoad.Corrupt.
+      # StagedFile: invalid UTF-8 is FileRead.Undecodable.
       - CharacterCodingException
       # Opening notification access settings on a device without that screen.
       - ActivityNotFoundException

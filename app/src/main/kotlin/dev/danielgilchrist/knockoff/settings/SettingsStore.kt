@@ -3,7 +3,9 @@ package dev.danielgilchrist.knockoff.settings
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.SettingsDecode
-import kotlinx.coroutines.Dispatchers
+import dev.danielgilchrist.knockoff.storage.FileRead
+import dev.danielgilchrist.knockoff.storage.FileWrite
+import dev.danielgilchrist.knockoff.storage.StagedFile
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -11,18 +13,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.NoSuchFileException
-import java.nio.file.StandardCopyOption
 
 class SettingsStore(
-    private val file: File,
+    file: File,
 ) {
-    private val staged = File(file.parentFile, "${file.name}.tmp")
+    private val file = StagedFile(file)
     private val mutex = Mutex()
     private val writes = MutableStateFlow(0)
 
@@ -54,42 +50,36 @@ class SettingsStore(
         }
 
     private suspend fun read(): SettingsLoad =
-        withContext(Dispatchers.IO) {
-            val bytes =
-                try {
-                    Files.readAllBytes(file.toPath())
-                } catch (_: NoSuchFileException) {
-                    return@withContext SettingsLoad.Empty
-                } catch (exception: IOException) {
-                    return@withContext SettingsLoad.ReadFailed(exception.toString())
-                }
+        when (val read = file.read()) {
+            FileRead.Missing -> {
+                SettingsLoad.Empty
+            }
 
-            val text =
-                try {
-                    bytes.decodeToString(throwOnInvalidSequence = true)
-                } catch (exception: CharacterCodingException) {
-                    return@withContext SettingsLoad.Corrupt(SettingsDecode.Unreadable(exception.toString()))
-                }
+            is FileRead.Failed -> {
+                SettingsLoad.ReadFailed(read.detail)
+            }
 
-            when (val decode = Settings.fromJson(text)) {
-                is SettingsDecode.Decoded -> SettingsLoad.Loaded(decode.settings)
-                is SettingsDecode.Failure -> SettingsLoad.Corrupt(decode)
+            is FileRead.Undecodable -> {
+                SettingsLoad.Corrupt(SettingsDecode.Unreadable(read.detail))
+            }
+
+            is FileRead.Text -> {
+                when (val decode = Settings.fromJson(read.text)) {
+                    is SettingsDecode.Decoded -> SettingsLoad.Loaded(decode.settings)
+                    is SettingsDecode.Failure -> SettingsLoad.Corrupt(decode)
+                }
             }
         }
 
     private suspend fun write(settings: Settings): SettingsSave =
-        withContext(Dispatchers.IO) {
-            try {
-                FileOutputStream(staged).use { output ->
-                    output.write(settings.toJson().encodeToByteArray())
-                    output.fd.sync()
-                }
-                Files.move(staged.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE)
-
+        when (val write = file.write(settings.toJson())) {
+            FileWrite.Written -> {
                 writes.update { it + 1 }
                 SettingsSave.Saved
-            } catch (exception: IOException) {
-                SettingsSave.WriteFailed(exception.toString())
+            }
+
+            is FileWrite.Failed -> {
+                SettingsSave.WriteFailed(write.detail)
             }
         }
 }

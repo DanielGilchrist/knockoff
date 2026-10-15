@@ -1,11 +1,15 @@
 package dev.danielgilchrist.knockoff.listener
 
-import android.app.Notification
+import android.app.NotificationChannel
+import android.os.UserHandle
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import dev.danielgilchrist.knockoff.KnockoffApplication
 import dev.danielgilchrist.knockoff.LOG_TAG
+import dev.danielgilchrist.knockoff.channel.BoundaryAlarm
+import dev.danielgilchrist.knockoff.channel.ChannelAccess
+import dev.danielgilchrist.knockoff.channel.ChannelSilencer
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule.Decision
 import dev.danielgilchrist.knockoff.domain.rule.Recheck
@@ -27,8 +31,21 @@ class KnockoffListener : NotificationListenerService() {
     private val snoozer = Snoozer(this)
     private var connection: Connection = Connection.Disconnected
 
+    private val knockoff
+        get() = application as KnockoffApplication
+
     private val settingsStore
-        get() = (application as KnockoffApplication).settingsStore
+        get() = knockoff.settingsStore
+
+    private val silencer by lazy {
+        ChannelSilencer(ChannelAccess(this), BoundaryAlarm(this), settingsStore, knockoff.silencedChannelsStore)
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        scope.launch { silencer.run() }
+        scope.launch { knockoff.boundaries.collect { silencer.request() } }
+    }
 
     override fun onListenerConnected() {
         Log.i(LOG_TAG, "listener connected")
@@ -79,6 +96,15 @@ class KnockoffListener : NotificationListenerService() {
         }
     }
 
+    override fun onNotificationChannelModified(
+        pkg: String,
+        user: UserHandle,
+        channel: NotificationChannel,
+        modificationType: Int,
+    ) {
+        silencer.request()
+    }
+
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
@@ -90,11 +116,13 @@ class KnockoffListener : NotificationListenerService() {
 
             is RuleChange.Initial -> {
                 sweep(change.rules)
+                silencer.request()
             }
 
             is RuleChange.Changed -> {
                 sweep(change.after)
                 recheckSnoozed(change.before, change.after)
+                silencer.request()
             }
         }
     }
@@ -137,7 +165,7 @@ class KnockoffListener : NotificationListenerService() {
 
         val decision = rules.decide(posted, now)
 
-        Log.i(LOG_TAG, "${describe(sbn, posted)} -> ${decision.describe()}")
+        Log.i(LOG_TAG, "${sbn.describe(posted)} -> ${decision.describe()}")
 
         when (decision) {
             is Decision.Leave -> {}
@@ -157,7 +185,7 @@ class KnockoffListener : NotificationListenerService() {
         val snoozed = sbn.toSnapshot().parse()
         val recheck = after.recheck(snoozed, before, now)
 
-        Log.i(LOG_TAG, "snoozed ${describe(sbn, snoozed)} -> ${recheck.describe()}")
+        Log.i(LOG_TAG, "snoozed ${sbn.describe(snoozed)} -> ${recheck.describe()}")
 
         when (recheck) {
             Recheck.Unchanged -> {}
@@ -171,9 +199,4 @@ class KnockoffListener : NotificationListenerService() {
             }
         }
     }
-
-    private fun describe(
-        sbn: StatusBarNotification,
-        posted: PostedNotification,
-    ): String = "${posted.describe()} subText=${sbn.notification.extras.getCharSequence(Notification.EXTRA_SUB_TEXT)}"
 }

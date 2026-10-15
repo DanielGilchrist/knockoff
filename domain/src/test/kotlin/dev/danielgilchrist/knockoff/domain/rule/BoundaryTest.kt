@@ -46,4 +46,14 @@ class BoundaryTest {
         ruleSet(work).nextBoundary(london("2026-10-14T17:00")) shouldBe Boundary.At(london("2026-10-15T08:00"))
         ruleSet(work).nextBoundary(london("2026-10-15T08:00")) shouldBe Boundary.At(london("2026-10-15T17:00"))
     }
+
+    @Test
+    fun `a boundary no later than a time is the earlier of the two`() {
+        val noon = london("2026-10-14T12:00")
+        val one = london("2026-10-14T13:00")
+
+        Boundary.At(one).noLaterThan(noon) shouldBe Boundary.At(noon)
+        Boundary.At(noon).noLaterThan(one) shouldBe Boundary.At(noon)
+        Boundary.None.noLaterThan(noon) shouldBe Boundary.At(noon)
+    }
 }
