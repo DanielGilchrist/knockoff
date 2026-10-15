@@ -44,7 +44,7 @@ class KnockoffListener : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         scope.launch { silencer.run() }
-        scope.launch { knockoff.boundaries.collect { silencer.request() } }
+        scope.launch { knockoff.silencingRequests.collect { silencer.request() } }
     }
 
     override fun onListenerConnected() {

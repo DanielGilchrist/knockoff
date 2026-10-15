@@ -16,9 +16,11 @@ import dev.danielgilchrist.knockoff.ui.home.HomeScreen
 fun KnockoffScreen(
     viewModel: MainViewModel,
     onOpenAccessSettings: () -> Unit,
+    onLinkDevice: () -> Unit,
+    onAllowExactAlarms: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val access by viewModel.access.collectAsStateWithLifecycle()
+    val setup by viewModel.setup.collectAsStateWithLifecycle()
     val editor = viewModel.editor
     val settings by editor.settings.collectAsStateWithLifecycle()
     val apps by viewModel.apps.collectAsStateWithLifecycle()
@@ -26,7 +28,7 @@ fun KnockoffScreen(
     val saveStatus by editor.saveStatus.collectAsStateWithLifecycle()
 
     LifecycleResumeEffect(Unit) {
-        viewModel.refreshAccess()
+        viewModel.refreshSetup()
         onPauseOrDispose {}
     }
 
@@ -34,12 +36,14 @@ fun KnockoffScreen(
         when (val current = editing) {
             Editing.Closed -> {
                 HomeScreen(
-                    access = access,
+                    setup = setup,
                     settings = settings,
                     saveStatus = saveStatus,
                     actions =
                         HomeActions(
                             onOpenAccessSettings = onOpenAccessSettings,
+                            onLinkDevice = onLinkDevice,
+                            onAllowExactAlarms = onAllowExactAlarms,
                             onNewRule = { editor.startEditing(EditTarget.New) },
                             onEditRule = { rule -> editor.startEditing(EditTarget.Existing(rule)) },
                             onRuleStateChange = editor::setRuleState,

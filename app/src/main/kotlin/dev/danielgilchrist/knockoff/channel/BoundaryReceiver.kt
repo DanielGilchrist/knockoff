@@ -10,6 +10,6 @@ class BoundaryReceiver : BroadcastReceiver() {
         context: Context,
         intent: Intent,
     ) {
-        (context.applicationContext as KnockoffApplication).boundaryReached()
+        (context.applicationContext as KnockoffApplication).requestSilencing()
     }
 }

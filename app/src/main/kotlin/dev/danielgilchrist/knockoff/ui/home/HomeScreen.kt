@@ -13,14 +13,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.settings.Settings
-import dev.danielgilchrist.knockoff.ui.ListenerAccess
 import dev.danielgilchrist.knockoff.ui.SaveStatus
 import dev.danielgilchrist.knockoff.ui.SettingsOrigin
 import dev.danielgilchrist.knockoff.ui.SettingsState
+import dev.danielgilchrist.knockoff.ui.Setup
 
 @Composable
 internal fun HomeScreen(
-    access: ListenerAccess,
+    setup: Setup,
     settings: SettingsState,
     saveStatus: SaveStatus,
     actions: HomeActions,
@@ -30,7 +30,15 @@ internal fun HomeScreen(
         modifier = modifier.fillMaxWidth().padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { AccessCard(access = access, onOpenSettings = actions.onOpenAccessSettings) }
+        item { AccessCard(access = setup.access, onOpenSettings = actions.onOpenAccessSettings) }
+        item {
+            SilentHoldsCard(
+                link = setup.link,
+                alarms = setup.alarms,
+                onLinkDevice = actions.onLinkDevice,
+                onAllowExactAlarms = actions.onAllowExactAlarms,
+            )
+        }
         when (saveStatus) {
             SaveStatus.Idle -> {}
 

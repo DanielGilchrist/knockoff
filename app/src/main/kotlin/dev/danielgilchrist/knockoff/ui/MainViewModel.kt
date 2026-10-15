@@ -14,15 +14,16 @@ import kotlinx.coroutines.flow.stateIn
 class MainViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
-    private val mutableAccess = MutableStateFlow(ListenerAccess.of(application))
+    private val mutableSetup = MutableStateFlow(Setup.of(application))
 
     val editor = SettingsEditor((application as KnockoffApplication).settingsStore, viewModelScope)
-    val access: StateFlow<ListenerAccess> = mutableAccess.asStateFlow()
+    val setup: StateFlow<Setup> = mutableSetup.asStateFlow()
     val apps: StateFlow<InstalledApps> =
         flow { emit(InstalledApps.load(application.packageManager)) }
             .stateIn(viewModelScope, SharingStarted.Eagerly, InstalledApps.Loading)
 
-    fun refreshAccess() {
-        mutableAccess.value = ListenerAccess.of(getApplication())
+    fun refreshSetup() {
+        mutableSetup.value = Setup.of(getApplication())
+        getApplication<KnockoffApplication>().requestSilencing()
     }
 }

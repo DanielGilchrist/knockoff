@@ -18,12 +18,12 @@ class KnockoffApplication : Application() {
         SilencedChannelsStore(File(filesDir, "silenced-channels.json"))
     }
 
-    private val reachedBoundaries =
+    private val mutableSilencingRequests =
         MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
-    val boundaries: SharedFlow<Unit> = reachedBoundaries.asSharedFlow()
+    val silencingRequests: SharedFlow<Unit> = mutableSilencingRequests.asSharedFlow()
 
-    fun boundaryReached() {
-        reachedBoundaries.tryEmit(Unit)
+    fun requestSilencing() {
+        mutableSilencingRequests.tryEmit(Unit)
     }
 }
