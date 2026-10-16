@@ -6,4 +6,6 @@ sealed interface ScheduleParse {
     ) : ScheduleParse
 
     data object Empty : ScheduleParse
+
+    data object NothingLeftAfterBreaks : ScheduleParse
 }

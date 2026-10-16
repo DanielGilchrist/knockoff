@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.breakNamed
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.schedule
@@ -25,6 +26,11 @@ class RuleTest {
     private val outside = london("2026-10-14T20:00")
     private val slack = setOf(Target.App(SLACK))
     private val always = schedule(window(EVERY_DAY, "00:00", "00:00"))
+    private val lunchBreak =
+        schedule(
+            window(EVERY_DAY, "08:00", "17:00"),
+            breaks = listOf(breakNamed("Lunch", window(EVERY_DAY, "12:00", "13:00"))),
+        )
 
     @Test
     fun `disabled rule abstains`() {
@@ -165,5 +171,25 @@ class RuleTest {
             RuleVerdict.Holds(
                 Release.At(ZonedDateTime.of(LocalDateTime.parse("2026-10-27T08:00"), ZoneId.of("America/New_York"))),
             )
+    }
+
+    @Test
+    fun `deliver only during holds through a break until it ends`() {
+        rule(
+            "r",
+            Policy.DeliverOnlyDuring,
+            lunchBreak,
+            slack,
+        ).verdictFor(SLACK_ORIGIN, london("2026-10-14T12:30"), local) shouldBe
+            RuleVerdict.Holds(Release.At(london("2026-10-14T13:00")))
+    }
+
+    @Test
+    fun `hold during lets a break through and holds again after it`() {
+        val holding = rule("r", Policy.HoldDuring, lunchBreak, slack)
+
+        holding.verdictFor(SLACK_ORIGIN, london("2026-10-14T12:30"), local) shouldBe RuleVerdict.Permits
+        holding.verdictFor(SLACK_ORIGIN, london("2026-10-14T11:00"), local) shouldBe
+            RuleVerdict.Holds(Release.At(london("2026-10-14T12:00")))
     }
 }

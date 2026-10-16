@@ -21,6 +21,7 @@ internal data class StoredRule(
     private val state: String,
     private val policy: String,
     private val windows: List<StoredWindow>,
+    private val breaks: List<StoredBreak>,
     private val apps: List<String>,
     private val gmailAccounts: List<String>,
     private val chats: List<StoredChat>,
@@ -33,6 +34,7 @@ internal data class StoredRule(
                 state = rule.state.name,
                 policy = rule.policy.name,
                 windows = rule.schedule.windows.map(StoredWindow::from),
+                breaks = rule.schedule.breaks.map(StoredBreak::from),
                 apps =
                     rule.targets.flatMap { target ->
                         when (target) {
@@ -94,9 +96,12 @@ internal data class StoredRule(
 
     private fun schedule(): Parsed<Schedule> =
         windows.parseEach("window") { it.parse() }.then { parsedWindows ->
-            when (val parse = Schedule.parse(parsedWindows)) {
-                is ScheduleParse.Valid -> Parsed.Ok(parse.schedule)
-                ScheduleParse.Empty -> Parsed.Failed("no windows")
+            breaks.parseEach("break") { it.parse() }.then { parsedBreaks ->
+                when (val parse = Schedule.parse(parsedWindows, parsedBreaks)) {
+                    is ScheduleParse.Valid -> Parsed.Ok(parse.schedule)
+                    ScheduleParse.Empty -> Parsed.Failed("no windows")
+                    ScheduleParse.NothingLeftAfterBreaks -> Parsed.Failed("breaks cover all of its hours")
+                }
             }
         }
 

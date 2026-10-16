@@ -10,6 +10,7 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.schedule.Break
 import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
@@ -23,6 +24,7 @@ data class RuleDraft(
     val state: RuleState,
     val policy: Policy,
     val windows: List<WindowDraft>,
+    val breaks: List<Break>,
     val apps: Set<PackageName>,
     val gmailAccounts: Set<AccountAddress>,
     val chats: Map<ChatKey, Target.Chat>,
@@ -36,6 +38,7 @@ data class RuleDraft(
                 state = RuleState.Enabled,
                 policy = Policy.DeliverOnlyDuring,
                 windows = listOf(WindowDraft.WORKING_HOURS),
+                breaks = emptyList(),
                 apps = emptySet(),
                 gmailAccounts = emptySet(),
                 chats = emptyMap(),
@@ -49,6 +52,7 @@ data class RuleDraft(
                 state = rule.state,
                 policy = rule.policy,
                 windows = rule.schedule.windows.map(WindowDraft::from),
+                breaks = rule.schedule.breaks,
                 apps =
                     rule.targets
                         .flatMap { target ->
@@ -119,9 +123,20 @@ data class RuleDraft(
                     }
 
                     is Checked.Ok -> {
-                        when (val parse = Schedule.parse(checked.value)) {
-                            is ScheduleParse.Valid -> Checked.Ok(parse.schedule)
-                            ScheduleParse.Empty -> Checked.Problems(listOf(DraftProblem.NoHours))
+                        when (val parse = Schedule.parse(checked.value, breaks)) {
+                            is ScheduleParse.Valid -> {
+                                Checked.Ok(parse.schedule)
+                            }
+
+                            ScheduleParse.Empty -> {
+                                Checked.Problems(listOf(DraftProblem.NoHours))
+                            }
+
+                            ScheduleParse.NothingLeftAfterBreaks -> {
+                                Checked.Problems(
+                                    listOf(DraftProblem.BreaksCoverAllHours),
+                                )
+                            }
                         }
                     }
                 }

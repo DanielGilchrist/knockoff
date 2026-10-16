@@ -3,6 +3,7 @@ package dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.ALL_BUT_SUNDAY
 import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.breakNamed
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.londonWithOffset
@@ -24,11 +25,16 @@ import java.time.DayOfWeek.WEDNESDAY
 import java.time.ZoneOffset
 
 class ScheduleTest {
+    private val lunch =
+        schedule(
+            window(EVERY_DAY, "08:00", "17:00"),
+            breaks = listOf(breakNamed("Lunch", window(EVERY_DAY, "12:00", "13:00"))),
+        )
     private val fridayNights = schedule(window(days(FRIDAY), "22:00", "06:00"))
 
     @Test
     fun `parsing no windows is empty`() {
-        Schedule.parse(emptyList()) shouldBe ScheduleParse.Empty
+        Schedule.parse(emptyList(), emptyList()) shouldBe ScheduleParse.Empty
     }
 
     @ParameterizedTest(name = "{0} is inside work hours until {1}")
@@ -140,7 +146,7 @@ class ScheduleTest {
     @Test
     fun `parsed windows do not follow later changes to the given list`() {
         val given = mutableListOf(window(EVERY_DAY, "08:00", "09:00"))
-        val parse = Schedule.parse(given).shouldBeInstanceOf<ScheduleParse.Valid>()
+        val parse = Schedule.parse(given, emptyList()).shouldBeInstanceOf<ScheduleParse.Valid>()
 
         given.clear()
 
@@ -283,5 +289,174 @@ class ScheduleTest {
 
         lateNight.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.ofHours(1))) shouldBe secondPass
         lateNight.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.UTC)) shouldBe secondPass
+    }
+
+    @Test
+    fun `a break ends the hours early and they resume after it`() {
+        lunch.coverageAt(london("2026-10-14T09:00")) shouldBe Coverage.Inside(london("2026-10-14T12:00"))
+        lunch.coverageAt(london("2026-10-14T12:00")) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
+        lunch.coverageAt(london("2026-10-14T12:30")) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
+        lunch.coverageAt(london("2026-10-14T13:00")) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
+    }
+
+    @Test
+    fun `a break only applies on its own days`() {
+        val focus =
+            schedule(
+                window(EVERY_DAY, "08:00", "17:00"),
+                breaks = listOf(breakNamed("Focus", window(days(WEDNESDAY), "14:00", "16:00"))),
+            )
+
+        focus.coverageAt(london("2026-10-14T15:00")) shouldBe Coverage.Outside(london("2026-10-14T16:00"))
+        focus.coverageAt(london("2026-10-15T15:00")) shouldBe Coverage.Inside(london("2026-10-15T17:00"))
+    }
+
+    @Test
+    fun `a break outside the hours changes nothing`() {
+        val evening =
+            schedule(
+                window(EVERY_DAY, "08:00", "17:00"),
+                breaks = listOf(breakNamed("Dinner", window(EVERY_DAY, "18:00", "19:00"))),
+            )
+
+        evening.coverageAt(london("2026-10-14T12:00")) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
+    }
+
+    @Test
+    fun `an overnight break splits overnight hours across midnight`() {
+        val nights =
+            schedule(
+                window(EVERY_DAY, "20:00", "08:00"),
+                breaks = listOf(breakNamed("Late", window(EVERY_DAY, "23:00", "01:00"))),
+            )
+
+        nights.coverageAt(london("2026-10-14T21:00")) shouldBe Coverage.Inside(london("2026-10-14T23:00"))
+        nights.coverageAt(london("2026-10-15T00:30")) shouldBe Coverage.Outside(london("2026-10-15T01:00"))
+    }
+
+    @Test
+    fun `hours covering the whole week with a break are not always covered`() {
+        val allDay =
+            schedule(
+                window(EVERY_DAY, "00:00", "00:00"),
+                breaks = listOf(breakNamed("Lunch", window(EVERY_DAY, "12:00", "13:00"))),
+            )
+
+        allDay.coverageAt(london("2026-10-14T09:00")) shouldBe Coverage.Inside(london("2026-10-14T12:00"))
+        allDay.coverageAt(london("2026-10-14T12:30")) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
+    }
+
+    @Test
+    fun `breaks that cover all of the hours leave nothing`() {
+        Schedule.parse(
+            listOf(window(days(MONDAY), "09:00", "17:00")),
+            listOf(breakNamed("Off", window(days(MONDAY), "08:00", "18:00"))),
+        ) shouldBe ScheduleParse.NothingLeftAfterBreaks
+        Schedule.parse(
+            listOf(window(days(SUNDAY), "22:00", "02:00")),
+            listOf(
+                breakNamed("Late", window(days(SUNDAY), "22:00", "23:00")),
+                breakNamed("Later", window(days(SUNDAY), "23:00", "02:00")),
+            ),
+        ) shouldBe ScheduleParse.NothingLeftAfterBreaks
+    }
+
+    @Test
+    fun `breaks that leave any time keep the schedule`() {
+        Schedule
+            .parse(
+                listOf(window(days(MONDAY), "09:00", "17:00")),
+                listOf(breakNamed("Most", window(days(MONDAY), "09:00", "16:59"))),
+            ).shouldBeInstanceOf<ScheduleParse.Valid>()
+    }
+
+    @Test
+    fun `overlapping breaks hold until the later one ends`() {
+        val long =
+            schedule(
+                window(EVERY_DAY, "08:00", "17:00"),
+                breaks =
+                    listOf(
+                        breakNamed("Lunch", window(EVERY_DAY, "12:00", "13:00")),
+                        breakNamed("Call", window(EVERY_DAY, "12:30", "14:00")),
+                    ),
+            )
+
+        long.coverageAt(london("2026-10-14T12:15")) shouldBe Coverage.Outside(london("2026-10-14T14:00"))
+    }
+
+    @Test
+    fun `a break at the end of the hours ends them early`() {
+        val early =
+            schedule(
+                window(EVERY_DAY, "08:00", "17:00"),
+                breaks = listOf(breakNamed("Early", window(EVERY_DAY, "16:00", "17:00"))),
+            )
+
+        early.coverageAt(london("2026-10-14T15:00")) shouldBe Coverage.Inside(london("2026-10-14T16:00"))
+        early.coverageAt(london("2026-10-14T16:30")) shouldBe Coverage.Outside(london("2026-10-15T08:00"))
+    }
+
+    @Test
+    fun `a break across the start of the hours delays them`() {
+        val late =
+            schedule(
+                window(EVERY_DAY, "08:00", "17:00"),
+                breaks = listOf(breakNamed("School run", window(EVERY_DAY, "07:00", "09:00"))),
+            )
+
+        late.coverageAt(london("2026-10-14T06:00")) shouldBe Coverage.Outside(london("2026-10-14T09:00"))
+        late.coverageAt(london("2026-10-14T08:30")) shouldBe Coverage.Outside(london("2026-10-14T09:00"))
+    }
+
+    @Test
+    fun `a break crossing midnight cuts another day's hours`() {
+        val mondays =
+            schedule(
+                WORK_HOURS.windows.single(),
+                breaks = listOf(breakNamed("Lie in", window(days(SUNDAY), "23:00", "09:00"))),
+            )
+
+        mondays.coverageAt(london("2026-10-16T17:00")) shouldBe Coverage.Outside(london("2026-10-19T09:00"))
+        mondays.coverageAt(london("2026-10-19T08:30")) shouldBe Coverage.Outside(london("2026-10-19T09:00"))
+        mondays.coverageAt(london("2026-10-20T08:30")) shouldBe Coverage.Inside(london("2026-10-20T17:00"))
+    }
+
+    @Test
+    fun `a break applies on the days it starts, even after midnight in overnight hours`() {
+        val weeknights = window(days(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY), "22:00", "06:00")
+        val saturdayMorning =
+            schedule(weeknights, breaks = listOf(breakNamed("Late", window(days(SATURDAY), "02:00", "03:00"))))
+        val fridayMorning =
+            schedule(weeknights, breaks = listOf(breakNamed("Late", window(days(FRIDAY), "02:00", "03:00"))))
+
+        saturdayMorning.coverageAt(london("2026-10-17T02:30")) shouldBe Coverage.Outside(london("2026-10-17T03:00"))
+        fridayMorning.coverageAt(london("2026-10-17T02:30")) shouldBe Coverage.Inside(london("2026-10-17T06:00"))
+        fridayMorning.coverageAt(london("2026-10-16T02:30")) shouldBe Coverage.Outside(london("2026-10-16T03:00"))
+    }
+
+    @Test
+    fun `a break skipped by the clocks going forward leaves the hours running`() {
+        val sundays =
+            schedule(
+                window(EVERY_DAY, "00:00", "00:00"),
+                breaks = listOf(breakNamed("Gap", window(days(SUNDAY), "01:00", "01:30"))),
+            )
+
+        sundays.coverageAt(london("2027-03-28T00:30")) shouldBe Coverage.Inside(london("2027-04-04T01:00"))
+    }
+
+    @Test
+    fun `a break in the repeated hour when the clocks go back lasts until its second end`() {
+        val nightly =
+            schedule(
+                window(EVERY_DAY, "00:00", "00:00"),
+                breaks = listOf(breakNamed("Night", window(EVERY_DAY, "01:00", "01:30"))),
+            )
+
+        nightly.coverageAt(london("2026-10-25T00:30")) shouldBe
+            Coverage.Inside(londonWithOffset("2026-10-25T01:00", ZoneOffset.ofHours(1)))
+        nightly.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.UTC)) shouldBe
+            Coverage.Outside(londonWithOffset("2026-10-25T01:30", ZoneOffset.UTC))
     }
 }

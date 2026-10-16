@@ -5,6 +5,7 @@ import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.breakNamed
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule
@@ -90,6 +91,19 @@ class SettingsTest {
                         RuleState.Disabled,
                     ),
                     rule(
+                        "Lunch",
+                        Policy.DeliverOnlyDuring,
+                        schedule(
+                            window(EVERY_DAY, "08:00", "17:00"),
+                            breaks =
+                                listOf(
+                                    breakNamed("Lunch", window(EVERY_DAY, "12:00", "13:00")),
+                                    breakNamed("Focus", window(days(SATURDAY), "14:00", "16:00")),
+                                ),
+                        ),
+                        emptySet(),
+                    ),
+                    rule(
                         "Precise",
                         Policy.HoldDuring,
                         schedule(window(EVERY_DAY, "12:00:30", "12:00:00.5")),
@@ -122,7 +136,7 @@ class SettingsTest {
         Settings.DEFAULT.toJson() shouldBe
             """
             {
-                "version": 3,
+                "version": 4,
                 "defaultZone": "device",
                 "theme": "System",
                 "rules": [
@@ -143,6 +157,7 @@ class SettingsTest {
                                 "end": "17:00"
                             }
                         ],
+                        "breaks": [],
                         "apps": [],
                         "gmailAccounts": [],
                         "chats": [],
@@ -171,6 +186,38 @@ class SettingsTest {
                     Theme.System,
                 ),
             )
+    }
+
+    @Test
+    fun `version 3 documents migrate with no breaks`() {
+        val rule = ruleJson("""{"apps": ["com.Slack"], "chats": [], "zone": "device"}""")
+
+        Settings.fromJson("""{"version": 3, "defaultZone": "device", "theme": "Dark", "rules": [$rule]}""") shouldBe
+            SettingsDecode.Decoded(
+                Settings(
+                    ruleSet(
+                        rule(
+                            "Work",
+                            Policy.DeliverOnlyDuring,
+                            schedule(window(days(DayOfWeek.MONDAY), "08:00", "17:00")),
+                            setOf(Target.App(SLACK)),
+                            zone = RuleZone.Chosen(ZoneChoice.Device),
+                        ),
+                    ),
+                    Theme.Dark,
+                ),
+            )
+    }
+
+    @Test
+    fun `a break without a name or covering all the hours is invalid`() {
+        val blank = """{"name": " ", "window": $MONDAY}"""
+        val allDay = """{"name": "Off", "window": $MONDAY}"""
+
+        Settings.fromJson(currentDocument(breaks = blank)).shouldBeInstanceOf<SettingsDecode.Invalid>().detail shouldBe
+            "rule 1: \"Work\": break 1: blank break name"
+        Settings.fromJson(currentDocument(breaks = allDay)).shouldBeInstanceOf<SettingsDecode.Invalid>().detail shouldBe
+            "rule 1: \"Work\": breaks cover all of its hours"
     }
 
     @Test
@@ -210,7 +257,7 @@ class SettingsTest {
     ) {
         val chat = """{"app": "$app", "channel": "$channel", "id": "$id", "name": "$name"}"""
 
-        Settings.fromJson(chatsDocument(chat)).shouldBeInstanceOf<SettingsDecode.Invalid>().detail shouldBe
+        Settings.fromJson(currentDocument(chats = chat)).shouldBeInstanceOf<SettingsDecode.Invalid>().detail shouldBe
             "rule 1: \"Work\": chat 1: $problem"
     }
 
@@ -219,21 +266,25 @@ class SettingsTest {
         val chat = """{"app": "com.whatsapp", "channel": "chats", "id": "1000000000001@lid", "name": "Someone"}"""
         val renamed = chat.replace("Someone", "Someone else")
 
-        Settings.fromJson(chatsDocument(chat, renamed)).shouldBeInstanceOf<SettingsDecode.Invalid>().detail shouldBe
+        Settings
+            .fromJson(
+                currentDocument(chats = "$chat, $renamed"),
+            ).shouldBeInstanceOf<SettingsDecode.Invalid>()
+            .detail shouldBe
             "rule 1: \"Work\": duplicate chats [com.whatsapp/1000000000001@lid]"
     }
 
     @Test
     fun `unknown zones and themes are invalid`() {
-        val zoned = ruleJson("""{"chats": [], "zone": "Mars/Base"}""")
+        val zoned = ruleJson("""{"breaks": [], "chats": [], "zone": "Mars/Base"}""")
         val unknown = "java.time.zone.ZoneRulesException: Unknown time-zone ID: Mars/Base"
 
-        Settings.fromJson("""{"version": 3, "defaultZone": "Mars/Base", "theme": "System", "rules": []}""") shouldBe
+        Settings.fromJson("""{"version": 4, "defaultZone": "Mars/Base", "theme": "System", "rules": []}""") shouldBe
             SettingsDecode.Invalid("unknown default zone \"Mars/Base\": $unknown")
-        Settings.fromJson("""{"version": 3, "defaultZone": "device", "theme": "Neon", "rules": []}""") shouldBe
+        Settings.fromJson("""{"version": 4, "defaultZone": "device", "theme": "Neon", "rules": []}""") shouldBe
             SettingsDecode.Invalid("unknown theme \"Neon\"")
         Settings
-            .fromJson("""{"version": 3, "defaultZone": "device", "theme": "System", "rules": [$zoned]}""")
+            .fromJson("""{"version": 4, "defaultZone": "device", "theme": "System", "rules": [$zoned]}""")
             .shouldBeInstanceOf<SettingsDecode.Invalid>()
             .detail shouldBe "rule 1: \"Work\": unknown zone \"Mars/Base\": $unknown"
     }
@@ -249,14 +300,14 @@ class SettingsTest {
     }
 
     @Test
-    fun `a migrated document saves as version 3`() {
+    fun `a migrated document saves as version 4`() {
         val migrated =
             Settings
                 .fromJson(
                     """{"version": 1, "rules": [${ruleJson("{}")}]}""",
                 ).shouldBeInstanceOf<SettingsDecode.Decoded>()
 
-        migrated.settings.toJson().startsWith("{\n    \"version\": 3,") shouldBe true
+        migrated.settings.toJson().startsWith("{\n    \"version\": 4,") shouldBe true
         Settings.fromJson(migrated.settings.toJson()) shouldBe migrated
     }
 
@@ -292,10 +343,10 @@ class SettingsTest {
 
     @Test
     fun `other versions are unsupported whatever their shape`() {
-        val decode = Settings.fromJson("""{"version": 4, "profiles": [], "schedules": {}}""")
+        val decode = Settings.fromJson("""{"version": 5, "profiles": [], "schedules": {}}""")
 
-        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 4
-        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 4"
+        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 5
+        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 5"
     }
 
     @ParameterizedTest(name = "{0}")
@@ -333,10 +384,13 @@ class SettingsTest {
         detail.take("kotlinx.serialization.".length) shouldBe "kotlinx.serialization."
     }
 
-    private fun chatsDocument(vararg chats: String): String {
-        val rule = ruleJson("""{"chats": [${chats.joinToString()}], "zone": "default"}""")
+    private fun currentDocument(
+        breaks: String = "",
+        chats: String = "",
+    ): String {
+        val rule = ruleJson("""{"breaks": [$breaks], "chats": [$chats], "zone": "default"}""")
 
-        return """{"version": 3, "defaultZone": "device", "theme": "System", "rules": [$rule]}"""
+        return """{"version": 4, "defaultZone": "device", "theme": "System", "rules": [$rule]}"""
     }
 
     private fun document(rule: String): String = """{"version": 1, "rules": [${ruleJson(rule)}]}"""

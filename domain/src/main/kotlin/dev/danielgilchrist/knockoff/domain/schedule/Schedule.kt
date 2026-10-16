@@ -6,25 +6,35 @@ import java.time.ZonedDateTime
 @ConsistentCopyVisibility
 data class Schedule private constructor(
     val windows: List<Window>,
+    val breaks: List<Break>,
 ) {
     companion object {
         private const val DAYS_AHEAD = 14L
 
-        internal fun of(window: Window): Schedule = Schedule(listOf(window))
+        internal fun of(window: Window): Schedule = Schedule(listOf(window), emptyList())
 
-        fun parse(windows: List<Window>): ScheduleParse =
+        fun parse(
+            windows: List<Window>,
+            breaks: List<Break>,
+        ): ScheduleParse =
             when {
                 windows.isEmpty() -> ScheduleParse.Empty
-                else -> ScheduleParse.Valid(Schedule(windows.toList()))
+                coveredNanos(windows, breaks) == 0L -> ScheduleParse.NothingLeftAfterBreaks
+                else -> ScheduleParse.Valid(Schedule(windows.toList(), breaks.toList()))
             }
+
+        private fun coveredNanos(
+            windows: List<Window>,
+            breaks: List<Break>,
+        ): Long =
+            windows
+                .flatMap { it.spansOfStandardWeek() }
+                .merged()
+                .without(breaks.flatMap { it.window.spansOfStandardWeek() })
+                .nanosWithinWeek()
     }
 
-    private val coversWholeWeek: Boolean =
-        windows
-            .flatMap { it.spansOfStandardWeek() }
-            .sortedBy { it.startNano }
-            .fold(0L) { reached, span -> if (span.startNano <= reached) maxOf(reached, span.endNano) else reached }
-            .let { it >= WeekSpan.NANOS_PER_WEEK }
+    private val coversWholeWeek: Boolean = coveredNanos(windows, breaks) == WeekSpan.NANOS_PER_WEEK
 
     fun coverageAt(now: ZonedDateTime): Coverage {
         if (coversWholeWeek) return Coverage.Always
@@ -44,6 +54,17 @@ data class Schedule private constructor(
     }
 
     private fun stretches(
+        dates: List<LocalDate>,
+        now: ZonedDateTime,
+    ): List<Interval> {
+        val cuts = breaks.flatMap { it.window.occurrencesStartingWithin(dates, now.zone) }
+
+        return merged(dates, now).flatMap { stretch ->
+            cuts.fold(listOf(stretch)) { pieces, cut -> pieces.flatMap { it.without(cut) } }
+        }
+    }
+
+    private fun merged(
         dates: List<LocalDate>,
         now: ZonedDateTime,
     ): List<Interval> =

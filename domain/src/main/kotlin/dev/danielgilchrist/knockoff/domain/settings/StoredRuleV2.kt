@@ -12,5 +12,5 @@ internal data class StoredRuleV2(
     private val gmailAccounts: List<String>,
     private val zone: String,
 ) {
-    fun upgraded(): StoredRule = StoredRule(name, state, policy, windows, apps, gmailAccounts, emptyList(), zone)
+    fun upgraded(): StoredRuleV3 = StoredRuleV3(name, state, policy, windows, apps, gmailAccounts, emptyList(), zone)
 }

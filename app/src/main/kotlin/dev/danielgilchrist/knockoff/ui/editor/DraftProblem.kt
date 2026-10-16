@@ -7,6 +7,8 @@ sealed interface DraftProblem {
 
     data object NoHours : DraftProblem
 
+    data object BreaksCoverAllHours : DraftProblem
+
     data class HoursWithoutDays(
         val number: Int,
     ) : DraftProblem

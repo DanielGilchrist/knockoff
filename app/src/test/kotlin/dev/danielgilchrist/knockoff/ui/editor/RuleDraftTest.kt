@@ -7,6 +7,13 @@ import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
+import dev.danielgilchrist.knockoff.domain.schedule.Break
+import dev.danielgilchrist.knockoff.domain.schedule.BreakName
+import dev.danielgilchrist.knockoff.domain.schedule.BreakNameParse
+import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
+import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
+import dev.danielgilchrist.knockoff.domain.schedule.WeekDaysParse
+import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -44,6 +51,7 @@ class RuleDraftTest {
                     listOf(
                         COLLEAGUE_CHAT,
                     ).associateBy { it.key },
+                breaks = listOf(lateBreak()),
             )
 
         val rule = valid(draft)
@@ -63,6 +71,18 @@ class RuleDraftTest {
             Checked.Problems(listOf(DraftProblem.BlankName, DraftProblem.HoursWithoutDays(2))),
             draft.parse(),
         )
+    }
+
+    @Test
+    fun `breaks that cover all of the hours are reported`() {
+        val draft =
+            RuleDraft.NEW.copy(
+                name = "x",
+                windows = listOf(WindowDraft(setOf(DayOfWeek.SUNDAY), LocalTime.of(22, 0), LocalTime.of(23, 0))),
+                breaks = listOf(lateBreak()),
+            )
+
+        assertEquals(Checked.Problems(listOf(DraftProblem.BreaksCoverAllHours)), draft.parse())
     }
 
     @Test
@@ -126,4 +146,13 @@ class RuleDraftTest {
             is Checked.Ok -> checked.value
             is Checked.Problems -> fail("Unexpected problems ${checked.problems}")
         }
+
+    private fun lateBreak(): Break =
+        Break(
+            assertInstanceOf(BreakNameParse.Valid::class.java, BreakName.parse("Late")).name,
+            Window(
+                assertInstanceOf(WeekDaysParse.Valid::class.java, WeekDays.parse(setOf(DayOfWeek.SUNDAY))).days,
+                DailyHours.between(LocalTime.of(21, 0), LocalTime.of(23, 30)),
+            ),
+        )
 }

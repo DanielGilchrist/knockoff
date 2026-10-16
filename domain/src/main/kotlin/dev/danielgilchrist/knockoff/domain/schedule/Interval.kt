@@ -23,4 +23,12 @@ internal data class Interval private constructor(
     fun touches(other: Interval): Boolean = other.start <= end && start <= other.end
 
     fun span(other: Interval): Interval = Interval(minOf(start, other.start), maxOf(end, other.end))
+
+    fun without(cut: Interval): List<Interval> =
+        listOf(parse(start, minOf(end, cut.start)), parse(maxOf(start, cut.end), end)).flatMap { piece ->
+            when (piece) {
+                is IntervalParse.Valid -> listOf(piece.interval)
+                IntervalParse.Empty -> emptyList()
+            }
+        }
 }

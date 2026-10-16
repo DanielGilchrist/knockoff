@@ -42,6 +42,7 @@ internal fun DraftProblem.describe(): String =
         DraftProblem.BlankName -> "Give the rule a name."
         DraftProblem.DuplicateName -> "Another rule already has this name."
         DraftProblem.NoHours -> "Add at least one set of hours."
+        DraftProblem.BreaksCoverAllHours -> "The breaks cover all of the hours, so the rule would never apply."
         is DraftProblem.HoursWithoutDays -> "Hours $number need at least one day."
         is DraftProblem.UnaddedAccount -> "The Gmail account being typed isn't valid: $detail"
         is DraftProblem.NotSaved -> "Couldn't save: $detail"

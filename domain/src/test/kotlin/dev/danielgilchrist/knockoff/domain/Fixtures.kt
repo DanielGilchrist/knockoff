@@ -24,6 +24,9 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.schedule.Break
+import dev.danielgilchrist.knockoff.domain.schedule.BreakName
+import dev.danielgilchrist.knockoff.domain.schedule.BreakNameParse
 import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
 import dev.danielgilchrist.knockoff.domain.schedule.Interval
 import dev.danielgilchrist.knockoff.domain.schedule.IntervalParse
@@ -68,10 +71,23 @@ fun window(
     end: String,
 ): Window = Window(days, DailyHours.between(LocalTime.parse(start), LocalTime.parse(end)))
 
-fun schedule(vararg windows: Window): Schedule =
-    when (val parse = Schedule.parse(windows.toList())) {
+fun schedule(
+    vararg windows: Window,
+    breaks: List<Break> = emptyList(),
+): Schedule =
+    when (val parse = Schedule.parse(windows.toList(), breaks)) {
         is ScheduleParse.Valid -> parse.schedule
         ScheduleParse.Empty -> error("Fixture needs at least one window")
+        ScheduleParse.NothingLeftAfterBreaks -> error("Fixture breaks cover every window")
+    }
+
+fun breakNamed(
+    name: String,
+    window: Window,
+): Break =
+    when (val parse = BreakName.parse(name)) {
+        is BreakNameParse.Valid -> Break(parse.name, window)
+        BreakNameParse.Blank -> error("Fixture break needs a name")
     }
 
 val EVERY_DAY: WeekDays = days(*DayOfWeek.entries.toTypedArray())

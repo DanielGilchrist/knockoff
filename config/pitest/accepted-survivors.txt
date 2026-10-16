@@ -4,6 +4,7 @@
 
 # Kotlin passes @JvmInline value classes unboxed, so their generated getters are only reachable from Java.
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.AccountAddress getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/AccountAddress::getValue
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.schedule.BreakName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/schedule/BreakName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ChannelId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ChannelId::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ConversationId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ConversationId::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ConversationName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ConversationName::getValue
@@ -27,6 +28,9 @@ SURVIVED dev.danielgilchrist.knockoff.domain.zone.RuleZone stored L37 removed co
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.ZoneChoice stored L41 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.ZoneChoice zoneFor L35 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Boundary noLaterThan L15 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Interval without L31 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredBreak parse L20 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule schedule$lambda$1$1 L103 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels saved L122 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L36 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L49 removed conditional - replaced equality check with true
@@ -42,8 +46,7 @@ SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holds L180 removed con
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet releaseFrom L167 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target matches L45 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Window occurrencesStartingWithin$knockoff_domain L26 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule ruleName L80 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule schedule$lambda$1 L99 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule ruleName L82 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredWindow weekDays L45 removed conditional - replaced equality check with true
 
 # Inlined Iterable.none and Map.none: the empty-collection shortcut and the Collection type check only skip a loop
@@ -56,11 +59,11 @@ SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictWhere L50 removed 
 # The predicate always matches before the list runs out: a weekly schedule that isn't always covered has a stretch
 # ending within the next fortnight. Forcing the inlined first() loop on only changes which NoSuchElementException
 # is thrown on a path that can't be reached.
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L36 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L46 removed conditional - replaced equality check with true
 
 # The check guards an invariant that the fortnight of generated dates always satisfies, so it never fails and
 # weakening it changes nothing observable. It stays so a broken invariant crashes instead of returning a wrong time.
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L38 changed conditional boundary
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L38 removed conditional - replaced comparison check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L38 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L48 changed conditional boundary
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L48 removed conditional - replaced comparison check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Schedule coverageAt L48 removed conditional - replaced equality check with false
 

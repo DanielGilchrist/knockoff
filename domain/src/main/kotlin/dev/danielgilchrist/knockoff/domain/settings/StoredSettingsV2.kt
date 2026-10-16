@@ -14,6 +14,5 @@ internal data class StoredSettingsV2(
     }
 
     override fun toSettings(): SettingsDecode =
-        StoredSettings(StoredSettings.CURRENT_VERSION, defaultZone, theme, rules.map(StoredRuleV2::upgraded))
-            .toSettings()
+        StoredSettingsV3(StoredSettingsV3.VERSION, defaultZone, theme, rules.map(StoredRuleV2::upgraded)).toSettings()
 }

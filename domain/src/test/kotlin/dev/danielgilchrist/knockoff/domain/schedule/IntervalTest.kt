@@ -41,4 +41,15 @@ class IntervalTest {
         interval(ten, eleven).span(nineToTen) shouldBe interval(nine, eleven)
         interval(nine, twelve).span(interval(ten, eleven)) shouldBe interval(nine, twelve)
     }
+
+    @Test
+    fun `without removes the overlap and keeps what is left on either side`() {
+        interval(nine, twelve).without(interval(ten, eleven)) shouldBe
+            listOf(interval(nine, ten), interval(eleven, twelve))
+        interval(nine, eleven).without(interval(ten, twelve)) shouldBe listOf(interval(nine, ten))
+        interval(ten, twelve).without(interval(nine, eleven)) shouldBe listOf(interval(eleven, twelve))
+        interval(ten, eleven).without(interval(nine, twelve)) shouldBe emptyList()
+        nineToTen.without(interval(eleven, twelve)) shouldBe listOf(nineToTen)
+        nineToTen.without(interval(ten, eleven)) shouldBe listOf(nineToTen)
+    }
 }

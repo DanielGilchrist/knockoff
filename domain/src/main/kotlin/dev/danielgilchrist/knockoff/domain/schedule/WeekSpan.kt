@@ -10,4 +10,8 @@ internal data class WeekSpan(
     }
 
     fun fromPreviousWeek(): WeekSpan = WeekSpan(startNano - NANOS_PER_WEEK, endNano - NANOS_PER_WEEK)
+
+    fun without(cut: WeekSpan): List<WeekSpan> =
+        listOf(WeekSpan(startNano, minOf(endNano, cut.startNano)), WeekSpan(maxOf(startNano, cut.endNano), endNano))
+            .filter { it.startNano < it.endNano }
 }
