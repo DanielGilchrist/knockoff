@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.ui.EditTarget
 import dev.danielgilchrist.knockoff.ui.Editing
-import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.RadioRow
+import dev.danielgilchrist.knockoff.ui.TargetChoices
 import dev.danielgilchrist.knockoff.ui.describe
 import dev.danielgilchrist.knockoff.ui.home.RuleStateSwitch
 import dev.danielgilchrist.knockoff.ui.removedAt
@@ -31,7 +31,7 @@ import dev.danielgilchrist.knockoff.ui.replacedAt
 @Composable
 internal fun RuleEditorScreen(
     editing: Editing.Open,
-    apps: InstalledApps,
+    choices: TargetChoices,
     actions: RuleEditorActions,
     modifier: Modifier = Modifier,
 ) {
@@ -60,7 +60,21 @@ internal fun RuleEditorScreen(
             }
         }
         item { ZoneEditor(zone = draft.zone, onZoneChange = { change(draft.copy(zone = it)) }) }
-        item { AppsEditor(apps = apps, selected = draft.apps, onSelectedChange = { change(draft.copy(apps = it)) }) }
+        item {
+            AppsEditor(
+                apps = choices.apps,
+                selected = draft.apps,
+                onSelectedChange = { change(draft.copy(apps = it)) },
+            )
+        }
+        item {
+            ChatsEditor(
+                seen = choices.chats,
+                apps = choices.apps,
+                selected = draft.chats,
+                onSelectedChange = { change(draft.copy(chats = it)) },
+            )
+        }
         item { GmailAccountsEditor(draft = draft, onDraftChange = change) }
         item { Problems(problems = editing.problems) }
         item { EditorButtons(target = editing.target, actions = actions) }

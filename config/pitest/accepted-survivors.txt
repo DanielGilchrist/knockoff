@@ -11,9 +11,6 @@ NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.NotificationKey get
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.PackageName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/PackageName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.rule.RuleName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/rule/RuleName::getValue
 
-# A known conversation is only ever compared whole, through data class equality, so nothing reads its id.
-NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.Conversation$Known getId-rYnfllY L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/Conversation$Known::getId-rYnfllY
-
 # The last branch of an exhaustive when compiles to equality checks whose only alternative is an unreachable
 # NoWhenBranchMatchedException. Forcing those checks towards the branch is equivalent.
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot parse L25 removed conditional - replaced equality check with true
@@ -26,6 +23,8 @@ SURVIVED dev.danielgilchrist.knockoff.domain.zone.ZoneChoice stored L41 removed 
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.ZoneChoice zoneFor L35 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Boundary noLaterThan L15 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels saved L120 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L36 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L49 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels silencing L54 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels restoring L60 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels silenceIfAlerting L104 removed conditional - replaced equality check with true

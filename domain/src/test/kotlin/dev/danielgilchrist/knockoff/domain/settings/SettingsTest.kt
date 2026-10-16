@@ -194,19 +194,21 @@ class SettingsTest {
             )
     }
 
-    @ParameterizedTest(name = "{3}")
+    @ParameterizedTest(name = "{4}")
     @CsvSource(
-        "' ', chats, 1000000000001@lid, blank chat app",
-        "com.whatsapp, ' ', 1000000000001@lid, blank chat channel",
-        "com.whatsapp, chats, ' ', blank chat id",
+        "' ', chats, 1000000000001@lid, Someone, blank chat app",
+        "com.whatsapp, ' ', 1000000000001@lid, Someone, blank chat channel",
+        "com.whatsapp, chats, ' ', Someone, blank chat id",
+        "com.whatsapp, chats, 1000000000001@lid, ' ', blank chat name",
     )
     fun `a chat missing a part is invalid`(
         app: String,
         channel: String,
         id: String,
+        name: String,
         problem: String,
     ) {
-        val chat = """{"app": "$app", "channel": "$channel", "id": "$id", "name": "Someone"}"""
+        val chat = """{"app": "$app", "channel": "$channel", "id": "$id", "name": "$name"}"""
 
         Settings.fromJson(chatsDocument(chat)).shouldBeInstanceOf<SettingsDecode.Invalid>().detail shouldBe
             "rule 1: \"Work\": chat 1: $problem"

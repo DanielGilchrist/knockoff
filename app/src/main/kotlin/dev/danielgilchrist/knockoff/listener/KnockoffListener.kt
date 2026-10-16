@@ -10,8 +10,10 @@ import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.channel.BoundaryAlarm
 import dev.danielgilchrist.knockoff.channel.ChannelAccess
 import dev.danielgilchrist.knockoff.channel.ChannelSilencer
+import dev.danielgilchrist.knockoff.chat.ChatRecord
 import dev.danielgilchrist.knockoff.domain.change.Change
 import dev.danielgilchrist.knockoff.domain.change.next
+import dev.danielgilchrist.knockoff.domain.chat.ChatSighting
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import kotlinx.coroutines.CoroutineScope
@@ -83,11 +85,17 @@ class KnockoffListener : NotificationListenerService() {
         Log.w(LOG_TAG, "listener disconnected")
     }
 
-    override fun onNotificationPosted(sbn: StatusBarNotification) {
+    override fun onNotificationPosted(
+        sbn: StatusBarNotification,
+        rankingMap: RankingMap,
+    ) {
+        val posted = sbn.toSnapshot().parse()
+
+        scope.launch { record(ChatSighting.of(posted, sbn.chatNames(rankingMap))) }
         scope.launch {
             when (val load = settingsStore.loads.first()) {
                 is SettingsLoad.Usable -> {
-                    sweeper.evaluate(sbn, Evaluation(load.settings.rules, ZoneId.systemDefault()))
+                    sweeper.evaluate(sbn, posted, Evaluation(load.settings.rules, ZoneId.systemDefault()))
                 }
 
                 is SettingsLoad.Failure -> {
@@ -95,6 +103,22 @@ class KnockoffListener : NotificationListenerService() {
                         LOG_TAG,
                         "key=${sbn.key} not evaluated, settings failed to load: ${load.detail}",
                     )
+                }
+            }
+        }
+    }
+
+    private suspend fun record(sighting: ChatSighting) {
+        when (sighting) {
+            ChatSighting.NotAChat -> {}
+
+            is ChatSighting.Seen -> {
+                when (val record = knockoff.seenChatsStore.record(sighting.chat)) {
+                    ChatRecord.Recorded, ChatRecord.Unchanged -> {}
+
+                    is ChatRecord.Failed -> {
+                        Log.w(LOG_TAG, "${sighting.chat.packageName.value} chat not recorded: ${record.detail}")
+                    }
                 }
             }
         }

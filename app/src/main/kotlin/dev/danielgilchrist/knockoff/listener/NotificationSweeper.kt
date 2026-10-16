@@ -4,6 +4,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
+import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule.Decision
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.domain.rule.Recheck
@@ -21,7 +22,9 @@ internal class NotificationSweeper(
         when (val read = listener.read(NotificationList.Active)) {
             is NotificationRead.Read -> {
                 Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
-                read.notifications.forEach { sbn -> scope.launch { evaluate(sbn, evaluation) } }
+                read.notifications.forEach { sbn ->
+                    scope.launch { evaluate(sbn, sbn.toSnapshot().parse(), evaluation) }
+                }
             }
 
             is NotificationRead.Failure -> {
@@ -48,9 +51,9 @@ internal class NotificationSweeper(
 
     suspend fun evaluate(
         sbn: StatusBarNotification,
+        posted: PostedNotification,
         evaluation: Evaluation,
     ) {
-        val posted = sbn.toSnapshot().parse()
         val decision = evaluation.decide(posted, Instant.now())
 
         Log.i(LOG_TAG, "${sbn.describe(posted)} -> ${decision.describe()}")

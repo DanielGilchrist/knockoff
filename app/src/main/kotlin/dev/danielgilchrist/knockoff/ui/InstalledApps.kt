@@ -31,4 +31,10 @@ sealed interface InstalledApps {
     data class Loaded(
         val apps: List<InstalledApp>,
     ) : InstalledApps
+
+    fun labelOf(packageName: PackageName): String =
+        when (this) {
+            Loading -> packageName.value
+            is Loaded -> apps.firstOrNull { it.packageName == packageName }?.label ?: packageName.value
+        }
 }

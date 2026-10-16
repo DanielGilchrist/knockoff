@@ -8,3 +8,8 @@ internal fun <T> List<T>.replacedAt(
 ): List<T> = mapIndexed { position, existing -> if (position == index) item else existing }
 
 internal fun <T> List<T>.removedAt(index: Int): List<T> = filterIndexed { position, _ -> position != index }
+
+internal fun <K, V> Map<K, V>.toggled(
+    key: K,
+    value: V,
+): Map<K, V> = if (key in this) this - key else this + (key to value)

@@ -29,8 +29,8 @@ fun KnockoffScreen(
     val setup by viewModel.setup.collectAsStateWithLifecycle()
     val editor = viewModel.editor
     val settings by editor.settings.collectAsStateWithLifecycle()
-    val apps by viewModel.apps.collectAsStateWithLifecycle()
     val editing by editor.editing.collectAsStateWithLifecycle()
+    val choices by viewModel.choices.collectAsStateWithLifecycle()
     val saveStatus by editor.saveStatus.collectAsStateWithLifecycle()
     val preferencesStatus by viewModel.preferences.saveStatus.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
@@ -85,7 +85,7 @@ fun KnockoffScreen(
             }
 
             is Editing.Open -> {
-                RuleEditor(editing = current, apps = apps, editor = editor, modifier = Modifier.padding(padding))
+                RuleEditor(editing = current, choices = choices, editor = editor, modifier = Modifier.padding(padding))
             }
         }
     }
@@ -94,13 +94,13 @@ fun KnockoffScreen(
 @Composable
 private fun RuleEditor(
     editing: Editing.Open,
-    apps: InstalledApps,
+    choices: TargetChoices,
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
 ) {
     RuleEditorScreen(
         editing = editing,
-        apps = apps,
+        choices = choices,
         actions =
             RuleEditorActions(
                 onDraftChange = editor::updateDraft,

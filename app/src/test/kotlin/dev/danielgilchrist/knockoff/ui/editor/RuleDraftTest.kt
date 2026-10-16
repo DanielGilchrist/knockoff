@@ -1,15 +1,12 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
+import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
-import dev.danielgilchrist.knockoff.domain.notification.ChannelId
-import dev.danielgilchrist.knockoff.domain.notification.ConversationId
-import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
-import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -45,12 +42,7 @@ class RuleDraftTest {
                 gmailAccounts = setOf(address),
                 chats =
                     listOf(
-                        Target.Chat(
-                            PackageName("com.whatsapp"),
-                            ChannelId("individual_chat_defaults_4"),
-                            ConversationId("1000000000001@lid"),
-                            ConversationName("Colleague"),
-                        ),
+                        COLLEAGUE_CHAT,
                     ).associateBy { it.key },
             )
 

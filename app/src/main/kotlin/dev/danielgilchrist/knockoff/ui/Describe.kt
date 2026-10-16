@@ -30,9 +30,9 @@ internal fun Window.describe(): String {
 
 internal fun Rule.describeTargets(): String =
     when (targets.size) {
-        0 -> "No apps or accounts yet, so this rule does nothing"
-        1 -> "1 app or account"
-        else -> "${targets.size} apps or accounts"
+        0 -> "No apps, accounts or chats yet, so this rule does nothing"
+        1 -> "1 app, account or chat"
+        else -> "${targets.size} apps, accounts or chats"
     }
 
 internal fun DayOfWeek.shortName(): String = getDisplayName(TextStyle.SHORT, Locale.UK)

@@ -45,9 +45,3 @@ internal fun AppsEditor(
         )
     }
 }
-
-private fun InstalledApps.labelOf(packageName: PackageName): String =
-    when (this) {
-        InstalledApps.Loading -> packageName.value
-        is InstalledApps.Loaded -> apps.firstOrNull { it.packageName == packageName }?.label ?: packageName.value
-    }

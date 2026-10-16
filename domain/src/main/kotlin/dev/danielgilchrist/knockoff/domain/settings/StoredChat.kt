@@ -33,6 +33,10 @@ internal data class StoredChat(
                 Parsed.Failed("blank chat id")
             }
 
+            name.isBlank() -> {
+                Parsed.Failed("blank chat name")
+            }
+
             else -> {
                 Parsed.Ok(
                     Target.Chat(PackageName(app), ChannelId(channel), ConversationId(id), ConversationName(name)),
