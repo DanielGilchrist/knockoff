@@ -23,6 +23,7 @@ internal data class StoredRule(
     private val windows: List<StoredWindow>,
     private val apps: List<String>,
     private val gmailAccounts: List<String>,
+    private val chats: List<StoredChat>,
     private val zone: String,
 ) {
     companion object {
@@ -36,14 +37,21 @@ internal data class StoredRule(
                     rule.targets.flatMap { target ->
                         when (target) {
                             is Target.App -> listOf(target.packageName.value)
-                            is Target.GmailInbox -> emptyList()
+                            is Target.GmailInbox, is Target.Chat -> emptyList()
                         }
                     },
                 gmailAccounts =
                     rule.targets.flatMap { target ->
                         when (target) {
-                            is Target.App -> emptyList()
+                            is Target.App, is Target.Chat -> emptyList()
                             is Target.GmailInbox -> listOf(target.address.value)
+                        }
+                    },
+                chats =
+                    rule.targets.flatMap { target ->
+                        when (target) {
+                            is Target.App, is Target.GmailInbox -> emptyList()
+                            is Target.Chat -> listOf(StoredChat.from(target))
                         }
                     },
                 zone = rule.zone.stored(),
@@ -105,5 +113,21 @@ internal data class StoredRule(
                     is AccountAddressParse.Valid -> Parsed.Ok(Target.GmailInbox(parse.address))
                     is AccountAddressParse.Invalid -> Parsed.Failed(parse.detail)
                 }
-            }.then { inboxes -> Parsed.Ok(apps.map { Target.App(PackageName(it)) }.toSet() + inboxes) }
+            }.then { inboxes ->
+                chats.parseEach("chat") { it.parse() }.then { parsedChats ->
+                    val repeated = parsedChats.groupBy { it.key }.filterValues { it.size > 1 }.keys
+
+                    when {
+                        repeated.isEmpty() -> {
+                            Parsed.Ok(apps.map { Target.App(PackageName(it)) }.toSet() + inboxes + parsedChats)
+                        }
+
+                        else -> {
+                            Parsed.Failed(
+                                "duplicate chats ${repeated.map { "${it.packageName.value}/${it.id.value}" }}",
+                            )
+                        }
+                    }
+                }
+            }
 }

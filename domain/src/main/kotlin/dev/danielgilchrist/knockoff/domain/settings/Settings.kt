@@ -41,6 +41,7 @@ data class Settings(
                         text,
                         mapOf(
                             StoredSettingsV1.VERSION to StoredSettingsV1.serializer(),
+                            StoredSettingsV2.VERSION to StoredSettingsV2.serializer(),
                             StoredSettings.CURRENT_VERSION to StoredSettings.serializer(),
                         ),
                     )

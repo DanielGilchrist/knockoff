@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.schedule.Coverage
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
@@ -24,6 +25,18 @@ data class Rule(
         origin: Origin,
         at: ZonedDateTime,
         zones: ZoneContext,
+    ): RuleVerdict = verdictWhere(at, zones) { it.matches(origin) }
+
+    fun verdictFor(
+        channel: ChannelKey,
+        at: ZonedDateTime,
+        zones: ZoneContext,
+    ): RuleVerdict = verdictWhere(at, zones) { it.covers(channel) }
+
+    private fun verdictWhere(
+        at: ZonedDateTime,
+        zones: ZoneContext,
+        targeted: (Target) -> Boolean,
     ): RuleVerdict =
         when (state) {
             RuleState.Disabled -> {
@@ -32,7 +45,7 @@ data class Rule(
 
             RuleState.Enabled -> {
                 when {
-                    targets.none { it.matches(origin) } -> RuleVerdict.Abstains
+                    targets.none(targeted) -> RuleVerdict.Abstains
                     else -> scheduledVerdictAt(localised(at, zones))
                 }
             }

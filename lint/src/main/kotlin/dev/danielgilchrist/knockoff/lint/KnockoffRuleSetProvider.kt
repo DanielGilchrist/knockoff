@@ -13,6 +13,7 @@ class KnockoffRuleSetProvider : RuleSetProvider {
             ruleSetId,
             mapOf(
                 RuleName("NoImportAlias") to ::NoImportAlias,
+                RuleName("NoTypeFiltering") to ::NoTypeFiltering,
                 RuleName("UnapprovedCatch") to ::UnapprovedCatch,
                 RuleName("UnapprovedThrow") to ::UnapprovedThrow,
                 RuleName("UntypedResult") to ::UntypedResult,

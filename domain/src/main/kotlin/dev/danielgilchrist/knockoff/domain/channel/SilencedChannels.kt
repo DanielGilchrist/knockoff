@@ -39,14 +39,26 @@ data class SilencedChannels private constructor(
         val outcomes = read.map { (key, current) -> key to outcome(key, current, stateOf(key)) }
 
         return ChannelPlan(
-            silence = outcomes.map { it.second }.filterIsInstance<ChannelOutcome.Silence>().map { it.change },
-            restore = outcomes.map { it.second }.filterIsInstance<ChannelOutcome.Restore>().map { it.change },
+            silence = outcomes.flatMap { (_, outcome) -> silencing(outcome) },
+            restore = outcomes.flatMap { (_, outcome) -> restoring(outcome) },
             silenced =
                 SilencedChannels(
                     originals.filterKeys { it !in read } + outcomes.flatMap { (key, outcome) -> saved(key, outcome) },
                 ),
         )
     }
+
+    private fun silencing(outcome: ChannelOutcome): List<ChannelChange> =
+        when (outcome) {
+            ChannelOutcome.Untouched, is ChannelOutcome.Kept, is ChannelOutcome.Restore -> emptyList()
+            is ChannelOutcome.Silence -> listOf(outcome.change)
+        }
+
+    private fun restoring(outcome: ChannelOutcome): List<ChannelChange> =
+        when (outcome) {
+            ChannelOutcome.Untouched, is ChannelOutcome.Kept, is ChannelOutcome.Silence -> emptyList()
+            is ChannelOutcome.Restore -> listOf(outcome.change)
+        }
 
     private fun outcome(
         key: ChannelKey,

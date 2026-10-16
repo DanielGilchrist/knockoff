@@ -3,6 +3,7 @@ package dev.danielgilchrist.knockoff.ui.editor
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.ChatKey
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
@@ -24,6 +25,7 @@ data class RuleDraft(
     val windows: List<WindowDraft>,
     val apps: Set<PackageName>,
     val gmailAccounts: Set<AccountAddress>,
+    val chats: Map<ChatKey, Target.Chat>,
     val pendingGmail: String,
     val zone: RuleZone,
 ) {
@@ -36,6 +38,7 @@ data class RuleDraft(
                 windows = listOf(WindowDraft.WORKING_HOURS),
                 apps = emptySet(),
                 gmailAccounts = emptySet(),
+                chats = emptyMap(),
                 pendingGmail = "",
                 zone = RuleZone.Default,
             )
@@ -51,17 +54,25 @@ data class RuleDraft(
                         .flatMap { target ->
                             when (target) {
                                 is Target.App -> listOf(target.packageName)
-                                is Target.GmailInbox -> emptyList()
+                                is Target.GmailInbox, is Target.Chat -> emptyList()
                             }
                         }.toSet(),
                 gmailAccounts =
                     rule.targets
                         .flatMap { target ->
                             when (target) {
-                                is Target.App -> emptyList()
+                                is Target.App, is Target.Chat -> emptyList()
                                 is Target.GmailInbox -> listOf(target.address)
                             }
                         }.toSet(),
+                chats =
+                    rule.targets
+                        .flatMap { target ->
+                            when (target) {
+                                is Target.App, is Target.GmailInbox -> emptyList()
+                                is Target.Chat -> listOf(target)
+                            }
+                        }.associateBy { it.key },
                 pendingGmail = "",
                 zone = rule.zone,
             )
@@ -76,7 +87,7 @@ data class RuleDraft(
                     state,
                     policy,
                     schedule,
-                    apps.map(Target::App).toSet() + accounts.map(Target::GmailInbox),
+                    apps.map(Target::App).toSet() + accounts.map(Target::GmailInbox) + chats.values,
                     zone,
                 )
             }

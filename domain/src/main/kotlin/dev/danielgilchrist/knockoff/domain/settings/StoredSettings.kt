@@ -14,7 +14,7 @@ internal data class StoredSettings(
     private val rules: List<StoredRule>,
 ) : StoredSettingsDocument {
     companion object {
-        const val CURRENT_VERSION = 2
+        const val CURRENT_VERSION = 3
 
         fun from(settings: Settings): StoredSettings =
             StoredSettings(
@@ -24,7 +24,7 @@ internal data class StoredSettings(
                 rules = settings.rules.rules.map(StoredRule::from),
             )
 
-        fun settingsOf(
+        private fun settingsOf(
             rules: List<StoredRule>,
             defaultZone: ZoneChoice,
             theme: Theme,

@@ -1,15 +1,20 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.EVERY_DAY
+import dev.danielgilchrist.knockoff.domain.FRIEND
 import dev.danielgilchrist.knockoff.domain.PERSONAL_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
+import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.Channel
+import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.Origin
@@ -22,6 +27,7 @@ import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
 import dev.danielgilchrist.knockoff.domain.traits
+import dev.danielgilchrist.knockoff.domain.whatsappOrigin
 import dev.danielgilchrist.knockoff.domain.window
 import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import org.junit.jupiter.api.Test
@@ -60,7 +66,16 @@ class RuleSetTest {
 
     @Test
     fun `non-work app outside hours is left`() {
-        ruleSet(workOnly).decide(post(Origin(PackageName("com.whatsapp"), Channel.Unnamed)), evening) shouldBe
+        ruleSet(workOnly).decide(post(Origin(WHATSAPP, Channel.Unnamed, Conversation.None)), evening) shouldBe
+            Decision.Leave(LeaveReason.NoRuleTargets)
+    }
+
+    @Test
+    fun `a held chat outside hours snoozes and other chats in the app are left`() {
+        val chats = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
+
+        chats.decide(post(whatsappOrigin(Conversation.Known(COLLEAGUE))), evening) shouldBe untilMorning
+        chats.decide(post(whatsappOrigin(Conversation.Known(FRIEND))), evening) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
 

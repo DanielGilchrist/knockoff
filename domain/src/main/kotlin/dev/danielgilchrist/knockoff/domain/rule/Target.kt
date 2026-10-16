@@ -1,7 +1,12 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.Channel
+import dev.danielgilchrist.knockoff.domain.notification.ChannelId
+import dev.danielgilchrist.knockoff.domain.notification.Conversation
+import dev.danielgilchrist.knockoff.domain.notification.ConversationId
+import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 
@@ -18,6 +23,15 @@ sealed interface Target {
         override val packageName: PackageName get() = PackageName.GMAIL
     }
 
+    data class Chat(
+        override val packageName: PackageName,
+        val channel: ChannelId,
+        val id: ConversationId,
+        val name: ConversationName,
+    ) : Target {
+        val key: ChatKey get() = ChatKey(packageName, id)
+    }
+
     fun matches(origin: Origin): Boolean =
         when (this) {
             is App -> {
@@ -25,11 +39,21 @@ sealed interface Target {
             }
 
             is GmailInbox -> {
-                origin.packageName == packageName &&
-                    when (val channel = origin.channel) {
-                        is Channel.Named -> channel.id.endsWithAccount(address)
-                        Channel.Unnamed -> false
-                    }
+                when (val channel = origin.channel) {
+                    is Channel.Named -> covers(ChannelKey(origin.packageName, channel.id))
+                    Channel.Unnamed -> false
+                }
             }
+
+            is Chat -> {
+                origin.packageName == packageName && origin.conversation == Conversation.Known(id)
+            }
+        }
+
+    fun covers(channel: ChannelKey): Boolean =
+        when (this) {
+            is App -> channel.packageName == packageName
+            is GmailInbox -> channel.packageName == packageName && channel.channelId.endsWithAccount(address)
+            is Chat -> false
         }
 }

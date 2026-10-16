@@ -4,6 +4,9 @@ import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
+import dev.danielgilchrist.knockoff.domain.notification.Conversation
+import dev.danielgilchrist.knockoff.domain.notification.ConversationId
+import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTraits
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTraitsParse
@@ -100,17 +103,30 @@ fun ruleSet(vararg rules: Rule): RuleSet =
         is RuleSetParse.DuplicateNames -> error("Fixture rules share names: ${parse.names}")
     }
 
-fun gmailOrigin(channelId: String): Origin = Origin(PackageName.GMAIL, Channel.Named(ChannelId(channelId)))
+fun gmailOrigin(channelId: String): Origin =
+    Origin(PackageName.GMAIL, Channel.Named(ChannelId(channelId)), Conversation.None)
 
 val SLACK = PackageName("com.Slack")
 
 val WORK_ADDRESS = address("dan@work.example")
 
-val SLACK_ORIGIN = Origin(SLACK, Channel.Named(ChannelId("messages")))
+val SLACK_ORIGIN = Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None)
 
 val WORK_GMAIL_ORIGIN = gmailOrigin("^nc_1_mail_dan@work.example")
 
 val PERSONAL_GMAIL_ORIGIN = gmailOrigin("^nc_1_mail_dan@home.example")
+
+val WHATSAPP = PackageName("com.whatsapp")
+
+val WHATSAPP_CHATS = ChannelId("individual_chat_defaults_4")
+
+val COLLEAGUE = ConversationId("1000000000001@lid")
+
+val FRIEND = ConversationId("1000000000002@lid")
+
+val COLLEAGUE_CHAT = Target.Chat(WHATSAPP, WHATSAPP_CHATS, COLLEAGUE, ConversationName("Colleague"))
+
+fun whatsappOrigin(conversation: Conversation): Origin = Origin(WHATSAPP, Channel.Named(WHATSAPP_CHATS), conversation)
 
 fun traits(vararg traits: NotificationTrait): NotificationTraits =
     when (val parse = NotificationTraits.parse(traits.toSet())) {

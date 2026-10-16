@@ -1,7 +1,10 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.SLACK
+import dev.danielgilchrist.knockoff.domain.WHATSAPP
+import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.channel.AlertingImportance
@@ -27,8 +30,7 @@ class ChannelPlanTest {
     private val calls = ChannelKey(SLACK, ChannelId("calls"))
     private val workMail = ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@work.example"))
     private val personalMail = ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@home.example"))
-    private val whatsapp = PackageName("com.whatsapp")
-    private val chats = ChannelKey(whatsapp, ChannelId("chats"))
+    private val chats = ChannelKey(WHATSAPP, ChannelId("chats"))
     private val slackTarget = setOf(Target.App(SLACK))
     private val work =
         ruleSet(
@@ -47,6 +49,15 @@ class ChannelPlanTest {
                 restore = emptyList(),
                 silenced = saved(messages to AlertingImportance.Default, calls to AlertingImportance.High),
             )
+    }
+
+    @Test
+    fun `a chat-only rule leaves its app's shared channel alerting while it holds`() {
+        val chatOnly = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
+        val shared = ChannelKey(WHATSAPP, WHATSAPP_CHATS)
+
+        chatOnly.planChannels(mapOf(shared to Importance.High), SilencedChannels.NONE, evening) shouldBe
+            nothing(SilencedChannels.NONE)
     }
 
     @Test
@@ -170,7 +181,7 @@ class ChannelPlanTest {
             rule("Off", Policy.HoldDuring, WORK_HOURS, setOf(Target.App(PackageName("com.off"))), RuleState.Disabled)
 
         ruleSet(work.rules.single(), disabled).channelPackages(saved(chats to AlertingImportance.High)) shouldBe
-            setOf(SLACK, PackageName.GMAIL, whatsapp)
+            setOf(SLACK, PackageName.GMAIL, WHATSAPP)
     }
 
     private fun slack(

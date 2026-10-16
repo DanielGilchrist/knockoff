@@ -87,13 +87,16 @@ data class RuleSet private constructor(
         read: Map<ChannelKey, Importance>,
         silenced: SilencedChannels,
         now: ZonedDateTime,
-    ): ChannelPlan =
-        silenced.plan(read) { key ->
+    ): ChannelPlan {
+        val zones = ZoneContext(now.zone, defaultZone)
+
+        return silenced.plan(read) { key ->
             when {
-                holdsAt(key.origin, now, ZoneContext(now.zone, defaultZone)).isEmpty() -> ChannelState.Permitted
+                holds { it.verdictFor(key, now, zones) }.isEmpty() -> ChannelState.Permitted
                 else -> ChannelState.Held
             }
         }
+    }
 
     private fun decide(
         origin: Origin,
@@ -150,9 +153,11 @@ data class RuleSet private constructor(
         origin: Origin,
         at: ZonedDateTime,
         zones: ZoneContext,
-    ): List<Hold> =
+    ): List<Hold> = holds { it.verdictFor(origin, at, zones) }
+
+    private fun holds(verdictOf: (Rule) -> RuleVerdict): List<Hold> =
         rules.flatMap { rule ->
-            when (val verdict = rule.verdictFor(origin, at, zones)) {
+            when (val verdict = verdictOf(rule)) {
                 is RuleVerdict.Holds -> listOf(Hold(rule.name, verdict.release))
                 RuleVerdict.Abstains, RuleVerdict.Permits -> emptyList()
             }
