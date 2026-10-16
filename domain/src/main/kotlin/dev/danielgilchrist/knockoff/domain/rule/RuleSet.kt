@@ -3,8 +3,9 @@ package dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelPlan
 import dev.danielgilchrist.knockoff.domain.channel.ChannelState
-import dev.danielgilchrist.knockoff.domain.channel.Importance
+import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.chat.ChatChannelNeed
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
@@ -61,6 +62,29 @@ data class RuleSet private constructor(
     fun channelPackages(silenced: SilencedChannels): Set<PackageName> =
         enabled().flatMap { rule -> rule.targets.map { it.packageName } }.toSet() + silenced.packages
 
+    fun chatChannelNeeds(
+        read: Map<ChannelKey, ReadChannel>,
+        silenced: SilencedChannels,
+    ): Set<ChatChannelNeed> =
+        enabled()
+            .flatMap { rule ->
+                rule.targets.flatMap { target ->
+                    when (target) {
+                        is Target.App, is Target.GmailInbox -> emptyList()
+                        is Target.Chat -> listOf(target)
+                    }
+                }
+            }.filter { chat -> read.none { (key, channel) -> chat.covers(key, channel.kind) } }
+            .map { chat ->
+                val parent = ChannelKey(chat.packageName, chat.channel)
+
+                when {
+                    parent !in read -> ChatChannelNeed.ParentMissing(chat)
+                    silenced.saves(parent) -> ChatChannelNeed.ParentSilenced(chat)
+                    else -> ChatChannelNeed.Create(chat)
+                }
+            }.toSet()
+
     fun nextBoundary(now: ZonedDateTime): Boundary =
         enabled()
             .filter { it.targets.isNotEmpty() }
@@ -84,15 +108,15 @@ data class RuleSet private constructor(
             }
 
     fun planChannels(
-        read: Map<ChannelKey, Importance>,
+        read: Map<ChannelKey, ReadChannel>,
         silenced: SilencedChannels,
         now: ZonedDateTime,
     ): ChannelPlan {
         val zones = ZoneContext(now.zone, defaultZone)
 
-        return silenced.plan(read) { key ->
+        return silenced.plan(read) { key, channel ->
             when {
-                holds { it.verdictFor(key, now, zones) }.isEmpty() -> ChannelState.Permitted
+                holds { it.verdictFor(key, channel.kind, now, zones) }.isEmpty() -> ChannelState.Permitted
                 else -> ChannelState.Held
             }
         }
@@ -103,7 +127,7 @@ data class RuleSet private constructor(
         now: ZonedDateTime,
     ): Decision {
         val zones = ZoneContext(now.zone, defaultZone)
-        val holding = holdsAt(origin, now, zones)
+        val holding = holds { it.verdictFor(origin, now, zones) }
         val permitting =
             rules
                 .filter {
@@ -131,7 +155,7 @@ data class RuleSet private constructor(
     ): Decision.Snooze {
         val ceiling = now.plus(SNOOZE_CEILING)
 
-        return when (val release = holdsAt(origin, at, zones).firstOrNull()?.release) {
+        return when (val release = holds { it.verdictFor(origin, at, zones) }.firstOrNull()?.release) {
             null -> {
                 Decision.Snooze(now, at, SnoozeEnd.RulesPermit, heldBy)
             }
@@ -148,12 +172,6 @@ data class RuleSet private constructor(
             }
         }
     }
-
-    private fun holdsAt(
-        origin: Origin,
-        at: ZonedDateTime,
-        zones: ZoneContext,
-    ): List<Hold> = holds { it.verdictFor(origin, at, zones) }
 
     private fun holds(verdictOf: (Rule) -> RuleVerdict): List<Hold> =
         rules.flatMap { rule ->

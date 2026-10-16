@@ -4,10 +4,12 @@ import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
-import dev.danielgilchrist.knockoff.domain.channel.Importance
+import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Boundary
 import dev.danielgilchrist.knockoff.domain.rule.RuleSet
+import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import kotlinx.coroutines.channels.Channel
@@ -30,6 +32,7 @@ internal class ChannelSilencer(
     }
 
     private val requests = Channel<Unit>(Channel.CONFLATED)
+    private val chatChannels = ChatChannels(access)
 
     fun request() {
         requests.trySend(Unit)
@@ -51,7 +54,7 @@ internal class ChannelSilencer(
                 Log.e(LOG_TAG, "channels unchanged: ${first.detail}")
                 val now = ZonedDateTime.now()
 
-                report(alarm.schedule(Boundary.None.noLaterThan(now.plus(RETRY)), now))
+                alarm.schedule(Boundary.None.noLaterThan(now.plus(RETRY)), now).report()
             }
 
             is Preparation.Ready -> {
@@ -61,6 +64,12 @@ internal class ChannelSilencer(
                         first.plan.restore.isEmpty() -> silencing
                         else -> silencing.and(finish())
                     }
+
+                if (first.plan.restore.isNotEmpty() && settlement == Settlement.Settled &&
+                    first.waitingChats.isNotEmpty()
+                ) {
+                    request()
+                }
 
                 schedule(first, settlement)
             }
@@ -94,7 +103,7 @@ internal class ChannelSilencer(
                 }
             }
 
-        report(alarm.schedule(alarmAt, ZonedDateTime.now()))
+        alarm.schedule(alarmAt, ZonedDateTime.now()).report()
     }
 
     private suspend fun prepare(): Preparation =
@@ -112,38 +121,52 @@ internal class ChannelSilencer(
     private suspend fun withSilenced(
         rules: RuleSet,
         silenced: SilencedChannels,
+    ): Preparation {
+        val packages = rules.channelPackages(silenced)
+
+        return read(packages) { channels ->
+            val chats = chatChannels.create(rules.chatChannelNeeds(channels, silenced))
+
+            when (chats.creation) {
+                ChatChannelsCreation.SomeCreated -> {
+                    read(packages) { created -> planned(rules, silenced, created, chats.waiting) }
+                }
+
+                ChatChannelsCreation.NoneCreated -> {
+                    planned(rules, silenced, channels, chats.waiting)
+                }
+            }
+        }
+    }
+
+    private inline fun read(
+        packages: Set<PackageName>,
+        onRead: (Map<ChannelKey, ReadChannel>) -> Preparation,
     ): Preparation =
-        when (val read = access.read(rules.channelPackages(silenced))) {
-            is ChannelRead.NotLinked -> {
-                Preparation.Unavailable("not linked to a companion device: ${read.detail}")
-            }
-
-            ChannelRead.Unbound -> {
-                Preparation.Unavailable("listener unbound")
-            }
-
-            is ChannelRead.Read -> {
-                planned(rules, silenced, read.importances, ZonedDateTime.now())
-            }
+        when (val read = access.read(packages)) {
+            is ChannelRead.NotLinked -> Preparation.Unavailable("not linked to a companion device: ${read.detail}")
+            ChannelRead.Unbound -> Preparation.Unavailable("listener unbound")
+            is ChannelRead.Read -> onRead(read.channels)
         }
 
     private suspend fun planned(
         rules: RuleSet,
         silenced: SilencedChannels,
-        read: Map<ChannelKey, Importance>,
-        now: ZonedDateTime,
+        read: Map<ChannelKey, ReadChannel>,
+        waitingChats: Set<Target.Chat>,
     ): Preparation {
+        val now = ZonedDateTime.now()
         val plan = rules.planChannels(read, silenced, now)
 
         return when {
             plan.silenced == silenced -> {
-                Preparation.Ready(rules, plan, now)
+                Preparation.Ready(rules, plan, now, waitingChats)
             }
 
             else -> {
                 when (val save = store.save(plan.silenced)) {
                     SilencedChannelsSave.Saved -> {
-                        Preparation.Ready(rules, plan, now)
+                        Preparation.Ready(rules, plan, now, waitingChats)
                     }
 
                     is SilencedChannelsSave.Failed -> {
@@ -160,23 +183,4 @@ internal class ChannelSilencer(
         changes.fold<ChannelChange, Settlement>(Settlement.Settled) { settlement, change ->
             settlement.and(access.apply(change).settle(change))
         }
-
-    private fun report(schedule: AlarmSchedule) {
-        when (schedule) {
-            is AlarmSchedule.Exact -> {
-                Log.i(LOG_TAG, "next boundary alarm at ${schedule.at}")
-            }
-
-            is AlarmSchedule.Inexact -> {
-                Log.w(
-                    LOG_TAG,
-                    "next boundary alarm near ${schedule.at}, inexact: ${schedule.detail}",
-                )
-            }
-
-            AlarmSchedule.Cleared -> {
-                Log.i(LOG_TAG, "no boundary alarm needed")
-            }
-        }
-    }
 }

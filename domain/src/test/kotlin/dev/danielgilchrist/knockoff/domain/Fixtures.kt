@@ -1,5 +1,9 @@
 package dev.danielgilchrist.knockoff.domain
 
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
+import dev.danielgilchrist.knockoff.domain.channel.Importance
+import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
 import dev.danielgilchrist.knockoff.domain.notification.Channel
@@ -126,6 +130,10 @@ val FRIEND = ConversationId("1000000000002@lid")
 
 val COLLEAGUE_CHAT = Target.Chat(WHATSAPP, WHATSAPP_CHATS, COLLEAGUE, ConversationName("Colleague"))
 
+val COLLEAGUE_CHANNEL = ChannelKey(WHATSAPP, ChannelId("7c0ffee0-conversation"))
+
+val COLLEAGUE_KIND = ChannelKind.ConversationOf(WHATSAPP_CHATS, COLLEAGUE)
+
 fun whatsappOrigin(conversation: Conversation): Origin = Origin(WHATSAPP, Channel.Named(WHATSAPP_CHATS), conversation)
 
 fun traits(vararg traits: NotificationTrait): NotificationTraits =
@@ -142,3 +150,6 @@ internal fun interval(
         is IntervalParse.Valid -> parse.interval
         IntervalParse.Empty -> error("Fixture interval must end after it starts")
     }
+
+fun sharedChannels(vararg channels: Pair<ChannelKey, Importance>): Map<ChannelKey, ReadChannel> =
+    channels.associate { (key, importance) -> key to ReadChannel(importance, ChannelKind.Shared) }

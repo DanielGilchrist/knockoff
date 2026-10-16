@@ -1,15 +1,20 @@
 package dev.danielgilchrist.knockoff.channel
 
 import android.app.NotificationChannel
+import android.os.Build
 import android.os.Process
 import android.service.notification.NotificationListenerService
 import android.util.Log
+import androidx.annotation.RequiresApi
 import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
-import dev.danielgilchrist.knockoff.domain.channel.Importance
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
+import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
+import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.Target
 
 internal class ChannelAccess(
     private val listener: NotificationListenerService,
@@ -28,7 +33,7 @@ internal class ChannelAccess(
                         }
 
                         is ChannelFetch.Fetched -> {
-                            ChannelRead.Read(read.importances + importancesOf(packageName, fetch.channels))
+                            ChannelRead.Read(read.channels + readingsOf(packageName, fetch.channels))
                         }
                     }
                 }
@@ -37,6 +42,30 @@ internal class ChannelAccess(
                     read
                 }
             }
+        }
+
+    fun create(chat: Target.Chat): ChannelCreation =
+        when {
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.BAKLAVA -> ChannelCreation.Unsupported
+            else -> createConversation(chat)
+        }
+
+    @RequiresApi(Build.VERSION_CODES.BAKLAVA)
+    private fun createConversation(chat: Target.Chat): ChannelCreation =
+        try {
+            when (
+                listener.createConversationNotificationChannelForPackage(
+                    chat.packageName.value,
+                    Process.myUserHandle(),
+                    chat.channel.value,
+                    chat.id.value,
+                )
+            ) {
+                null -> ChannelCreation.Refused
+                else -> ChannelCreation.Created
+            }
+        } catch (exception: SecurityException) {
+            ChannelCreation.NotLinked(exception.toString())
         }
 
     fun apply(change: ChannelChange): ChannelUpdate = channel(change.key) { update(change, it) }
@@ -86,17 +115,17 @@ internal class ChannelAccess(
             }
         }
 
-    private fun importancesOf(
+    private fun readingsOf(
         packageName: PackageName,
         channels: List<NotificationChannel>,
-    ): Map<ChannelKey, Importance> =
+    ): Map<ChannelKey, ReadChannel> =
         channels
             .flatMap { channel ->
                 val key = ChannelKey(packageName, ChannelId(channel.id))
 
                 when (val parse = AndroidImportance.parse(channel.importance)) {
                     is ImportanceParse.Known -> {
-                        listOf(key to parse.importance)
+                        listOf(key to ReadChannel(parse.importance, kindOf(channel)))
                     }
 
                     is ImportanceParse.Unknown -> {
@@ -105,6 +134,16 @@ internal class ChannelAccess(
                     }
                 }
             }.toMap()
+
+    private fun kindOf(channel: NotificationChannel): ChannelKind {
+        val parent = channel.parentChannelId
+        val conversation = channel.conversationId
+
+        return when {
+            parent == null || conversation == null -> ChannelKind.Shared
+            else -> ChannelKind.ConversationOf(ChannelId(parent), ConversationId(conversation))
+        }
+    }
 
     private fun fetch(packageName: PackageName): ChannelFetch =
         try {

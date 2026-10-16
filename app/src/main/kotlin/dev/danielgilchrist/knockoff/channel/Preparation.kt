@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.channel
 
 import dev.danielgilchrist.knockoff.domain.channel.ChannelPlan
 import dev.danielgilchrist.knockoff.domain.rule.RuleSet
+import dev.danielgilchrist.knockoff.domain.rule.Target
 import java.time.ZonedDateTime
 
 internal sealed interface Preparation {
@@ -9,6 +10,7 @@ internal sealed interface Preparation {
         val rules: RuleSet,
         val plan: ChannelPlan,
         val now: ZonedDateTime,
+        val waitingChats: Set<Target.Chat>,
     ) : Preparation
 
     data class Unavailable(

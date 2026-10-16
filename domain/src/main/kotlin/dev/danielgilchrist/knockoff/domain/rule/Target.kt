@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
@@ -40,7 +41,7 @@ sealed interface Target {
 
             is GmailInbox -> {
                 when (val channel = origin.channel) {
-                    is Channel.Named -> covers(ChannelKey(origin.packageName, channel.id))
+                    is Channel.Named -> covers(ChannelKey(origin.packageName, channel.id), ChannelKind.Shared)
                     Channel.Unnamed -> false
                 }
             }
@@ -50,10 +51,13 @@ sealed interface Target {
             }
         }
 
-    fun covers(channel: ChannelKey): Boolean =
+    fun covers(
+        channel: ChannelKey,
+        kind: ChannelKind,
+    ): Boolean =
         when (this) {
             is App -> channel.packageName == packageName
             is GmailInbox -> channel.packageName == packageName && channel.channelId.endsWithAccount(address)
-            is Chat -> false
+            is Chat -> channel.packageName == packageName && kind == ChannelKind.ConversationOf(this.channel, id)
         }
 }

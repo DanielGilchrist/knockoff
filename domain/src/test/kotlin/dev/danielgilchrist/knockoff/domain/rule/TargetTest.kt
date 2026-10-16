@@ -1,7 +1,9 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
 import dev.danielgilchrist.knockoff.domain.COLLEAGUE
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHANNEL
 import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE_KIND
 import dev.danielgilchrist.knockoff.domain.FRIEND
 import dev.danielgilchrist.knockoff.domain.PERSONAL_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.SLACK
@@ -11,6 +13,7 @@ import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
@@ -70,23 +73,43 @@ class TargetTest {
     }
 
     @Test
-    fun `an app target covers all of its channels`() {
-        Target.App(WHATSAPP).covers(ChannelKey(WHATSAPP, WHATSAPP_CHATS)) shouldBe true
-        Target.App(WHATSAPP).covers(ChannelKey(SLACK, WHATSAPP_CHATS)) shouldBe false
+    fun `an app target covers all of its channels, conversations included`() {
+        val app = Target.App(WHATSAPP)
+        val shared = ChannelKey(WHATSAPP, WHATSAPP_CHATS)
+
+        app.covers(shared, ChannelKind.Shared) shouldBe true
+        app.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND) shouldBe true
+        app.covers(ChannelKey(SLACK, WHATSAPP_CHATS), ChannelKind.Shared) shouldBe false
     }
 
     @Test
     fun `a gmail inbox target covers only that account's channels`() {
         val inbox = Target.GmailInbox(WORK_ADDRESS)
 
-        inbox.covers(ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@work.example"))) shouldBe true
-        inbox.covers(ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@home.example"))) shouldBe false
-        inbox.covers(ChannelKey(SLACK, ChannelId("^nc_1_mail_dan@work.example"))) shouldBe false
+        inbox.covers(
+            ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@work.example")),
+            ChannelKind.Shared,
+        ) shouldBe
+            true
+        inbox.covers(
+            ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@home.example")),
+            ChannelKind.Shared,
+        ) shouldBe
+            false
+        inbox.covers(ChannelKey(SLACK, ChannelId("^nc_1_mail_dan@work.example")), ChannelKind.Shared) shouldBe false
     }
 
     @Test
-    fun `a chat target never covers its app's shared channel`() {
-        COLLEAGUE_CHAT.covers(ChannelKey(WHATSAPP, WHATSAPP_CHATS)) shouldBe false
+    fun `a chat target covers only its own conversation's channel under its parent`() {
+        COLLEAGUE_CHAT.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND) shouldBe true
+        COLLEAGUE_CHAT.covers(ChannelKey(WHATSAPP, WHATSAPP_CHATS), ChannelKind.Shared) shouldBe false
+        COLLEAGUE_CHAT.covers(COLLEAGUE_CHANNEL, ChannelKind.ConversationOf(WHATSAPP_CHATS, FRIEND)) shouldBe false
+        COLLEAGUE_CHAT.covers(
+            COLLEAGUE_CHANNEL,
+            ChannelKind.ConversationOf(ChannelId("individual_chat_defaults_3"), COLLEAGUE),
+        ) shouldBe
+            false
+        COLLEAGUE_CHAT.covers(ChannelKey(SLACK, ChannelId("c1")), COLLEAGUE_KIND) shouldBe false
     }
 
     @Test

@@ -16,6 +16,7 @@ import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.schedule
+import dev.danielgilchrist.knockoff.domain.sharedChannels
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
 import dev.danielgilchrist.knockoff.domain.window
@@ -85,7 +86,7 @@ class ZoneEvaluationTest {
     @Test
     fun `channels are planned in each rule's zone`() {
         val messages = ChannelKey(SLACK, ChannelId("messages"))
-        val read = mapOf(messages to Importance.Default)
+        val read = sharedChannels(messages to Importance.Default)
 
         ruleSet(
             tokyoAfternoonHold,

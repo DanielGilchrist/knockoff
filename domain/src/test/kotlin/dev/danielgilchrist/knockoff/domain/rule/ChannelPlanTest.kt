@@ -1,6 +1,8 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHANNEL
 import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE_KIND
 import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
@@ -10,8 +12,10 @@ import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.channel.AlertingImportance
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.ChannelPlan
 import dev.danielgilchrist.knockoff.domain.channel.Importance
+import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
@@ -19,6 +23,7 @@ import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.schedule
+import dev.danielgilchrist.knockoff.domain.sharedChannels
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.window
 import org.junit.jupiter.api.Test
@@ -52,12 +57,52 @@ class ChannelPlanTest {
     }
 
     @Test
-    fun `a chat-only rule leaves its app's shared channel alerting while it holds`() {
+    fun `a held chat's own channel is silenced while the shared channel keeps alerting`() {
         val chatOnly = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
         val shared = ChannelKey(WHATSAPP, WHATSAPP_CHATS)
+        val read =
+            mapOf(
+                shared to ReadChannel(Importance.High, ChannelKind.Shared),
+                COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND),
+            )
 
-        chatOnly.planChannels(mapOf(shared to Importance.High), SilencedChannels.NONE, evening) shouldBe
-            nothing(SilencedChannels.NONE)
+        chatOnly.planChannels(read, SilencedChannels.NONE, evening) shouldBe
+            ChannelPlan(
+                silence = listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.High, Importance.Low)),
+                restore = emptyList(),
+                silenced = saved(COLLEAGUE_CHANNEL to AlertingImportance.High),
+            )
+    }
+
+    @Test
+    fun `an app rule holds its chats' own channels too`() {
+        val app = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(Target.App(WHATSAPP))))
+        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND))
+
+        app.planChannels(read, SilencedChannels.NONE, evening).silence shouldBe
+            listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.High, Importance.Low))
+    }
+
+    @Test
+    fun `a chat's own channel is restored once its rule permits`() {
+        val chatOnly = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
+        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.Low, COLLEAGUE_KIND))
+
+        chatOnly.planChannels(read, saved(COLLEAGUE_CHANNEL to AlertingImportance.High), morning) shouldBe
+            ChannelPlan(
+                silence = emptyList(),
+                restore = listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.Low, Importance.High)),
+                silenced = saved(COLLEAGUE_CHANNEL to AlertingImportance.High),
+            )
+    }
+
+    @Test
+    fun `a chat in a disabled rule leaves its own channel alone`() {
+        val disabled =
+            ruleSet(rule("Off", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT), RuleState.Disabled))
+        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND))
+
+        disabled.planChannels(read, SilencedChannels.NONE, evening) shouldBe nothing(SilencedChannels.NONE)
     }
 
     @Test
@@ -123,7 +168,7 @@ class ChannelPlanTest {
 
     @Test
     fun `only the targeted account's Gmail channel is silenced`() {
-        val gmail = mapOf(workMail to Importance.Default, personalMail to Importance.Default)
+        val gmail = sharedChannels(workMail to Importance.Default, personalMail to Importance.Default)
 
         work.planChannels(gmail, SilencedChannels.NONE, evening) shouldBe
             ChannelPlan(
@@ -136,7 +181,7 @@ class ChannelPlanTest {
     @Test
     fun `channels no rule targets are left alone`() {
         work.planChannels(
-            mapOf(chats to Importance.High),
+            sharedChannels(chats to Importance.High),
             SilencedChannels.NONE,
             evening,
         ) shouldBe
@@ -187,7 +232,7 @@ class ChannelPlanTest {
     private fun slack(
         messagesImportance: Importance,
         callsImportance: Importance,
-    ): Map<ChannelKey, Importance> = mapOf(messages to messagesImportance, calls to callsImportance)
+    ): Map<ChannelKey, ReadChannel> = sharedChannels(messages to messagesImportance, calls to callsImportance)
 
     private fun saved(vararg originals: Pair<ChannelKey, AlertingImportance>): SilencedChannels =
         SilencedChannels.of(originals.toMap())

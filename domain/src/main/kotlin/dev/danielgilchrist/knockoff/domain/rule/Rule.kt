@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
+import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.schedule.Coverage
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
@@ -29,9 +30,10 @@ data class Rule(
 
     fun verdictFor(
         channel: ChannelKey,
+        kind: ChannelKind,
         at: ZonedDateTime,
         zones: ZoneContext,
-    ): RuleVerdict = verdictWhere(at, zones) { it.covers(channel) }
+    ): RuleVerdict = verdictWhere(at, zones) { it.covers(channel, kind) }
 
     private fun verdictWhere(
         at: ZonedDateTime,

@@ -30,13 +30,15 @@ data class SilencedChannels private constructor(
 
     val packages: Set<PackageName> get() = originals.keys.map { it.packageName }.toSet()
 
+    fun saves(key: ChannelKey): Boolean = key in originals
+
     fun toJson(): String = VersionedJson.json.encodeToString(StoredSilencedChannels.from(originals))
 
     internal fun plan(
-        read: Map<ChannelKey, Importance>,
-        stateOf: (ChannelKey) -> ChannelState,
+        read: Map<ChannelKey, ReadChannel>,
+        stateOf: (ChannelKey, ReadChannel) -> ChannelState,
     ): ChannelPlan {
-        val outcomes = read.map { (key, current) -> key to outcome(key, current, stateOf(key)) }
+        val outcomes = read.map { (key, channel) -> key to outcome(key, channel.importance, stateOf(key, channel)) }
 
         return ChannelPlan(
             silence = outcomes.flatMap { (_, outcome) -> silencing(outcome) },
