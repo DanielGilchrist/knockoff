@@ -24,7 +24,7 @@ data class RuleDraft(
     val apps: Set<PackageName>,
     val gmailAccounts: Set<AccountAddress>,
     val chats: Map<ChatKey, Target.Chat>,
-    val patterns: Set<Target.Pattern>,
+    val patterns: List<PatternDraft>,
     val pendingGmail: String,
     val zone: RuleZone,
 ) {
@@ -39,7 +39,7 @@ data class RuleDraft(
                 apps = emptySet(),
                 gmailAccounts = emptySet(),
                 chats = emptyMap(),
-                patterns = emptySet(),
+                patterns = emptyList(),
                 pendingGmail = "",
                 zone = RuleZone.Default,
             )
@@ -80,9 +80,9 @@ data class RuleDraft(
                         .flatMap { target ->
                             when (target) {
                                 is Target.App, is Target.GmailInbox, is Target.Chat -> emptyList()
-                                is Target.Pattern -> listOf(target)
+                                is Target.Pattern -> listOf(PatternDraft.from(target))
                             }
-                        }.toSet(),
+                        },
                 pendingGmail = "",
                 zone = rule.zone,
             )
@@ -91,16 +91,7 @@ data class RuleDraft(
     fun parse(): Checked<Rule> =
         ruleName()
             .and(schedule()) { ruleName, schedule -> ruleName to schedule }
-            .and(allGmailAccounts()) { (ruleName, schedule), accounts ->
-                Rule(
-                    ruleName,
-                    state,
-                    policy,
-                    schedule,
-                    apps.map(Target::App).toSet() + accounts.map(Target::GmailInbox) + chats.values + patterns,
-                    zone,
-                )
-            }
+            .and(targets()) { (ruleName, schedule), targets -> Rule(ruleName, state, policy, schedule, targets, zone) }
 
     fun withBreakAdded(): RuleDraft {
         val days = windows.flatMap { it.days }.toSet()
@@ -152,6 +143,17 @@ data class RuleDraft(
         index: Int,
         window: WindowDraft,
     ): Checked<Window> = window.parse(DraftProblem.HoursWithoutDays(index + 1))
+
+    private fun targets(): Checked<Set<Target>> =
+        allGmailAccounts().and(parsedPatterns()) { accounts, parsed ->
+            apps.map(Target::App).toSet() + accounts.map(Target::GmailInbox) + chats.values + parsed
+        }
+
+    private fun parsedPatterns(): Checked<List<Target.Pattern>> =
+        patterns
+            .mapIndexed { index, draft ->
+                draft.parse(index + 1)
+            }.all()
 
     private fun allGmailAccounts(): Checked<Set<AccountAddress>> =
         when {

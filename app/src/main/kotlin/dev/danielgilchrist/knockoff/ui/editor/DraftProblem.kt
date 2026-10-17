@@ -23,6 +23,15 @@ sealed interface DraftProblem {
         val number: Int,
     ) : MissingDays
 
+    data class BlankPattern(
+        val number: Int,
+    ) : DraftProblem
+
+    data class InvalidPattern(
+        val number: Int,
+        val detail: String,
+    ) : DraftProblem
+
     data class UnaddedAccount(
         val detail: String,
     ) : DraftProblem

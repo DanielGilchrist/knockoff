@@ -62,6 +62,13 @@ internal fun RuleEditorScreen(
             )
         }
         item { GmailAccountsEditor(draft = draft, onDraftChange = change) }
+        item {
+            PatternsEditor(
+                choices = choices,
+                patterns = draft.patterns,
+                onPatternsChange = { change(draft.copy(patterns = it)) },
+            )
+        }
         item { Problems(problems = editing.problems) }
         item { EditorButtons(target = editing.target, actions = actions) }
     }

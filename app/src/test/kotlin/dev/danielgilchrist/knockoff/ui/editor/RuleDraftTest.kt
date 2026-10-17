@@ -3,6 +3,7 @@ package dev.danielgilchrist.knockoff.ui.editor
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
+import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
@@ -12,6 +13,8 @@ import dev.danielgilchrist.knockoff.domain.rule.TextPattern
 import dev.danielgilchrist.knockoff.domain.rule.TextPatternParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.ui.describe
+import dev.danielgilchrist.knockoff.ui.describeCoverage
+import dev.danielgilchrist.knockoff.ui.describeTargets
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.fail
@@ -48,6 +51,7 @@ class RuleDraftTest {
                     listOf(
                         COLLEAGUE_CHAT,
                     ).associateBy { it.key },
+                patterns = listOf(PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, "^Work")),
                 breaks = listOf(lateBreak()),
             )
 
@@ -58,15 +62,112 @@ class RuleDraftTest {
 
     @Test
     fun `a rule's patterns survive editing`() {
-        val pattern =
-            Target.ChatNamePattern(
-                PackageName("com.whatsapp"),
-                assertInstanceOf(TextPatternParse.Valid::class.java, TextPattern.parse("^Work")).pattern,
+        val patterns =
+            listOf(
+                PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, "^Work"),
+                PatternDraft(PackageName("com.google.android.gm"), PatternField.ChannelId, "_dan@work\\.example$"),
             )
-        val rule = valid(RuleDraft.NEW.copy(name = "x", patterns = setOf(pattern)))
+        val rule = valid(RuleDraft.NEW.copy(name = "x", patterns = patterns))
 
+        assertEquals(patterns.toSet(), RuleDraft.from(rule).patterns.toSet())
         assertEquals(rule, valid(RuleDraft.from(rule)))
-        assertEquals(setOf(pattern), RuleDraft.from(rule).patterns)
+    }
+
+    @Test
+    fun `blank and invalid patterns are reported with their number`() {
+        val draft =
+            RuleDraft.NEW.copy(
+                name = "x",
+                patterns =
+                    listOf(
+                        PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, " "),
+                        PatternDraft(PackageName("com.whatsapp"), PatternField.ChannelId, "(Work"),
+                    ),
+            )
+
+        assertEquals(
+            Checked.Problems(listOf(DraftProblem.BlankPattern(1), DraftProblem.InvalidPattern(2, invalidDetail()))),
+            draft.parse(),
+        )
+    }
+
+    @Test
+    fun `a pattern previews whether it is empty, invalid or valid`() {
+        val app = PackageName("com.whatsapp")
+
+        assertEquals(PatternPreview.Empty, PatternDraft(app, PatternField.ChatName, " ").preview())
+        assertEquals(
+            PatternPreview.Invalid(invalidDetail()),
+            PatternDraft(app, PatternField.ChatName, "(Work").preview(),
+        )
+        assertEquals(
+            PatternPreview.Valid(
+                Target.ChannelPattern(
+                    app,
+                    assertInstanceOf(TextPatternParse.Valid::class.java, TextPattern.parse("^chats")).pattern,
+                ),
+            ),
+            PatternDraft(app, PatternField.ChannelId, "^chats").preview(),
+        )
+    }
+
+    @Test
+    fun `pattern problems are reported with name and account problems`() {
+        val draft =
+            RuleDraft.NEW.copy(
+                name = " ",
+                pendingGmail = "dan",
+                patterns = listOf(PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, " ")),
+            )
+
+        assertEquals(
+            Checked.Problems(
+                listOf(
+                    DraftProblem.BlankName,
+                    DraftProblem.UnaddedAccount("Not an email address: \"dan\""),
+                    DraftProblem.BlankPattern(1),
+                ),
+            ),
+            draft.parse(),
+        )
+    }
+
+    @Test
+    fun `the same pattern twice becomes one target`() {
+        val pattern = PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, "^Work")
+        val rule = valid(RuleDraft.NEW.copy(name = "x", patterns = listOf(pattern, pattern)))
+
+        assertEquals(listOf(pattern), RuleDraft.from(rule).patterns)
+    }
+
+    @Test
+    fun `coverage lists up to five seen chats and counts the rest`() {
+        val five = listOf("A", "B", "C", "D", "E")
+
+        assertEquals("Covers no chats seen so far.", describeCoverage(emptyList()))
+        assertEquals("Seen chats it covers now: A, B, C, D, E", describeCoverage(five))
+        assertEquals("Seen chats it covers now: A, B, C, D, E and 1 more", describeCoverage(five + "F"))
+    }
+
+    @Test
+    fun `pattern problems and targets are described`() {
+        assertEquals("Pattern 1 is empty.", DraftProblem.BlankPattern(1).describe())
+        assertEquals(
+            "Pattern 2 isn't a valid regular expression: Unclosed group",
+            DraftProblem.InvalidPattern(2, "Unclosed group").describe(),
+        )
+        assertEquals(
+            "Nothing chosen yet, so this rule does nothing",
+            valid(RuleDraft.NEW.copy(name = "x")).describeTargets(),
+        )
+        assertEquals(
+            "1 app, account, chat or pattern",
+            valid(RuleDraft.NEW.copy(name = "x", apps = setOf(PackageName("a")))).describeTargets(),
+        )
+        assertEquals(
+            "2 apps, accounts, chats or patterns",
+            valid(RuleDraft.NEW.copy(name = "x", apps = setOf(PackageName("a"), PackageName("b")))).describeTargets(),
+        )
     }
 
     @Test
@@ -250,4 +351,7 @@ class RuleDraftTest {
 
     private fun lateBreak(): BreakDraft =
         BreakDraft("Late", WindowDraft(setOf(DayOfWeek.SUNDAY), LocalTime.of(21, 0), LocalTime.of(23, 30)))
+
+    private fun invalidDetail(): String =
+        assertInstanceOf(TextPatternParse.Invalid::class.java, TextPattern.parse("(Work")).detail
 }

@@ -33,9 +33,9 @@ internal fun Break.describe(): String = "Except ${name.value}: ${window.describe
 
 internal fun Rule.describeTargets(): String =
     when (targets.size) {
-        0 -> "No apps, accounts or chats yet, so this rule does nothing"
-        1 -> "1 app, account or chat"
-        else -> "${targets.size} apps, accounts or chats"
+        0 -> "Nothing chosen yet, so this rule does nothing"
+        1 -> "1 app, account, chat or pattern"
+        else -> "${targets.size} apps, accounts, chats or patterns"
     }
 
 internal fun DayOfWeek.shortName(): String = getDisplayName(TextStyle.SHORT, Locale.UK)
@@ -49,6 +49,24 @@ internal fun DraftProblem.describe(): String =
         is DraftProblem.HoursWithoutDays -> "Hours $number need at least one day."
         is DraftProblem.BlankBreakName -> "Give break $number a name."
         is DraftProblem.BreakWithoutDays -> "Break $number needs at least one day."
+        is DraftProblem.BlankPattern -> "Pattern $number is empty."
+        is DraftProblem.InvalidPattern -> "Pattern $number isn't a valid regular expression: $detail"
         is DraftProblem.UnaddedAccount -> "The Gmail account being typed isn't valid: $detail"
         is DraftProblem.NotSaved -> "Couldn't save: $detail"
     }
+
+private const val COVERAGE_LIMIT = 5
+
+internal fun describeCoverage(names: List<String>): String {
+    val shown = names.take(COVERAGE_LIMIT).joinToString()
+    val more =
+        when {
+            names.size > COVERAGE_LIMIT -> " and ${names.size - COVERAGE_LIMIT} more"
+            else -> ""
+        }
+
+    return when {
+        names.isEmpty() -> "Covers no chats seen so far."
+        else -> "Seen chats it covers now: $shown$more"
+    }
+}
