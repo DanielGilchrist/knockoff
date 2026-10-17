@@ -6,7 +6,10 @@ import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import dev.danielgilchrist.knockoff.ui.editor.Checked
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
+import dev.danielgilchrist.knockoff.ui.editor.GoalChoice
 import dev.danielgilchrist.knockoff.ui.editor.RuleDraft
+import dev.danielgilchrist.knockoff.ui.editor.WizardGoal
+import dev.danielgilchrist.knockoff.ui.editor.WizardStep
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -31,13 +34,78 @@ class SettingsEditorTest {
         }
 
     @Test
-    fun `editing a new rule starts from the new draft`() =
+    fun `a new rule starts in the wizard from the new draft`() =
         runTest {
             val editor = editor()
 
             editor.startEditing(EditTarget.New)
 
-            assertEquals(Editing.Open(EditTarget.New, RuleDraft.NEW, emptyList()), editor.editing.value)
+            assertEquals(
+                Editing.Guided(RuleDraft.NEW, emptyList(), WizardStep.Goal, GoalChoice.Unchosen),
+                editor.editing.value,
+            )
+        }
+
+    @Test
+    fun `the wizard hands over to the full editor keeping the draft`() =
+        runTest {
+            val editor = editor()
+            editor.startEditing(EditTarget.New)
+            editor.guide { it.toStep(WizardStep.When) }
+            editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
+
+            editor.guide { it.inFullEditor() }
+
+            assertEquals(
+                Editing.Open(EditTarget.New, RuleDraft.NEW.copy(name = "Evenings"), emptyList()),
+                editor.editing.value,
+            )
+        }
+
+    @Test
+    fun `guiding does nothing outside the wizard`() =
+        runTest {
+            val editor = editor()
+            editor.guide { it.toStep(WizardStep.Review) }
+            assertEquals(Editing.Closed, editor.editing.value)
+
+            editor.startEditing(EditTarget.Existing(work))
+            editor.guide { it.toStep(WizardStep.Review) }
+            assertEquals(
+                Editing.Open(EditTarget.Existing(work), RuleDraft.from(work), emptyList()),
+                editor.editing.value,
+            )
+        }
+
+    @Test
+    fun `problems creating from the wizard keep it on its step`() =
+        runTest {
+            val editor = editor()
+            editor.startEditing(EditTarget.New)
+            editor.guide { it.toStep(WizardStep.Review) }
+
+            editor.saveDraft()
+
+            val guided = assertInstanceOf(Editing.Guided::class.java, editor.editing.value)
+            assertEquals(WizardStep.Review, guided.step)
+            assertEquals(listOf(DraftProblem.BlankName), guided.stepProblems())
+        }
+
+    @Test
+    fun `a duplicate name from the wizard is shown once on its review step`() =
+        runTest {
+            val editor = editor()
+            editor.settings.first { it is SettingsState.Ready }
+            editor.startEditing(EditTarget.New)
+            editor.guide { it.choosing(WizardGoal.WorkHours).toStep(WizardStep.Review) }
+
+            editor.saveDraft()
+
+            val guided = editor.editing.first { it is Editing.Guided && it.problems.isNotEmpty() }
+            assertEquals(
+                listOf(DraftProblem.DuplicateName),
+                assertInstanceOf(Editing.Guided::class.java, guided).stepProblems(),
+            )
         }
 
     @Test
@@ -106,10 +174,10 @@ class SettingsEditorTest {
             editor.updateDraft(RuleDraft.NEW.copy(name = "Work"))
             editor.saveDraft()
 
-            val problems = editor.editing.first { it is Editing.Open && it.problems.isNotEmpty() }
+            val problems = editor.editing.first { it is Editing.Active && it.problems.isNotEmpty() }
             assertEquals(
                 listOf(DraftProblem.DuplicateName),
-                assertInstanceOf(Editing.Open::class.java, problems).problems,
+                assertInstanceOf(Editing.Active::class.java, problems).problems,
             )
         }
 
@@ -125,9 +193,9 @@ class SettingsEditorTest {
 
             val open =
                 assertInstanceOf(
-                    Editing.Open::class.java,
+                    Editing.Active::class.java,
                     editor.editing.first {
-                        it is Editing.Open &&
+                        it is Editing.Active &&
                             it.problems.isNotEmpty()
                     },
                 )
@@ -228,9 +296,9 @@ class SettingsEditorTest {
 
             val open =
                 assertInstanceOf(
-                    Editing.Open::class.java,
+                    Editing.Active::class.java,
                     editor.editing.first {
-                        it is Editing.Open &&
+                        it is Editing.Active &&
                             it.problems.isNotEmpty()
                     },
                 )
@@ -286,8 +354,8 @@ class SettingsEditorTest {
 
     private suspend fun SettingsEditor.readySettings(): SettingsState = settings.first { it is SettingsState.Ready }
 
-    private fun openEditing(editor: SettingsEditor): Editing.Open =
-        assertInstanceOf(Editing.Open::class.java, editor.editing.value)
+    private fun openEditing(editor: SettingsEditor): Editing.Active =
+        assertInstanceOf(Editing.Active::class.java, editor.editing.value)
 
     private fun assertValid(draft: RuleDraft): Rule =
         when (val checked = draft.parse()) {

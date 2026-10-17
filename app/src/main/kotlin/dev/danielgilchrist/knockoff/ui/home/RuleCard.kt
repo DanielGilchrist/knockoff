@@ -14,8 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
-import dev.danielgilchrist.knockoff.ui.describe
-import dev.danielgilchrist.knockoff.ui.describeTargets
+import dev.danielgilchrist.knockoff.ui.editor.RuleSummary
 
 @Composable
 internal fun RuleCard(
@@ -28,10 +27,7 @@ internal fun RuleCard(
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = rule.name.value, style = MaterialTheme.typography.titleMedium)
-                Text(text = rule.policy.describe())
-                rule.schedule.windows.forEach { Text(text = it.describe(), style = MaterialTheme.typography.bodySmall) }
-                rule.schedule.breaks.forEach { Text(text = it.describe(), style = MaterialTheme.typography.bodySmall) }
-                Text(text = rule.describeTargets(), style = MaterialTheme.typography.bodySmall)
+                RuleSummary(rule = rule)
             }
             RuleStateSwitch(state = rule.state, onStateChange = onStateChange)
         }

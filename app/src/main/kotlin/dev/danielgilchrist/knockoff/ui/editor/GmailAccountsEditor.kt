@@ -39,7 +39,7 @@ internal fun GmailAccountsEditor(
                 supportingText = {
                     when (pending) {
                         is AccountAddressParse.Valid -> {
-                            Text(text = "Press Add, or just save")
+                            Text(text = "Press Add, or it's added when you carry on")
                         }
 
                         is AccountAddressParse.Invalid -> {

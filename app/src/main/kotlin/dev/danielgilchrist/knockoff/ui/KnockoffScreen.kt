@@ -13,6 +13,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.danielgilchrist.knockoff.ui.editor.RuleEditorActions
 import dev.danielgilchrist.knockoff.ui.editor.RuleEditorScreen
+import dev.danielgilchrist.knockoff.ui.editor.RuleWizardScreen
+import dev.danielgilchrist.knockoff.ui.editor.WizardActions
 import dev.danielgilchrist.knockoff.ui.home.HomeActions
 import dev.danielgilchrist.knockoff.ui.home.HomeScreen
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesActions
@@ -84,7 +86,7 @@ fun KnockoffScreen(
                 }
             }
 
-            is Editing.Open -> {
+            is Editing.Active -> {
                 RuleEditor(editing = current, choices = choices, editor = editor, modifier = Modifier.padding(padding))
             }
         }
@@ -93,21 +95,40 @@ fun KnockoffScreen(
 
 @Composable
 private fun RuleEditor(
-    editing: Editing.Open,
+    editing: Editing.Active,
     choices: TargetChoices,
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
 ) {
-    RuleEditorScreen(
-        editing = editing,
-        choices = choices,
-        actions =
-            RuleEditorActions(
-                onDraftChange = editor::updateDraft,
-                onSave = editor::saveDraft,
-                onCancel = editor::closeEditor,
-                onDelete = { target -> editor.deleteRule(target.rule.name) },
-            ),
-        modifier = modifier,
-    )
+    when (editing) {
+        is Editing.Open -> {
+            RuleEditorScreen(
+                editing = editing,
+                choices = choices,
+                actions =
+                    RuleEditorActions(
+                        onDraftChange = editor::updateDraft,
+                        onSave = editor::saveDraft,
+                        onCancel = editor::closeEditor,
+                        onDelete = { target -> editor.deleteRule(target.rule.name) },
+                    ),
+                modifier = modifier,
+            )
+        }
+
+        is Editing.Guided -> {
+            RuleWizardScreen(
+                guided = editing,
+                choices = choices,
+                actions =
+                    WizardActions(
+                        onDraftChange = editor::updateDraft,
+                        onGuide = editor::guide,
+                        onCreate = editor::saveDraft,
+                        onCancel = editor::closeEditor,
+                    ),
+                modifier = modifier,
+            )
+        }
+    }
 }

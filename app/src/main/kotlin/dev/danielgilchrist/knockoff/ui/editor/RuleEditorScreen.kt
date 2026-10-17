@@ -8,9 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -69,7 +67,7 @@ internal fun RuleEditorScreen(
                 onPatternsChange = { change(draft.copy(patterns = it)) },
             )
         }
-        item { Problems(problems = editing.problems) }
+        item { DraftProblems(problems = editing.problems) }
         item { EditorButtons(target = editing.target, actions = actions) }
     }
 }
@@ -80,13 +78,7 @@ private fun NameAndState(
     onDraftChange: (RuleDraft) -> Unit,
 ) {
     Column {
-        OutlinedTextField(
-            value = draft.name,
-            onValueChange = { onDraftChange(draft.copy(name = it)) },
-            label = { Text(text = "Name") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-        )
+        RuleNameField(draft = draft, onDraftChange = onDraftChange)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(text = "Enabled", modifier = Modifier.weight(1f))
             RuleStateSwitch(state = draft.state, onStateChange = { onDraftChange(draft.copy(state = it)) })
@@ -103,13 +95,6 @@ private fun PolicyChoice(
         Policy.entries.forEach { option ->
             RadioRow(text = option.describe(), selected = policy == option, onClick = { onPolicyChange(option) })
         }
-    }
-}
-
-@Composable
-private fun Problems(problems: List<DraftProblem>) {
-    Column {
-        problems.forEach { Text(text = it.describe(), color = MaterialTheme.colorScheme.error) }
     }
 }
 
