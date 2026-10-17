@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -25,8 +24,6 @@ import dev.danielgilchrist.knockoff.ui.RadioRow
 import dev.danielgilchrist.knockoff.ui.TargetChoices
 import dev.danielgilchrist.knockoff.ui.describe
 import dev.danielgilchrist.knockoff.ui.home.RuleStateSwitch
-import dev.danielgilchrist.knockoff.ui.removedAt
-import dev.danielgilchrist.knockoff.ui.replacedAt
 
 @Composable
 internal fun RuleEditorScreen(
@@ -46,19 +43,8 @@ internal fun RuleEditorScreen(
     ) {
         item { NameAndState(draft = draft, onDraftChange = change) }
         item { PolicyChoice(policy = draft.policy, onPolicyChange = { change(draft.copy(policy = it)) }) }
-        itemsIndexed(draft.windows) { index, window ->
-            WindowEditor(
-                number = index + 1,
-                window = window,
-                onWindowChange = { change(draft.copy(windows = draft.windows.replacedAt(index, it))) },
-                onRemove = { change(draft.copy(windows = draft.windows.removedAt(index))) },
-            )
-        }
-        item {
-            OutlinedButton(onClick = { change(draft.copy(windows = draft.windows + WindowDraft.WORKING_HOURS)) }) {
-                Text(text = "Add hours")
-            }
-        }
+        hoursItems(draft = draft, onDraftChange = change)
+        breakItems(draft = draft, onDraftChange = change)
         item { ZoneEditor(zone = draft.zone, onZoneChange = { change(draft.copy(zone = it)) }) }
         item {
             AppsEditor(

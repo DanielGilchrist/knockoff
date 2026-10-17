@@ -1,6 +1,8 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
+import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
+import dev.danielgilchrist.knockoff.domain.schedule.WeekDaysParse
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.ui.toggled
 import java.time.DayOfWeek
@@ -25,4 +27,10 @@ data class WindowDraft(
         }
 
     fun toggle(day: DayOfWeek): WindowDraft = copy(days = days.toggled(day))
+
+    fun parse(withoutDays: DraftProblem.MissingDays): Checked<Window> =
+        when (val parse = WeekDays.parse(days)) {
+            is WeekDaysParse.Valid -> Checked.Ok(Window(parse.days, DailyHours.between(start, end)))
+            WeekDaysParse.Empty -> Checked.Problems(listOf(withoutDays))
+        }
 }

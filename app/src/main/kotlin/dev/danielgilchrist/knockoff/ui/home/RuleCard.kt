@@ -30,6 +30,7 @@ internal fun RuleCard(
                 Text(text = rule.name.value, style = MaterialTheme.typography.titleMedium)
                 Text(text = rule.policy.describe())
                 rule.schedule.windows.forEach { Text(text = it.describe(), style = MaterialTheme.typography.bodySmall) }
+                rule.schedule.breaks.forEach { Text(text = it.describe(), style = MaterialTheme.typography.bodySmall) }
                 Text(text = rule.describeTargets(), style = MaterialTheme.typography.bodySmall)
             }
             RuleStateSwitch(state = rule.state, onStateChange = onStateChange)

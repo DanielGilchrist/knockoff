@@ -10,12 +10,8 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
-import dev.danielgilchrist.knockoff.domain.schedule.Break
-import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
-import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
-import dev.danielgilchrist.knockoff.domain.schedule.WeekDaysParse
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.domain.zone.RuleZone
 
@@ -24,7 +20,7 @@ data class RuleDraft(
     val state: RuleState,
     val policy: Policy,
     val windows: List<WindowDraft>,
-    val breaks: List<Break>,
+    val breaks: List<BreakDraft>,
     val apps: Set<PackageName>,
     val gmailAccounts: Set<AccountAddress>,
     val chats: Map<ChatKey, Target.Chat>,
@@ -52,7 +48,7 @@ data class RuleDraft(
                 state = rule.state,
                 policy = rule.policy,
                 windows = rule.schedule.windows.map(WindowDraft::from),
-                breaks = rule.schedule.breaks,
+                breaks = rule.schedule.breaks.map(BreakDraft::from),
                 apps =
                     rule.targets
                         .flatMap { target ->
@@ -96,6 +92,17 @@ data class RuleDraft(
                 )
             }
 
+    fun withBreakAdded(): RuleDraft {
+        val days = windows.flatMap { it.days }.toSet()
+        val added =
+            when {
+                days.isEmpty() -> BreakDraft.LUNCH
+                else -> BreakDraft.LUNCH.copy(window = BreakDraft.LUNCH.window.copy(days = days))
+            }
+
+        return copy(breaks = breaks + added)
+    }
+
     fun withPendingGmailAdded(): RuleDraft =
         when (val parse = AccountAddress.parse(pendingGmail)) {
             is AccountAddressParse.Valid -> copy(gmailAccounts = gmailAccounts + parse.address, pendingGmail = "")
@@ -108,39 +115,33 @@ data class RuleDraft(
             RuleNameParse.Blank -> Checked.Problems(listOf(DraftProblem.BlankName))
         }
 
-    private fun schedule(): Checked<Schedule> =
-        windows
-            .mapIndexed { index, draft ->
-                when (val parse = WeekDays.parse(draft.days)) {
-                    is WeekDaysParse.Valid -> Checked.Ok(Window(parse.days, DailyHours.between(draft.start, draft.end)))
-                    WeekDaysParse.Empty -> Checked.Problems(listOf(DraftProblem.HoursWithoutDays(index + 1)))
-                }
-            }.all()
-            .let { checked ->
-                when (checked) {
-                    is Checked.Problems -> {
-                        checked
-                    }
+    private fun schedule(): Checked<Schedule> {
+        val checkedWindows =
+            when {
+                windows.isEmpty() -> Checked.Problems(listOf(DraftProblem.NoHours))
+                else -> windows.mapIndexed(::hoursChecked).all()
+            }
+        val checkedBreaks = breaks.mapIndexed { index, draft -> draft.parse(index + 1) }.all()
 
-                    is Checked.Ok -> {
-                        when (val parse = Schedule.parse(checked.value, breaks)) {
-                            is ScheduleParse.Valid -> {
-                                Checked.Ok(parse.schedule)
-                            }
+        return when (val checked = checkedWindows.and(checkedBreaks, Schedule::parse)) {
+            is Checked.Problems -> {
+                checked
+            }
 
-                            ScheduleParse.Empty -> {
-                                Checked.Problems(listOf(DraftProblem.NoHours))
-                            }
-
-                            ScheduleParse.NothingLeftAfterBreaks -> {
-                                Checked.Problems(
-                                    listOf(DraftProblem.BreaksCoverAllHours),
-                                )
-                            }
-                        }
-                    }
+            is Checked.Ok -> {
+                when (val parse = checked.value) {
+                    is ScheduleParse.Valid -> Checked.Ok(parse.schedule)
+                    ScheduleParse.Empty -> Checked.Problems(listOf(DraftProblem.NoHours))
+                    ScheduleParse.NothingLeftAfterBreaks -> Checked.Problems(listOf(DraftProblem.BreaksCoverAllHours))
                 }
             }
+        }
+    }
+
+    private fun hoursChecked(
+        index: Int,
+        window: WindowDraft,
+    ): Checked<Window> = window.parse(DraftProblem.HoursWithoutDays(index + 1))
 
     private fun allGmailAccounts(): Checked<Set<AccountAddress>> =
         when {

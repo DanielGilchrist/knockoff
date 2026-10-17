@@ -9,9 +9,19 @@ sealed interface DraftProblem {
 
     data object BreaksCoverAllHours : DraftProblem
 
+    sealed interface MissingDays : DraftProblem
+
     data class HoursWithoutDays(
         val number: Int,
+    ) : MissingDays
+
+    data class BlankBreakName(
+        val number: Int,
     ) : DraftProblem
+
+    data class BreakWithoutDays(
+        val number: Int,
+    ) : MissingDays
 
     data class UnaddedAccount(
         val detail: String,

@@ -7,14 +7,8 @@ import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
-import dev.danielgilchrist.knockoff.domain.schedule.Break
-import dev.danielgilchrist.knockoff.domain.schedule.BreakName
-import dev.danielgilchrist.knockoff.domain.schedule.BreakNameParse
-import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
-import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
-import dev.danielgilchrist.knockoff.domain.schedule.WeekDaysParse
-import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.domain.settings.Settings
+import dev.danielgilchrist.knockoff.ui.describe
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.fail
@@ -86,6 +80,97 @@ class RuleDraftTest {
     }
 
     @Test
+    fun `a break without a name or days is reported with its number`() {
+        val draft =
+            RuleDraft.NEW.copy(
+                name = "x",
+                breaks = listOf(BreakDraft.LUNCH, BreakDraft(" ", BreakDraft.LUNCH.window.copy(days = emptySet()))),
+            )
+
+        assertEquals(
+            Checked.Problems(listOf(DraftProblem.BlankBreakName(2), DraftProblem.BreakWithoutDays(2))),
+            draft.parse(),
+        )
+    }
+
+    @Test
+    fun `hour and break problems are reported together`() {
+        val draft =
+            RuleDraft.NEW.copy(
+                name = "x",
+                windows = listOf(WindowDraft.WORKING_HOURS.copy(days = emptySet())),
+                breaks = listOf(BreakDraft.LUNCH.copy(window = BreakDraft.LUNCH.window.copy(days = emptySet()))),
+            )
+
+        assertEquals(
+            Checked.Problems(listOf(DraftProblem.HoursWithoutDays(1), DraftProblem.BreakWithoutDays(1))),
+            draft.parse(),
+        )
+    }
+
+    @Test
+    fun `a break is described on the rule card`() {
+        val rule = valid(RuleDraft.NEW.copy(name = "x", breaks = listOf(BreakDraft.LUNCH)))
+
+        assertEquals(
+            "Except Lunch: Mon, Tue, Wed, Thu, Fri 12:00–13:00",
+            rule.schedule.breaks
+                .single()
+                .describe(),
+        )
+    }
+
+    @Test
+    fun `an added break is a lunch on the days of the hours`() {
+        val weekends =
+            WindowDraft(setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY), LocalTime.of(10, 0), LocalTime.of(16, 0))
+        val mondays = WindowDraft(setOf(DayOfWeek.MONDAY), LocalTime.of(9, 0), LocalTime.of(17, 0))
+
+        val union = setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY, DayOfWeek.MONDAY)
+
+        assertEquals(
+            listOf(BreakDraft.LUNCH.copy(window = BreakDraft.LUNCH.window.copy(days = union))),
+            RuleDraft.NEW
+                .copy(windows = listOf(weekends, mondays))
+                .withBreakAdded()
+                .breaks,
+        )
+        assertEquals(
+            listOf(BreakDraft.LUNCH),
+            RuleDraft.NEW
+                .copy(windows = emptyList())
+                .withBreakAdded()
+                .breaks,
+        )
+    }
+
+    @Test
+    fun `missing hours are reported with break problems`() {
+        assertEquals(
+            Checked.Problems(listOf(DraftProblem.NoHours, DraftProblem.BlankBreakName(1))),
+            RuleDraft.NEW
+                .copy(
+                    name = "x",
+                    windows = emptyList(),
+                    breaks = listOf(BreakDraft.LUNCH.copy(name = " ")),
+                ).parse(),
+        )
+    }
+
+    @Test
+    fun `a full-day break survives a round trip`() {
+        val sunday = BreakDraft("Sunday", WindowDraft(setOf(DayOfWeek.SUNDAY), LocalTime.MIDNIGHT, LocalTime.MIDNIGHT))
+        val draft =
+            RuleDraft.NEW.copy(
+                name = "x",
+                windows = listOf(WindowDraft(DayOfWeek.entries.toSet(), LocalTime.of(8, 0), LocalTime.of(17, 0))),
+                breaks = listOf(sunday),
+            )
+
+        assertEquals(listOf(sunday), RuleDraft.from(valid(draft)).breaks)
+    }
+
+    @Test
     fun `a draft without hours is reported`() {
         assertEquals(
             Checked.Problems(listOf(DraftProblem.NoHours)),
@@ -147,12 +232,6 @@ class RuleDraftTest {
             is Checked.Problems -> fail("Unexpected problems ${checked.problems}")
         }
 
-    private fun lateBreak(): Break =
-        Break(
-            assertInstanceOf(BreakNameParse.Valid::class.java, BreakName.parse("Late")).name,
-            Window(
-                assertInstanceOf(WeekDaysParse.Valid::class.java, WeekDays.parse(setOf(DayOfWeek.SUNDAY))).days,
-                DailyHours.between(LocalTime.of(21, 0), LocalTime.of(23, 30)),
-            ),
-        )
+    private fun lateBreak(): BreakDraft =
+        BreakDraft("Late", WindowDraft(setOf(DayOfWeek.SUNDAY), LocalTime.of(21, 0), LocalTime.of(23, 30)))
 }

@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.schedule.Break
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
 import java.time.DayOfWeek
@@ -28,6 +29,8 @@ internal fun Window.describe(): String {
     return "$dayNames ${hours.start}–${hours.end}"
 }
 
+internal fun Break.describe(): String = "Except ${name.value}: ${window.describe()}"
+
 internal fun Rule.describeTargets(): String =
     when (targets.size) {
         0 -> "No apps, accounts or chats yet, so this rule does nothing"
@@ -44,6 +47,8 @@ internal fun DraftProblem.describe(): String =
         DraftProblem.NoHours -> "Add at least one set of hours."
         DraftProblem.BreaksCoverAllHours -> "The breaks cover all of the hours, so the rule would never apply."
         is DraftProblem.HoursWithoutDays -> "Hours $number need at least one day."
+        is DraftProblem.BlankBreakName -> "Give break $number a name."
+        is DraftProblem.BreakWithoutDays -> "Break $number needs at least one day."
         is DraftProblem.UnaddedAccount -> "The Gmail account being typed isn't valid: $detail"
         is DraftProblem.NotSaved -> "Couldn't save: $detail"
     }
