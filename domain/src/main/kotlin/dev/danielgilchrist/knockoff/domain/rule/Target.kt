@@ -24,6 +24,10 @@ sealed interface Target {
 
     fun expandsTo(chat: Chat): Boolean = false
 
+    fun holds(chat: Chat): Boolean =
+        covers(ChannelKey(chat.packageName, chat.channel), ChannelKind.ConversationOf(chat.channel, chat.id)) ||
+            expandsTo(chat)
+
     data class App(
         override val packageName: PackageName,
     ) : Target {
@@ -71,6 +75,8 @@ sealed interface Target {
             channel: ChannelKey,
             kind: ChannelKind,
         ): Boolean = channel.packageName == packageName && kind == ChannelKind.ConversationOf(this.channel, id)
+
+        override fun holds(chat: Chat): Boolean = chat.key == key
     }
 
     sealed interface Pattern : Target {

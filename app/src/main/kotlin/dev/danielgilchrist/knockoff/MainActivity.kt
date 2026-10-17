@@ -27,6 +27,7 @@ import dev.danielgilchrist.knockoff.listener.KnockoffListener
 import dev.danielgilchrist.knockoff.ui.Appearance
 import dev.danielgilchrist.knockoff.ui.KnockoffScreen
 import dev.danielgilchrist.knockoff.ui.MainViewModel
+import dev.danielgilchrist.knockoff.ui.SystemActions
 import dev.danielgilchrist.knockoff.ui.theme.KnockoffTheme
 import dev.danielgilchrist.knockoff.ui.theme.isDark
 
@@ -53,9 +54,7 @@ class MainActivity : ComponentActivity() {
                     KnockoffTheme(dark = dark) {
                         KnockoffScreen(
                             viewModel = viewModel,
-                            onOpenAccessSettings = ::openAccessSettings,
-                            onLinkDevice = ::linkDevice,
-                            onAllowExactAlarms = ::openExactAlarmSettings,
+                            system = SystemActions(::openAccessSettings, ::linkDevice, ::openExactAlarmSettings),
                         )
                     }
                 }

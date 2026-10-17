@@ -26,9 +26,7 @@ import dev.danielgilchrist.knockoff.ui.preferences.PreferencesScreen
 @Composable
 fun KnockoffScreen(
     viewModel: MainViewModel,
-    onOpenAccessSettings: () -> Unit,
-    onLinkDevice: () -> Unit,
-    onAllowExactAlarms: () -> Unit,
+    system: SystemActions,
     modifier: Modifier = Modifier,
 ) {
     val setup by viewModel.setup.collectAsStateWithLifecycle()
@@ -36,6 +34,7 @@ fun KnockoffScreen(
     val settings by editor.settings.collectAsStateWithLifecycle()
     val editing by editor.editing.collectAsStateWithLifecycle()
     val choices by viewModel.choices.collectAsStateWithLifecycle()
+    val newChats by viewModel.newChats.collectAsStateWithLifecycle()
     val saveStatus by editor.saveStatus.collectAsStateWithLifecycle()
     val preferencesStatus by viewModel.preferences.saveStatus.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
@@ -58,16 +57,13 @@ fun KnockoffScreen(
                             setup = setup,
                             settings = settings,
                             saveStatus = saveStatus,
+                            newChats = newChats,
+                            apps = choices.apps,
                             actions =
-                                HomeActions(
-                                    onOpenAccessSettings = onOpenAccessSettings,
+                                homeActions(
+                                    viewModel,
+                                    system,
                                     onOpenPreferences = { screen = Screen.Preferences },
-                                    onLinkDevice = onLinkDevice,
-                                    onAllowExactAlarms = onAllowExactAlarms,
-                                    onNewRule = { editor.startEditing(EditTarget.New) },
-                                    onEditRule = { rule -> editor.startEditing(EditTarget.Existing(rule)) },
-                                    onRuleStateChange = editor::setRuleState,
-                                    onResetToDefaults = editor::resetToDefaults,
                                 ),
                             modifier = Modifier.padding(padding),
                         )
@@ -137,3 +133,18 @@ private fun RuleEditor(
         }
     }
 }
+
+private fun homeActions(
+    viewModel: MainViewModel,
+    system: SystemActions,
+    onOpenPreferences: () -> Unit,
+): HomeActions =
+    HomeActions(
+        system = system,
+        onOpenPreferences = onOpenPreferences,
+        onNewRule = { viewModel.editor.startEditing(EditTarget.New) },
+        onEditRule = { rule -> viewModel.editor.startEditing(EditTarget.Existing(rule)) },
+        onRuleChange = viewModel.editor::changeRule,
+        onLetChatThrough = viewModel::letChatThrough,
+        onResetToDefaults = viewModel.editor::resetToDefaults,
+    )

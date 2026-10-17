@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.LONDON
 import dev.danielgilchrist.knockoff.domain.SLACK
@@ -8,6 +9,7 @@ import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.breakNamed
 import dev.danielgilchrist.knockoff.domain.london
+import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.shouldBe
@@ -191,5 +193,16 @@ class RuleTest {
         holding.verdictFor(SLACK_ORIGIN, london("2026-10-14T12:30"), local) shouldBe RuleVerdict.Permits
         holding.verdictFor(SLACK_ORIGIN, london("2026-10-14T11:00"), local) shouldBe
             RuleVerdict.Holds(Release.At(london("2026-10-14T12:00")))
+    }
+
+    @Test
+    fun `adding a chat replaces one with the same key and keeps other targets`() {
+        val app = Target.App(SLACK)
+        val renamed = COLLEAGUE_CHAT.copy(name = ConversationName("Renamed"))
+        val other = COLLEAGUE_CHAT.copy(packageName = SLACK)
+        val rule = rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(app, COLLEAGUE_CHAT))
+
+        rule.withChat(renamed).targets shouldBe setOf(app, renamed)
+        rule.withChat(other).targets shouldBe setOf(app, COLLEAGUE_CHAT, other)
     }
 }

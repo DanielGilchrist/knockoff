@@ -273,4 +273,52 @@ class SeenChatsTest {
         renamed.expand(rules).planChannels(read, silenced, evening).restore shouldBe
             listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.Low, Importance.High))
     }
+
+    @Test
+    fun `undecided chats are those in no rule and not let through, newest first`() {
+        val work = friend.copy(name = ConversationName("Work – Sydney"))
+        val other = friend.copy(id = ConversationId("3@lid"), name = ConversationName("Mum"))
+        val dad = friend.copy(id = ConversationId("4@lid"), name = ConversationName("Dad"))
+        val rules =
+            ruleSet(
+                rule(
+                    "Work",
+                    Policy.DeliverOnlyDuring,
+                    WORK_HOURS,
+                    setOf(COLLEAGUE_CHAT, Target.ChatNamePattern(WHATSAPP, textPattern("^Work"))),
+                ),
+            )
+        val seen =
+            SeenChats.NONE
+                .seen(COLLEAGUE_CHAT)
+                .seen(work)
+                .seen(other)
+                .seen(dad)
+        val decisions = ChatDecisions.NONE.lettingThrough(other.key)
+
+        seen.undecided(rules, decisions) shouldBe listOf(dad)
+        seen.undecided(rules, ChatDecisions.NONE) shouldBe listOf(dad, other)
+    }
+
+    @Test
+    fun `chats held by any target are not undecided`() {
+        val seen = SeenChats.NONE.seen(COLLEAGUE_CHAT)
+        val heldBy = { target: Target ->
+            seen.undecided(
+                ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(target), RuleState.Disabled)),
+                ChatDecisions.NONE,
+            )
+        }
+
+        heldBy(Target.App(WHATSAPP)) shouldBe emptyList()
+        heldBy(Target.ChannelPattern(WHATSAPP, textPattern("^individual"))) shouldBe emptyList()
+        heldBy(Target.ChannelPattern(WHATSAPP, textPattern("^group"))) shouldBe listOf(COLLEAGUE_CHAT)
+        heldBy(Target.App(SLACK)) shouldBe listOf(COLLEAGUE_CHAT)
+        heldBy(COLLEAGUE_CHAT.copy(packageName = SLACK)) shouldBe listOf(COLLEAGUE_CHAT)
+    }
+
+    @Test
+    fun `nothing seen means nothing undecided`() {
+        SeenChats.NONE.undecided(ruleSet(), ChatDecisions.NONE) shouldBe emptyList()
+    }
 }

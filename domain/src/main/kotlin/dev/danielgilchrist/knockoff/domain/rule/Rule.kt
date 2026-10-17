@@ -27,6 +27,10 @@ data class Rule(
                 }
             }
 
+    fun withChat(chat: Target.Chat): Rule = copy(targets = targets - chats.filter { it.key == chat.key }.toSet() + chat)
+
+    fun holds(chat: Target.Chat): Boolean = targets.any { it.holds(chat) }
+
     internal fun withSeenChats(seen: SeenChats): Rule {
         val latest = seen.chats.associateBy { it.key }
         val picked = chats

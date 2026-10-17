@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff
 
 import android.app.Application
 import dev.danielgilchrist.knockoff.channel.SilencedChannelsStore
+import dev.danielgilchrist.knockoff.chat.ChatDecisionsStore
 import dev.danielgilchrist.knockoff.chat.SeenChatsStore
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import kotlinx.coroutines.channels.BufferOverflow
@@ -21,6 +22,10 @@ class KnockoffApplication : Application() {
 
     val seenChatsStore: SeenChatsStore by lazy {
         SeenChatsStore(File(filesDir, "seen-chats.json"))
+    }
+
+    val chatDecisionsStore: ChatDecisionsStore by lazy {
+        ChatDecisionsStore(File(filesDir, "chat-decisions.json"))
     }
 
     private val mutableSilencingRequests =

@@ -1,7 +1,6 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
-import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import dev.danielgilchrist.knockoff.settings.SettingsSave
@@ -101,11 +100,11 @@ class SettingsEditor(
         }
     }
 
-    fun setRuleState(
+    fun changeRule(
         name: RuleName,
-        state: RuleState,
+        change: RuleChange,
     ) {
-        scope.launch { report(store.update { it.withRuleState(name, state) }) }
+        scope.launch { report(store.update { it.withRuleChanged(name, change) }) }
     }
 
     fun resetToDefaults() {

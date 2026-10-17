@@ -1,5 +1,7 @@
 package dev.danielgilchrist.knockoff.ui
 
+import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
@@ -62,8 +64,18 @@ class SettingsEditsTest {
 
         assertEquals(
             listOf(work.copy(state = RuleState.Disabled), evenings),
-            rulesOf(settings.withRuleState(work.name, RuleState.Disabled)),
+            rulesOf(settings.withRuleChanged(work.name, RuleChange.SetState(RuleState.Disabled))),
         )
+    }
+
+    @Test
+    fun `adding a chat already in a rule keeps one copy with the latest name`() {
+        val renamed = COLLEAGUE_CHAT.copy(name = ConversationName("Renamed"))
+        val held = valid(Settings.DEFAULT.withRuleChanged(work.name, RuleChange.AddChat(COLLEAGUE_CHAT)))
+
+        val again = Settings(held, Theme.System).withRuleChanged(work.name, RuleChange.AddChat(renamed))
+
+        assertEquals(listOf(renamed), rulesOf(again).single().chats)
     }
 
     private fun valid(parse: RuleSetParse): RuleSet = assertInstanceOf(RuleSetParse.Valid::class.java, parse).rules
@@ -81,6 +93,9 @@ class SettingsEditsTest {
 
         assertEquals(tokyo, valid(settings.withRule(EditTarget.New, evenings)).defaultZone)
         assertEquals(tokyo, valid(settings.withoutRule(work.name)).defaultZone)
-        assertEquals(tokyo, valid(settings.withRuleState(work.name, RuleState.Disabled)).defaultZone)
+        assertEquals(
+            tokyo,
+            valid(settings.withRuleChanged(work.name, RuleChange.SetState(RuleState.Disabled))).defaultZone,
+        )
     }
 }

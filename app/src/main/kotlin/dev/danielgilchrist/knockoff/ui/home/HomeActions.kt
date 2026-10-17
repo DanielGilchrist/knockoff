@@ -2,15 +2,16 @@ package dev.danielgilchrist.knockoff.ui.home
 
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
-import dev.danielgilchrist.knockoff.domain.rule.RuleState
+import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.ui.RuleChange
+import dev.danielgilchrist.knockoff.ui.SystemActions
 
 data class HomeActions(
-    val onOpenAccessSettings: () -> Unit,
+    val system: SystemActions,
     val onOpenPreferences: () -> Unit,
-    val onLinkDevice: () -> Unit,
-    val onAllowExactAlarms: () -> Unit,
     val onNewRule: () -> Unit,
     val onEditRule: (Rule) -> Unit,
-    val onRuleStateChange: (RuleName, RuleState) -> Unit,
+    val onRuleChange: (RuleName, RuleChange) -> Unit,
+    val onLetChatThrough: (Target.Chat) -> Unit,
     val onResetToDefaults: () -> Unit,
 )

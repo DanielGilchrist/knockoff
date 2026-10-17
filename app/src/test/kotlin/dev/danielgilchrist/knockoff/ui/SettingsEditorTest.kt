@@ -246,7 +246,7 @@ class SettingsEditorTest {
             editor.saveDraft()
             editor.editing.first { it == Editing.Closed }
 
-            editor.setRuleState(work.name, RuleState.Disabled)
+            editor.changeRule(work.name, RuleChange.SetState(RuleState.Disabled))
             val evenings = assertValid(RuleDraft.NEW.copy(name = "Evenings"))
             editor.startEditing(EditTarget.Existing(evenings))
             editor.deleteRule(evenings.name)
@@ -262,12 +262,12 @@ class SettingsEditorTest {
             settingsFile().setReadable(false)
             val editor = editor()
 
-            editor.setRuleState(work.name, RuleState.Disabled)
+            editor.changeRule(work.name, RuleChange.SetState(RuleState.Disabled))
 
             editor.saveStatus.first { it is SaveStatus.Failed }
 
             settingsFile().setReadable(true)
-            editor.setRuleState(work.name, RuleState.Disabled)
+            editor.changeRule(work.name, RuleChange.SetState(RuleState.Disabled))
 
             editor.saveStatus.first { it == SaveStatus.Idle }
         }
@@ -335,7 +335,7 @@ class SettingsEditorTest {
 
             editor.saveDraft()
             editor.startEditing(EditTarget.Existing(work))
-            editor.setRuleState(work.name, RuleState.Disabled)
+            editor.changeRule(work.name, RuleChange.SetState(RuleState.Disabled))
             editor.settings.first {
                 it is SettingsState.Ready &&
                     it.settings.rules.rules

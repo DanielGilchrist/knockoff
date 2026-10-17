@@ -31,5 +31,14 @@ data class SeenChats private constructor(
 
     fun expand(rules: RuleSet): RuleSet = RuleSet.expanded(rules, this)
 
+    fun undecided(
+        rules: RuleSet,
+        decisions: ChatDecisions,
+    ): List<Target.Chat> =
+        chats.filter { chat ->
+            rules.rules.none { it.holds(chat) } &&
+                chat.key !in decisions.letThrough
+        }
+
     fun toJson(): String = VersionedJson.json.encodeToString(StoredSeenChats.from(this))
 }
