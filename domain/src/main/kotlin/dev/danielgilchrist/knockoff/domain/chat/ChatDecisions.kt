@@ -7,18 +7,25 @@ import dev.danielgilchrist.knockoff.domain.rule.ChatKey
 @ConsistentCopyVisibility
 data class ChatDecisions private constructor(
     val letThrough: Set<ChatKey>,
+    val asked: Set<ChatKey>,
 ) {
     companion object {
-        val NONE: ChatDecisions get() = ChatDecisions(emptySet())
+        val NONE: ChatDecisions get() = ChatDecisions(emptySet(), emptySet())
 
-        internal fun of(letThrough: Set<ChatKey>): ChatDecisions = ChatDecisions(letThrough)
+        internal fun of(
+            letThrough: Set<ChatKey>,
+            asked: Set<ChatKey>,
+        ): ChatDecisions = ChatDecisions(letThrough, asked)
 
         fun fromJson(text: String): ChatDecisionsDecode =
             when (
                 val decode =
-                    VersionedJson.decode(
+                    VersionedJson.decode<StoredChatDecisionsDocument>(
                         text,
-                        mapOf(StoredChatDecisions.CURRENT_VERSION to StoredChatDecisions.serializer()),
+                        mapOf(
+                            StoredChatDecisionsV1.VERSION to StoredChatDecisionsV1.serializer(),
+                            StoredChatDecisions.CURRENT_VERSION to StoredChatDecisions.serializer(),
+                        ),
                     )
             ) {
                 is VersionedDecode.Decoded -> ChatDecisionsDecode.Decoded(decode.value.toDecisions())
@@ -27,7 +34,9 @@ data class ChatDecisions private constructor(
             }
     }
 
-    fun lettingThrough(key: ChatKey): ChatDecisions = ChatDecisions(letThrough + key)
+    fun lettingThrough(key: ChatKey): ChatDecisions = copy(letThrough = letThrough + key)
+
+    fun askedAbout(keys: Set<ChatKey>): ChatDecisions = copy(asked = asked + keys)
 
     fun toJson(): String = VersionedJson.json.encodeToString(StoredChatDecisions.from(this))
 }

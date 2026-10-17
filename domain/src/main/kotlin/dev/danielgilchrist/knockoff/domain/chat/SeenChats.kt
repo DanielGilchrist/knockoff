@@ -40,5 +40,18 @@ data class SeenChats private constructor(
                 chat.key !in decisions.letThrough
         }
 
+    fun questions(
+        rules: RuleSet,
+        decisions: ChatDecisions,
+    ): List<ChatQuestion> =
+        undecided(rules, decisions).filter { it.key !in decisions.asked }.flatMap { chat ->
+            val asking = rules.rules.filter { it.asks(chat) }.map { it.name }
+
+            when {
+                asking.isEmpty() -> emptyList()
+                else -> listOf(ChatQuestion(chat, asking))
+            }
+        }
+
     fun toJson(): String = VersionedJson.json.encodeToString(StoredSeenChats.from(this))
 }

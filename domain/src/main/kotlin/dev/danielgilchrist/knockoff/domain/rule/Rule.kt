@@ -33,6 +33,8 @@ data class Rule(
 
     fun holds(chat: Target.Chat): Boolean = targets.any { it.holds(chat) }
 
+    fun asks(chat: Target.Chat): Boolean = state == RuleState.Enabled && chat.packageName in asking
+
     internal fun withSeenChats(seen: SeenChats): Rule {
         val latest = seen.chats.associateBy { it.key }
         val picked = chats

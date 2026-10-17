@@ -22,6 +22,7 @@ import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.rule.Decision
@@ -31,6 +32,7 @@ import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Recheck
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.ruleName
 import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.sharedChannels
 import dev.danielgilchrist.knockoff.domain.shouldBe
@@ -320,5 +322,52 @@ class SeenChatsTest {
     @Test
     fun `nothing seen means nothing undecided`() {
         SeenChats.NONE.undecided(ruleSet(), ChatDecisions.NONE) shouldBe emptyList()
+    }
+
+    @Test
+    fun `undecided chats not yet asked about are questions for the enabled rules asking about their app`() {
+        val asking = { name: String, state: RuleState, apps: Set<PackageName> ->
+            rule(name, Policy.DeliverOnlyDuring, WORK_HOURS, emptySet(), state, asking = apps)
+        }
+        val slack = friend.copy(packageName = SLACK)
+        val seen =
+            SeenChats.NONE
+                .seen(COLLEAGUE_CHAT)
+                .seen(friend)
+                .seen(slack)
+        val rules =
+            ruleSet(
+                asking("Work", RuleState.Enabled, setOf(WHATSAPP)),
+                asking("Clients", RuleState.Enabled, setOf(WHATSAPP, SLACK)),
+                asking("Old", RuleState.Disabled, setOf(WHATSAPP)),
+            )
+        val decisions = ChatDecisions.NONE.askedAbout(setOf(COLLEAGUE_CHAT.key))
+
+        seen.questions(rules, decisions) shouldBe
+            listOf(
+                ChatQuestion(slack, listOf(ruleName("Clients"))),
+                ChatQuestion(friend, listOf(ruleName("Work"), ruleName("Clients"))),
+            )
+        seen.questions(ruleSet(asking("Work", RuleState.Enabled, emptySet())), ChatDecisions.NONE) shouldBe emptyList()
+        seen.questions(rules, decisions.lettingThrough(friend.key).lettingThrough(slack.key)) shouldBe emptyList()
+    }
+
+    @Test
+    fun `a chat held by any rule is never a question even when another rule asks about its app`() {
+        val seen = SeenChats.NONE.seen(COLLEAGUE_CHAT)
+        val asker = rule("Ask", Policy.DeliverOnlyDuring, WORK_HOURS, emptySet(), asking = setOf(WHATSAPP))
+        val holding = { target: Target ->
+            seen.questions(
+                ruleSet(asker, rule("Hold", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(target))),
+                ChatDecisions.NONE,
+            )
+        }
+
+        seen.questions(ruleSet(asker), ChatDecisions.NONE) shouldBe
+            listOf(ChatQuestion(COLLEAGUE_CHAT, listOf(asker.name)))
+        holding(COLLEAGUE_CHAT) shouldBe emptyList()
+        holding(Target.ChatNamePattern(WHATSAPP, textPattern("^Coll"))) shouldBe emptyList()
+        holding(Target.App(WHATSAPP)) shouldBe emptyList()
+        seen.questions(ruleSet(asker.copy(targets = setOf(COLLEAGUE_CHAT))), ChatDecisions.NONE) shouldBe emptyList()
     }
 }
