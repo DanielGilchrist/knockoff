@@ -37,6 +37,11 @@ class WizardTest {
     private val dayJob = WindowDraft(setOf(DayOfWeek.MONDAY), LocalTime.of(9, 0), LocalTime.of(15, 0))
 
     @Test
+    fun `steps are numbered from one`() {
+        assertEquals(listOf(1, 2, 3, 4), WizardStep.entries.map { it.position })
+    }
+
+    @Test
     fun `steps stop at either end`() {
         assertEquals(WizardStep.Goal, WizardStep.Goal.previous())
         assertEquals(WizardStep.Review, WizardStep.Review.next())

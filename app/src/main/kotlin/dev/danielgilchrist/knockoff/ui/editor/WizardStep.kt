@@ -7,6 +7,8 @@ enum class WizardStep {
     Review,
     ;
 
+    val position: Int get() = ordinal + 1
+
     fun next(): WizardStep = entries.getOrElse(ordinal + 1) { this }
 
     fun previous(): WizardStep = entries.getOrElse(ordinal - 1) { this }

@@ -31,7 +31,9 @@ internal fun ChatsEditor(
     Column(modifier = modifier) {
         Text(text = "Chats", style = MaterialTheme.typography.titleSmall)
         Text(
-            text = "Hold single conversations in an app, such as work contacts on WhatsApp.",
+            text =
+                "Hold single conversations in an app, such as work contacts on WhatsApp. A chat appears here " +
+                    "once it has sent you a notification. You can add more later.",
             style = MaterialTheme.typography.bodySmall,
         )
         selected.forEach { (key, chat) ->

@@ -1,6 +1,9 @@
 package dev.danielgilchrist.knockoff.ui
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -100,6 +103,8 @@ private fun RuleEditor(
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
 ) {
+    val insetModifier = modifier.consumeWindowInsets(WindowInsets.systemBars)
+
     when (editing) {
         is Editing.Open -> {
             RuleEditorScreen(
@@ -112,7 +117,7 @@ private fun RuleEditor(
                         onCancel = editor::closeEditor,
                         onDelete = { target -> editor.deleteRule(target.rule.name) },
                     ),
-                modifier = modifier,
+                modifier = insetModifier,
             )
         }
 
@@ -127,7 +132,7 @@ private fun RuleEditor(
                         onCreate = editor::saveDraft,
                         onCancel = editor::closeEditor,
                     ),
-                modifier = modifier,
+                modifier = insetModifier,
             )
         }
     }

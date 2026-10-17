@@ -3,20 +3,25 @@ package dev.danielgilchrist.knockoff.ui.editor
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.ui.Editing
-import dev.danielgilchrist.knockoff.ui.RadioRow
 import dev.danielgilchrist.knockoff.ui.TargetChoices
 
 @Composable
@@ -26,50 +31,94 @@ internal fun RuleWizardScreen(
     actions: WizardActions,
     modifier: Modifier = Modifier,
 ) {
-    BackHandler {
-        when (guided.step) {
-            WizardStep.Goal -> actions.onCancel()
-            WizardStep.What, WizardStep.When, WizardStep.Review -> actions.onGuide { it.toStep(it.step.previous()) }
-        }
-    }
+    BackHandler { goBack(guided.step, actions) }
 
-    LazyColumn(
-        modifier = modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Text(
-                text = "New rule · step ${guided.step.ordinal + 1} of ${WizardStep.entries.size}",
-                style = MaterialTheme.typography.titleLarge,
-            )
-        }
-        item {
-            when (guided.step) {
-                WizardStep.Goal -> GoalStep(goal = guided.goal, actions = actions)
-                WizardStep.What -> WhatStep(guided = guided, choices = choices, onDraftChange = actions.onDraftChange)
-                WizardStep.When -> WhenStep(guided = guided, actions = actions)
-                WizardStep.Review -> ReviewStep(draft = guided.draft, onDraftChange = actions.onDraftChange)
+    Column(modifier = modifier.fillMaxSize().imePadding()) {
+        WizardHeader(step = guided.step, onFullEditor = { actions.onGuide { it.inFullEditor() } })
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp),
+            contentPadding = PaddingValues(bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            item {
+                when (guided.step) {
+                    WizardStep.Goal -> {
+                        GoalStep(goal = guided.goal, actions = actions)
+                    }
+
+                    WizardStep.What -> {
+                        WhatStep(
+                            guided = guided,
+                            choices = choices,
+                            onDraftChange = actions.onDraftChange,
+                        )
+                    }
+
+                    WizardStep.When -> {
+                        WhenStep(guided = guided, actions = actions)
+                    }
+
+                    WizardStep.Review -> {
+                        ReviewStep(draft = guided.draft, onDraftChange = actions.onDraftChange)
+                    }
+                }
             }
+            item { DraftProblems(problems = guided.shownProblems()) }
         }
-        item { DraftProblems(problems = guided.shownProblems()) }
-        item { WizardButtons(guided = guided, actions = actions) }
+        WizardButtons(guided = guided, actions = actions)
     }
 }
+
+@Composable
+private fun WizardHeader(
+    step: WizardStep,
+    onFullEditor: () -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Step ${step.position} of ${WizardStep.entries.size}",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onFullEditor) { Text(text = "Switch to full editor") }
+        }
+        LinearProgressIndicator(
+            progress = { step.position / WizardStep.entries.size.toFloat() },
+            modifier = Modifier.fillMaxWidth().padding(end = 12.dp),
+        )
+        Text(
+            text = title(step),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(top = 20.dp),
+        )
+    }
+}
+
+private fun title(step: WizardStep): String =
+    when (step) {
+        WizardStep.Goal -> "What should this rule do?"
+        WizardStep.What -> "Which notifications?"
+        WizardStep.When -> "Which hours?"
+        WizardStep.Review -> "Name your rule and check it"
+    }
 
 @Composable
 private fun GoalStep(
     goal: GoalChoice,
     actions: WizardActions,
 ) {
-    Column {
-        Text(text = "What should this rule do?", style = MaterialTheme.typography.titleMedium)
-        RadioRow(
-            text = "Keep work to work hours: hold notifications outside the hours you set",
+    Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ChoiceCard(
+            title = "Keep work to work hours",
+            description = "Hold notifications outside the hours you set, so work stays at work.",
             selected = goal == GoalChoice.Chosen(WizardGoal.WorkHours),
             onClick = { actions.onGuide { it.choosing(WizardGoal.WorkHours) } },
         )
-        RadioRow(
-            text = "Quiet time: hold notifications during the hours you set, such as evenings",
+        ChoiceCard(
+            title = "Quiet time",
+            description = "Hold notifications during the hours you set, such as evenings and nights.",
             selected = goal == GoalChoice.Chosen(WizardGoal.QuietTime),
             onClick = { actions.onGuide { it.choosing(WizardGoal.QuietTime) } },
         )
@@ -85,7 +134,6 @@ private fun WhatStep(
     val draft = guided.draft
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(text = "Which notifications?", style = MaterialTheme.typography.titleMedium)
         AppsEditor(
             apps = choices.apps,
             selected = draft.apps,
@@ -114,7 +162,6 @@ private fun WhenStep(
     actions: WizardActions,
 ) {
     Column {
-        Text(text = "Which hours?", style = MaterialTheme.typography.titleMedium)
         guided.draft.windows.take(1).forEach { window ->
             WindowFields(window = window, onWindowChange = { hours -> actions.onGuide { it.withHours(hours) } })
         }
@@ -160,7 +207,6 @@ private fun ReviewStep(
     onDraftChange: (RuleDraft) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = "Name your rule and check it", style = MaterialTheme.typography.titleMedium)
         RuleNameField(draft = draft, onDraftChange = onDraftChange)
         when (val checked = draft.parse()) {
             is Checked.Problems -> {}
@@ -179,16 +225,20 @@ private fun WizardButtons(
 ) {
     val step = guided.step
 
-    Column {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            when (step) {
-                WizardStep.Goal -> {
-                    OutlinedButton(onClick = actions.onCancel) { Text(text = "Cancel") }
-                }
-
-                WizardStep.What, WizardStep.When, WizardStep.Review -> {
-                    OutlinedButton(onClick = { actions.onGuide { it.toStep(step.previous()) } }) { Text(text = "Back") }
-                }
+    Surface(tonalElevation = 3.dp) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextButton(onClick = { goBack(step, actions) }) {
+                Text(
+                    text =
+                        when (step) {
+                            WizardStep.Goal -> "Cancel"
+                            WizardStep.What, WizardStep.When, WizardStep.Review -> "Back"
+                        },
+                )
             }
             when (step) {
                 WizardStep.Goal, WizardStep.What, WizardStep.When -> {
@@ -202,6 +252,15 @@ private fun WizardButtons(
                 }
             }
         }
-        TextButton(onClick = { actions.onGuide { it.inFullEditor() } }) { Text(text = "Use the full editor instead") }
+    }
+}
+
+private fun goBack(
+    step: WizardStep,
+    actions: WizardActions,
+) {
+    when (step) {
+        WizardStep.Goal -> actions.onCancel()
+        WizardStep.What, WizardStep.When, WizardStep.Review -> actions.onGuide { it.toStep(step.previous()) }
     }
 }
