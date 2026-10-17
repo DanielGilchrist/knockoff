@@ -70,7 +70,7 @@ data class RuleSet private constructor(
             .flatMap { rule ->
                 rule.targets.flatMap { target ->
                     when (target) {
-                        is Target.App, is Target.GmailInbox -> emptyList()
+                        is Target.App, is Target.GmailInbox, is Target.Pattern -> emptyList()
                         is Target.Chat -> listOf(target)
                     }
                 }

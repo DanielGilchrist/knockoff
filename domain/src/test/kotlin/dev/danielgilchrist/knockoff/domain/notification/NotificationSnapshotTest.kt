@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.COLLEAGUE
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
+import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.traits
 import dev.danielgilchrist.knockoff.domain.whatsappOrigin
@@ -39,7 +40,25 @@ class NotificationSnapshotTest {
     @Test
     fun `a notification with a shortcut belongs to that conversation`() {
         snapshot(WHATSAPP, WHATSAPP_CHATS.value, shortcutId = COLLEAGUE.value).parse() shouldBe
-            PostedNotification.Snoozable(key, whatsappOrigin(Conversation.Known(COLLEAGUE)))
+            PostedNotification.Snoozable(key, whatsappOrigin(known(COLLEAGUE)))
+    }
+
+    @Test
+    fun `a conversation is titled from the first usable title`() {
+        snapshot(
+            WHATSAPP,
+            WHATSAPP_CHATS.value,
+            shortcutId = COLLEAGUE.value,
+            titles = listOf(" ", " Boss ", "Boss (2)"),
+        ).parse()
+            .origin.conversation shouldBe known(COLLEAGUE, "Boss")
+    }
+
+    @Test
+    fun `a conversation without a usable title is untitled`() {
+        snapshot(WHATSAPP, WHATSAPP_CHATS.value, shortcutId = COLLEAGUE.value, titles = listOf("", " "))
+            .parse()
+            .origin.conversation shouldBe Conversation.Known(COLLEAGUE, ConversationTitle.Untitled)
     }
 
     @ParameterizedTest
@@ -77,5 +96,6 @@ class NotificationSnapshotTest {
         channelId: String?,
         traits: Set<NotificationTrait> = emptySet(),
         shortcutId: String? = null,
-    ): NotificationSnapshot = NotificationSnapshot(key, packageName, channelId, shortcutId, traits)
+        titles: List<String> = listOf("Colleague"),
+    ): NotificationSnapshot = NotificationSnapshot(key, packageName, channelId, shortcutId, titles, traits)
 }

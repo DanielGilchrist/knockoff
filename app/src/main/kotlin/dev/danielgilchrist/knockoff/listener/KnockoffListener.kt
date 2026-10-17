@@ -91,7 +91,7 @@ class KnockoffListener : NotificationListenerService() {
     ) {
         val posted = sbn.toSnapshot().parse()
 
-        scope.launch { record(ChatSighting.of(posted, sbn.chatNames(rankingMap))) }
+        scope.launch { record(ChatSighting.of(posted, sbn.shortcutLabels(rankingMap))) }
         scope.launch {
             when (val load = settingsStore.loads.first()) {
                 is SettingsLoad.Usable -> {

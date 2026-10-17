@@ -22,6 +22,7 @@ import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.sharedChannels
 import dev.danielgilchrist.knockoff.domain.shouldBe
+import dev.danielgilchrist.knockoff.domain.textPattern
 import org.junit.jupiter.api.Test
 
 class ChatChannelNeedsTest {
@@ -93,7 +94,12 @@ class ChatChannelNeedsTest {
                     "Apps",
                     Policy.DeliverOnlyDuring,
                     WORK_HOURS,
-                    setOf(Target.App(WHATSAPP), Target.GmailInbox(WORK_ADDRESS)),
+                    setOf(
+                        Target.App(WHATSAPP),
+                        Target.GmailInbox(WORK_ADDRESS),
+                        Target.ChatNamePattern(WHATSAPP, textPattern(".")),
+                        Target.ChannelPattern(WHATSAPP, textPattern(".")),
+                    ),
                 ),
             )
 

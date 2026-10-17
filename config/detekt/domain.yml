@@ -16,6 +16,8 @@ knockoff:
       - DateTimeParseException
       # ZoneChoice.parse turns an unknown zone id into ZoneChoiceParse.Unknown.
       - DateTimeException
+      # TextPattern.parse turns an invalid regular expression into TextPatternParse.Invalid.
+      - PatternSyntaxException
   UnapprovedThrow:
     active: true
     allowedDeclarations:

@@ -5,6 +5,7 @@ class NotificationSnapshot(
     private val packageName: PackageName,
     private val channelId: String?,
     private val shortcutId: String?,
+    private val titles: List<String>,
     private val traits: Set<NotificationTrait>,
 ) {
     fun parse(): PostedNotification {
@@ -16,7 +17,7 @@ class NotificationSnapshot(
         val conversation =
             when {
                 shortcutId.isNullOrBlank() -> Conversation.None
-                else -> Conversation.Known(ConversationId(shortcutId))
+                else -> Conversation.Known(ConversationId(shortcutId), ConversationTitle.of(titles))
             }
         val origin = Origin(packageName, channel, conversation)
 

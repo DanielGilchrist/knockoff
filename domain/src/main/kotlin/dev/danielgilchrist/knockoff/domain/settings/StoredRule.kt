@@ -25,6 +25,7 @@ internal data class StoredRule(
     private val apps: List<String>,
     private val gmailAccounts: List<String>,
     private val chats: List<StoredChat>,
+    private val patterns: List<StoredPattern>,
     private val zone: String,
 ) {
     companion object {
@@ -39,21 +40,28 @@ internal data class StoredRule(
                     rule.targets.flatMap { target ->
                         when (target) {
                             is Target.App -> listOf(target.packageName.value)
-                            is Target.GmailInbox, is Target.Chat -> emptyList()
+                            is Target.GmailInbox, is Target.Chat, is Target.Pattern -> emptyList()
                         }
                     },
                 gmailAccounts =
                     rule.targets.flatMap { target ->
                         when (target) {
-                            is Target.App, is Target.Chat -> emptyList()
+                            is Target.App, is Target.Chat, is Target.Pattern -> emptyList()
                             is Target.GmailInbox -> listOf(target.address.value)
                         }
                     },
                 chats =
                     rule.targets.flatMap { target ->
                         when (target) {
-                            is Target.App, is Target.GmailInbox -> emptyList()
+                            is Target.App, is Target.GmailInbox, is Target.Pattern -> emptyList()
                             is Target.Chat -> listOf(StoredChat.from(target))
+                        }
+                    },
+                patterns =
+                    rule.targets.flatMap { target ->
+                        when (target) {
+                            is Target.App, is Target.GmailInbox, is Target.Chat -> emptyList()
+                            is Target.Pattern -> listOf(StoredPattern.from(target))
                         }
                     },
                 zone = rule.zone.stored(),
@@ -124,7 +132,12 @@ internal data class StoredRule(
 
                     when {
                         repeated.isEmpty() -> {
-                            Parsed.Ok(apps.map { Target.App(PackageName(it)) }.toSet() + inboxes + parsedChats)
+                            patterns.parseEach("pattern") { it.parse() }.then { parsedPatterns ->
+                                Parsed.Ok(
+                                    apps.map { Target.App(PackageName(it)) }.toSet() + inboxes + parsedChats +
+                                        parsedPatterns,
+                                )
+                            }
                         }
 
                         else -> {

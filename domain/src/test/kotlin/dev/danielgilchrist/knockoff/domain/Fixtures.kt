@@ -11,6 +11,7 @@ import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
+import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTraits
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTraitsParse
@@ -24,6 +25,8 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.rule.TextPattern
+import dev.danielgilchrist.knockoff.domain.rule.TextPatternParse
 import dev.danielgilchrist.knockoff.domain.schedule.Break
 import dev.danielgilchrist.knockoff.domain.schedule.BreakName
 import dev.danielgilchrist.knockoff.domain.schedule.BreakNameParse
@@ -169,3 +172,14 @@ internal fun interval(
 
 fun sharedChannels(vararg channels: Pair<ChannelKey, Importance>): Map<ChannelKey, ReadChannel> =
     channels.associate { (key, importance) -> key to ReadChannel(importance, ChannelKind.Shared) }
+
+fun known(
+    id: ConversationId,
+    name: String = "Colleague",
+): Conversation = Conversation.Known(id, ConversationTitle.Named(ConversationName(name)))
+
+fun textPattern(source: String): TextPattern =
+    when (val parse = TextPattern.parse(source)) {
+        is TextPatternParse.Valid -> parse.pattern
+        TextPatternParse.Blank, is TextPatternParse.Invalid -> error("Fixture pattern is invalid: $source")
+    }

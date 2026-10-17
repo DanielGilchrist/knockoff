@@ -11,5 +11,6 @@ internal fun StatusBarNotification.toSnapshot(): NotificationSnapshot =
         packageName = PackageName(packageName),
         channelId = notification.channelId,
         shortcutId = notification.shortcutId,
+        titles = chatTitles(),
         traits = notificationTraits(notification.flags, notification.extras.keySet()),
     )

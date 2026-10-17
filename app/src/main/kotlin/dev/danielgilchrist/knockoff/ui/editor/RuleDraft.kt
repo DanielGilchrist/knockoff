@@ -24,6 +24,7 @@ data class RuleDraft(
     val apps: Set<PackageName>,
     val gmailAccounts: Set<AccountAddress>,
     val chats: Map<ChatKey, Target.Chat>,
+    val patterns: Set<Target.Pattern>,
     val pendingGmail: String,
     val zone: RuleZone,
 ) {
@@ -38,6 +39,7 @@ data class RuleDraft(
                 apps = emptySet(),
                 gmailAccounts = emptySet(),
                 chats = emptyMap(),
+                patterns = emptySet(),
                 pendingGmail = "",
                 zone = RuleZone.Default,
             )
@@ -54,14 +56,14 @@ data class RuleDraft(
                         .flatMap { target ->
                             when (target) {
                                 is Target.App -> listOf(target.packageName)
-                                is Target.GmailInbox, is Target.Chat -> emptyList()
+                                is Target.GmailInbox, is Target.Chat, is Target.Pattern -> emptyList()
                             }
                         }.toSet(),
                 gmailAccounts =
                     rule.targets
                         .flatMap { target ->
                             when (target) {
-                                is Target.App, is Target.Chat -> emptyList()
+                                is Target.App, is Target.Chat, is Target.Pattern -> emptyList()
                                 is Target.GmailInbox -> listOf(target.address)
                             }
                         }.toSet(),
@@ -69,10 +71,18 @@ data class RuleDraft(
                     rule.targets
                         .flatMap { target ->
                             when (target) {
-                                is Target.App, is Target.GmailInbox -> emptyList()
+                                is Target.App, is Target.GmailInbox, is Target.Pattern -> emptyList()
                                 is Target.Chat -> listOf(target)
                             }
                         }.associateBy { it.key },
+                patterns =
+                    rule.targets
+                        .flatMap { target ->
+                            when (target) {
+                                is Target.App, is Target.GmailInbox, is Target.Chat -> emptyList()
+                                is Target.Pattern -> listOf(target)
+                            }
+                        }.toSet(),
                 pendingGmail = "",
                 zone = rule.zone,
             )
@@ -87,7 +97,7 @@ data class RuleDraft(
                     state,
                     policy,
                     schedule,
-                    apps.map(Target::App).toSet() + accounts.map(Target::GmailInbox) + chats.values,
+                    apps.map(Target::App).toSet() + accounts.map(Target::GmailInbox) + chats.values + patterns,
                     zone,
                 )
             }

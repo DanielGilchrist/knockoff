@@ -12,6 +12,7 @@ import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.days
+import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
@@ -26,6 +27,7 @@ import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
+import dev.danielgilchrist.knockoff.domain.textPattern
 import dev.danielgilchrist.knockoff.domain.traits
 import dev.danielgilchrist.knockoff.domain.whatsappOrigin
 import dev.danielgilchrist.knockoff.domain.window
@@ -74,8 +76,25 @@ class RuleSetTest {
     fun `a held chat outside hours snoozes and other chats in the app are left`() {
         val chats = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
 
-        chats.decide(post(whatsappOrigin(Conversation.Known(COLLEAGUE))), evening) shouldBe untilMorning
-        chats.decide(post(whatsappOrigin(Conversation.Known(FRIEND))), evening) shouldBe
+        chats.decide(post(whatsappOrigin(known(COLLEAGUE))), evening) shouldBe untilMorning
+        chats.decide(post(whatsappOrigin(known(FRIEND))), evening) shouldBe
+            Decision.Leave(LeaveReason.NoRuleTargets)
+    }
+
+    @Test
+    fun `chats whose name matches a pattern are held and others are left`() {
+        val named =
+            ruleSet(
+                rule(
+                    "Work",
+                    Policy.DeliverOnlyDuring,
+                    WORK_HOURS,
+                    setOf(Target.ChatNamePattern(WHATSAPP, textPattern("^Work"))),
+                ),
+            )
+
+        named.decide(post(whatsappOrigin(known(FRIEND, "Work – Sydney"))), evening) shouldBe untilMorning
+        named.decide(post(whatsappOrigin(known(FRIEND, "Mum"))), evening) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
 

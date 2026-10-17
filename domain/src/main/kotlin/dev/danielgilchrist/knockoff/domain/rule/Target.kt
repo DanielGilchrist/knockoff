@@ -8,20 +8,46 @@ import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
+import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 
 sealed interface Target {
     val packageName: PackageName
 
+    fun matches(origin: Origin): Boolean
+
+    fun covers(
+        channel: ChannelKey,
+        kind: ChannelKind,
+    ): Boolean
+
     data class App(
         override val packageName: PackageName,
-    ) : Target
+    ) : Target {
+        override fun matches(origin: Origin): Boolean = origin.packageName == packageName
+
+        override fun covers(
+            channel: ChannelKey,
+            kind: ChannelKind,
+        ): Boolean = channel.packageName == packageName
+    }
 
     data class GmailInbox(
         val address: AccountAddress,
     ) : Target {
         override val packageName: PackageName get() = PackageName.GMAIL
+
+        override fun matches(origin: Origin): Boolean =
+            when (val channel = origin.channel) {
+                is Channel.Named -> covers(ChannelKey(origin.packageName, channel.id), ChannelKind.Shared)
+                Channel.Unnamed -> false
+            }
+
+        override fun covers(
+            channel: ChannelKey,
+            kind: ChannelKind,
+        ): Boolean = channel.packageName == packageName && channel.channelId.endsWithAccount(address)
     }
 
     data class Chat(
@@ -31,33 +57,67 @@ sealed interface Target {
         val name: ConversationName,
     ) : Target {
         val key: ChatKey get() = ChatKey(packageName, id)
+
+        override fun matches(origin: Origin): Boolean =
+            origin.packageName == packageName &&
+                when (val conversation = origin.conversation) {
+                    is Conversation.Known -> conversation.id == id
+                    Conversation.None -> false
+                }
+
+        override fun covers(
+            channel: ChannelKey,
+            kind: ChannelKind,
+        ): Boolean = channel.packageName == packageName && kind == ChannelKind.ConversationOf(this.channel, id)
     }
 
-    fun matches(origin: Origin): Boolean =
-        when (this) {
-            is App -> {
-                origin.packageName == packageName
+    sealed interface Pattern : Target {
+        val pattern: TextPattern
+    }
+
+    data class ChannelPattern(
+        override val packageName: PackageName,
+        override val pattern: TextPattern,
+    ) : Pattern {
+        override fun matches(origin: Origin): Boolean =
+            when (val channel = origin.channel) {
+                is Channel.Named -> covers(ChannelKey(origin.packageName, channel.id), ChannelKind.Shared)
+                Channel.Unnamed -> false
             }
 
-            is GmailInbox -> {
-                when (val channel = origin.channel) {
-                    is Channel.Named -> covers(ChannelKey(origin.packageName, channel.id), ChannelKind.Shared)
-                    Channel.Unnamed -> false
+        override fun covers(
+            channel: ChannelKey,
+            kind: ChannelKind,
+        ): Boolean =
+            channel.packageName == packageName &&
+                when (kind) {
+                    ChannelKind.Shared -> pattern.matches(channel.channelId.value)
+                    is ChannelKind.ConversationOf -> pattern.matches(kind.parent.value)
                 }
-            }
+    }
 
-            is Chat -> {
-                origin.packageName == packageName && origin.conversation == Conversation.Known(id)
-            }
-        }
+    data class ChatNamePattern(
+        override val packageName: PackageName,
+        override val pattern: TextPattern,
+    ) : Pattern {
+        override fun matches(origin: Origin): Boolean =
+            origin.packageName == packageName &&
+                when (val conversation = origin.conversation) {
+                    is Conversation.Known -> {
+                        when (val title = conversation.title) {
+                            is ConversationTitle.Named -> pattern.matches(title.name.value)
+                            ConversationTitle.Untitled -> false
+                        }
+                    }
 
-    fun covers(
-        channel: ChannelKey,
-        kind: ChannelKind,
-    ): Boolean =
-        when (this) {
-            is App -> channel.packageName == packageName
-            is GmailInbox -> channel.packageName == packageName && channel.channelId.endsWithAccount(address)
-            is Chat -> channel.packageName == packageName && kind == ChannelKind.ConversationOf(this.channel, id)
-        }
+                    Conversation.None -> {
+                        false
+                    }
+                }
+
+        override fun covers(
+            channel: ChannelKey,
+            kind: ChannelKind,
+        ): Boolean = false
+    }
 }

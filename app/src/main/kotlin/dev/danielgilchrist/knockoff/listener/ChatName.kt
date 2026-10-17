@@ -5,18 +5,17 @@ import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
 
-internal fun StatusBarNotification.chatNames(rankings: RankingMap): List<String> {
-    val ranking = Ranking()
-    val label =
-        when {
-            rankings.getRanking(key, ranking) -> ranking.conversationShortcutInfo?.shortLabel
-            else -> null
-        }
-    val extras = notification.extras
-
-    return listOfNotNull(
-        label,
-        extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE),
-        extras.getCharSequence(Notification.EXTRA_TITLE),
+internal fun StatusBarNotification.chatTitles(): List<String> =
+    listOfNotNull(
+        notification.extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE),
+        notification.extras.getCharSequence(Notification.EXTRA_TITLE),
     ).map(CharSequence::toString)
+
+internal fun StatusBarNotification.shortcutLabels(rankings: RankingMap): List<String> {
+    val ranking = Ranking()
+
+    return when {
+        rankings.getRanking(key, ranking) -> listOfNotNull(ranking.conversationShortcutInfo?.shortLabel?.toString())
+        else -> emptyList()
+    }
 }

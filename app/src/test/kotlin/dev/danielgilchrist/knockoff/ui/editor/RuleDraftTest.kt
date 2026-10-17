@@ -7,6 +7,9 @@ import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
+import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.rule.TextPattern
+import dev.danielgilchrist.knockoff.domain.rule.TextPatternParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.ui.describe
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -51,6 +54,19 @@ class RuleDraftTest {
         val rule = valid(draft)
 
         assertEquals(draft, RuleDraft.from(rule))
+    }
+
+    @Test
+    fun `a rule's patterns survive editing`() {
+        val pattern =
+            Target.ChatNamePattern(
+                PackageName("com.whatsapp"),
+                assertInstanceOf(TextPatternParse.Valid::class.java, TextPattern.parse("^Work")).pattern,
+            )
+        val rule = valid(RuleDraft.NEW.copy(name = "x", patterns = setOf(pattern)))
+
+        assertEquals(rule, valid(RuleDraft.from(rule)))
+        assertEquals(setOf(pattern), RuleDraft.from(rule).patterns)
     }
 
     @Test

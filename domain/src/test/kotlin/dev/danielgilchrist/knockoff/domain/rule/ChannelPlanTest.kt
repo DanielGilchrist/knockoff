@@ -25,6 +25,7 @@ import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.sharedChannels
 import dev.danielgilchrist.knockoff.domain.shouldBe
+import dev.danielgilchrist.knockoff.domain.textPattern
 import dev.danielgilchrist.knockoff.domain.window
 import org.junit.jupiter.api.Test
 
@@ -103,6 +104,27 @@ class ChannelPlanTest {
         val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND))
 
         disabled.planChannels(read, SilencedChannels.NONE, evening) shouldBe nothing(SilencedChannels.NONE)
+    }
+
+    @Test
+    fun `a channel pattern holds the channels whose id matches`() {
+        val pattern =
+            ruleSet(
+                rule(
+                    "Work",
+                    Policy.DeliverOnlyDuring,
+                    WORK_HOURS,
+                    setOf(Target.ChannelPattern(SLACK, textPattern("^mess"))),
+                ),
+            )
+
+        pattern
+            .planChannels(
+                slack(Importance.Default, Importance.High),
+                SilencedChannels.NONE,
+                evening,
+            ).silence shouldBe
+            listOf(ChannelChange(messages, Importance.Default, Importance.Low))
     }
 
     @Test
