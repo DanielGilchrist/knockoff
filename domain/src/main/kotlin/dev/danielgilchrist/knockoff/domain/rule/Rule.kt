@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.schedule.Coverage
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.zone.RuleZone
@@ -17,6 +18,7 @@ data class Rule(
     val schedule: Schedule,
     val targets: Set<Target>,
     val zone: RuleZone,
+    val asking: Set<PackageName>,
 ) {
     val chats: List<Target.Chat>
         get() =

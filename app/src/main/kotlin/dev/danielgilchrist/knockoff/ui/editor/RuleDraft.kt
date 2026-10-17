@@ -27,6 +27,7 @@ data class RuleDraft(
     val patterns: List<PatternDraft>,
     val pendingGmail: String,
     val zone: RuleZone,
+    val asking: Set<PackageName>,
 ) {
     companion object {
         val NEW =
@@ -42,6 +43,7 @@ data class RuleDraft(
                 patterns = emptyList(),
                 pendingGmail = "",
                 zone = RuleZone.Default,
+                asking = emptySet(),
             )
 
         fun from(rule: Rule): RuleDraft =
@@ -85,13 +87,16 @@ data class RuleDraft(
                         },
                 pendingGmail = "",
                 zone = rule.zone,
+                asking = rule.asking,
             )
     }
 
     fun parse(): Checked<Rule> =
         ruleName()
             .and(schedule()) { ruleName, schedule -> ruleName to schedule }
-            .and(targets()) { (ruleName, schedule), targets -> Rule(ruleName, state, policy, schedule, targets, zone) }
+            .and(targets()) { (ruleName, schedule), targets ->
+                Rule(ruleName, state, policy, schedule, targets, zone, asking)
+            }
 
     fun withBreakAdded(): RuleDraft {
         val days = windows.flatMap { it.days }.toSet()

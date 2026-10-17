@@ -33,6 +33,13 @@ class RuleDraftTest {
     }
 
     @Test
+    fun `the apps a rule asks about survive a round trip`() {
+        val asking = defaultRule.copy(asking = setOf(COLLEAGUE_CHAT.packageName))
+
+        assertEquals(Checked.Ok(asking), RuleDraft.from(asking).parse())
+    }
+
+    @Test
     fun `a full draft becomes a rule with every target`() {
         val address =
             assertInstanceOf(

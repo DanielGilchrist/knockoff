@@ -112,7 +112,8 @@ fun rule(
     targets: Set<Target>,
     state: RuleState = RuleState.Enabled,
     zone: RuleZone = RuleZone.Default,
-): Rule = Rule(ruleName(name), state, policy, schedule, targets, zone)
+    asking: Set<PackageName> = emptySet(),
+): Rule = Rule(ruleName(name), state, policy, schedule, targets, zone, asking)
 
 fun ruleName(raw: String): RuleName =
     when (val parse = RuleName.parse(raw)) {

@@ -27,6 +27,7 @@ internal data class StoredRule(
     private val chats: List<StoredChat>,
     private val patterns: List<StoredPattern>,
     private val zone: String,
+    private val asking: List<String>,
 ) {
     companion object {
         fun from(rule: Rule): StoredRule =
@@ -65,6 +66,7 @@ internal data class StoredRule(
                         }
                     },
                 zone = rule.zone.stored(),
+                asking = rule.asking.map { it.value },
             )
     }
 
@@ -76,7 +78,17 @@ internal data class StoredRule(
                         schedule().then { schedule ->
                             targets().then { targets ->
                                 ruleZone().then { ruleZone ->
-                                    Parsed.Ok(Rule(ruleName, ruleState, rulePolicy, schedule, targets, ruleZone))
+                                    Parsed.Ok(
+                                        Rule(
+                                            ruleName,
+                                            ruleState,
+                                            rulePolicy,
+                                            schedule,
+                                            targets,
+                                            ruleZone,
+                                            asking.map(::PackageName).toSet(),
+                                        ),
+                                    )
                                 }
                             }
                         }

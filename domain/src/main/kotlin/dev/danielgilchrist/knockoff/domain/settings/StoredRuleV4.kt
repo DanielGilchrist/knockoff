@@ -14,6 +14,6 @@ internal data class StoredRuleV4(
     private val chats: List<StoredChat>,
     private val zone: String,
 ) {
-    fun upgraded(): StoredRule =
-        StoredRule(name, state, policy, windows, breaks, apps, gmailAccounts, chats, emptyList(), zone)
+    fun upgraded(): StoredRuleV5 =
+        StoredRuleV5(name, state, policy, windows, breaks, apps, gmailAccounts, chats, emptyList(), zone)
 }

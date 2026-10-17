@@ -28,6 +28,7 @@ data class Settings(
                             schedule = Schedule.of(Window.WORKING_HOURS),
                             targets = emptySet(),
                             zone = RuleZone.Default,
+                            asking = emptySet(),
                         ),
                         ZoneChoice.Device,
                     ),
@@ -44,6 +45,7 @@ data class Settings(
                             StoredSettingsV2.VERSION to StoredSettingsV2.serializer(),
                             StoredSettingsV3.VERSION to StoredSettingsV3.serializer(),
                             StoredSettingsV4.VERSION to StoredSettingsV4.serializer(),
+                            StoredSettingsV5.VERSION to StoredSettingsV5.serializer(),
                             StoredSettings.CURRENT_VERSION to StoredSettings.serializer(),
                         ),
                     )

@@ -38,6 +38,7 @@ import java.time.ZoneId
 class SettingsTest {
     companion object {
         private const val MONDAY = """{"days": ["MONDAY"], "start": "08:00", "end": "17:00"}"""
+        private const val WORK_PATTERN = """{"app": "com.whatsapp", "field": "chatName", "pattern": "^Work"}"""
 
         @JvmStatic
         fun invalidRules(): List<Arguments> =
@@ -124,6 +125,7 @@ class SettingsTest {
                         WORK_HOURS,
                         emptySet(),
                         zone = RuleZone.Chosen(ZoneChoice.Device),
+                        asking = setOf(WHATSAPP, SLACK),
                     ),
                 ).withDefaultZone(ZoneChoice.Fixed(ZoneId.of("Europe/London"))),
                 Theme.Dark,
@@ -144,7 +146,7 @@ class SettingsTest {
         Settings.DEFAULT.toJson() shouldBe
             """
             {
-                "version": 5,
+                "version": 6,
                 "defaultZone": "device",
                 "theme": "System",
                 "rules": [
@@ -170,7 +172,8 @@ class SettingsTest {
                         "gmailAccounts": [],
                         "chats": [],
                         "patterns": [],
-                        "zone": "default"
+                        "zone": "default",
+                        "asking": []
                     }
                 ]
             }
@@ -193,6 +196,30 @@ class SettingsTest {
                         ),
                     ),
                     Theme.System,
+                ),
+            )
+    }
+
+    @Test
+    fun `version 5 documents migrate asking about nothing`() {
+        val rule =
+            ruleJson(
+                """{"apps": ["com.Slack"], "breaks": [], "chats": [], "patterns": [$WORK_PATTERN], "zone": "device"}""",
+            )
+
+        Settings.fromJson("""{"version": 5, "defaultZone": "device", "theme": "Dark", "rules": [$rule]}""") shouldBe
+            SettingsDecode.Decoded(
+                Settings(
+                    ruleSet(
+                        rule(
+                            "Work",
+                            Policy.DeliverOnlyDuring,
+                            schedule(window(days(DayOfWeek.MONDAY), "08:00", "17:00")),
+                            setOf(Target.App(SLACK), Target.ChatNamePattern(WHATSAPP, textPattern("^Work"))),
+                            zone = RuleZone.Chosen(ZoneChoice.Device),
+                        ),
+                    ),
+                    Theme.Dark,
                 ),
             )
     }
@@ -327,15 +354,15 @@ class SettingsTest {
 
     @Test
     fun `unknown zones and themes are invalid`() {
-        val zoned = ruleJson("""{"breaks": [], "chats": [], "patterns": [], "zone": "Mars/Base"}""")
+        val zoned = ruleJson("""{"breaks": [], "chats": [], "patterns": [], "zone": "Mars/Base", "asking": []}""")
         val unknown = "java.time.zone.ZoneRulesException: Unknown time-zone ID: Mars/Base"
 
-        Settings.fromJson("""{"version": 5, "defaultZone": "Mars/Base", "theme": "System", "rules": []}""") shouldBe
+        Settings.fromJson("""{"version": 6, "defaultZone": "Mars/Base", "theme": "System", "rules": []}""") shouldBe
             SettingsDecode.Invalid("unknown default zone \"Mars/Base\": $unknown")
-        Settings.fromJson("""{"version": 5, "defaultZone": "device", "theme": "Neon", "rules": []}""") shouldBe
+        Settings.fromJson("""{"version": 6, "defaultZone": "device", "theme": "Neon", "rules": []}""") shouldBe
             SettingsDecode.Invalid("unknown theme \"Neon\"")
         Settings
-            .fromJson("""{"version": 5, "defaultZone": "device", "theme": "System", "rules": [$zoned]}""")
+            .fromJson("""{"version": 6, "defaultZone": "device", "theme": "System", "rules": [$zoned]}""")
             .shouldBeInstanceOf<SettingsDecode.Invalid>()
             .detail shouldBe "rule 1: \"Work\": unknown zone \"Mars/Base\": $unknown"
     }
@@ -351,14 +378,14 @@ class SettingsTest {
     }
 
     @Test
-    fun `a migrated document saves as version 5`() {
+    fun `a migrated document saves as version 6`() {
         val migrated =
             Settings
                 .fromJson(
                     """{"version": 1, "rules": [${ruleJson("{}")}]}""",
                 ).shouldBeInstanceOf<SettingsDecode.Decoded>()
 
-        migrated.settings.toJson().startsWith("{\n    \"version\": 5,") shouldBe true
+        migrated.settings.toJson().startsWith("{\n    \"version\": 6,") shouldBe true
         Settings.fromJson(migrated.settings.toJson()) shouldBe migrated
     }
 
@@ -394,10 +421,10 @@ class SettingsTest {
 
     @Test
     fun `other versions are unsupported whatever their shape`() {
-        val decode = Settings.fromJson("""{"version": 6, "profiles": [], "schedules": {}}""")
+        val decode = Settings.fromJson("""{"version": 7, "profiles": [], "schedules": {}}""")
 
-        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 6
-        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 6"
+        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 7
+        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 7"
     }
 
     @ParameterizedTest(name = "{0}")
@@ -440,9 +467,13 @@ class SettingsTest {
         chats: String = "",
         patterns: String = "",
     ): String {
-        val rule = ruleJson("""{"breaks": [$breaks], "chats": [$chats], "patterns": [$patterns], "zone": "default"}""")
+        val rule =
+            ruleJson(
+                """{"breaks": [$breaks], "chats": [$chats], "patterns": [$patterns], "zone": "default",
+                "asking": []}""",
+            )
 
-        return """{"version": 5, "defaultZone": "device", "theme": "System", "rules": [$rule]}"""
+        return """{"version": 6, "defaultZone": "device", "theme": "System", "rules": [$rule]}"""
     }
 
     private fun document(rule: String): String = """{"version": 1, "rules": [${ruleJson(rule)}]}"""
