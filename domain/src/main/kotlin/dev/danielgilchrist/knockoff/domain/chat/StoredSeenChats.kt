@@ -18,7 +18,7 @@ internal data class StoredSeenChats(
 
     fun toSeenChats(): SeenChatsDecode =
         when (val parsed = chats.parseEach("chat") { it.parse() }) {
-            is Parsed.Ok -> SeenChatsDecode.Decoded(SeenChats.of(parsed.value))
+            is Parsed.Ok -> SeenChatsDecode.Decoded(SeenChats.of(parsed.value.filter { it.name.value != it.id.value }))
             is Parsed.Failed -> SeenChatsDecode.Invalid(parsed.detail)
         }
 }

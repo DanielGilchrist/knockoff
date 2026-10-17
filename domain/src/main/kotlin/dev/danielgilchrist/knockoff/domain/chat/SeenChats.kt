@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.domain.chat
 
 import dev.danielgilchrist.knockoff.domain.json.VersionedDecode
 import dev.danielgilchrist.knockoff.domain.json.VersionedJson
+import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.Target
 
 @ConsistentCopyVisibility
@@ -27,6 +28,8 @@ data class SeenChats private constructor(
     }
 
     fun seen(chat: Target.Chat): SeenChats = of(listOf(chat) + chats)
+
+    fun expand(rules: RuleSet): RuleSet = RuleSet.expanded(rules, this)
 
     fun toJson(): String = VersionedJson.json.encodeToString(StoredSeenChats.from(this))
 }

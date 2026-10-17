@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.domain.rule
 
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
+import dev.danielgilchrist.knockoff.domain.chat.SeenChats
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.schedule.Coverage
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
@@ -17,6 +18,31 @@ data class Rule(
     val targets: Set<Target>,
     val zone: RuleZone,
 ) {
+    val chats: List<Target.Chat>
+        get() =
+            targets.flatMap { target ->
+                when (target) {
+                    is Target.Chat -> listOf(target)
+                    is Target.App, is Target.GmailInbox, is Target.Pattern -> emptyList()
+                }
+            }
+
+    internal fun withSeenChats(seen: SeenChats): Rule {
+        val latest = seen.chats.associateBy { it.key }
+        val picked = chats
+        val refreshed =
+            picked.map { chat ->
+                when (val fresh = latest[chat.key]) {
+                    null -> chat
+                    else -> chat.copy(channel = fresh.channel)
+                }
+            }
+        val pickedKeys = picked.map { it.key }.toSet()
+        val matching = seen.chats.filter { chat -> chat.key !in pickedKeys && targets.any { it.expandsTo(chat) } }
+
+        return copy(targets = targets - picked.toSet() + refreshed + matching)
+    }
+
     fun localised(
         at: ZonedDateTime,
         zones: ZoneContext,

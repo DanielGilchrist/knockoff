@@ -11,9 +11,12 @@ import dev.danielgilchrist.knockoff.channel.BoundaryAlarm
 import dev.danielgilchrist.knockoff.channel.ChannelAccess
 import dev.danielgilchrist.knockoff.channel.ChannelSilencer
 import dev.danielgilchrist.knockoff.chat.ChatRecord
+import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
 import dev.danielgilchrist.knockoff.domain.change.Change
 import dev.danielgilchrist.knockoff.domain.change.next
 import dev.danielgilchrist.knockoff.domain.chat.ChatSighting
+import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import kotlinx.coroutines.CoroutineScope
@@ -22,6 +25,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.scan
@@ -34,6 +38,8 @@ class KnockoffListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val sweeper = NotificationSweeper(this, scope)
     private var connection: Connection = Connection.Idle
+
+    @Volatile
     private var applied: Change<Evaluation> = Change.Pending
 
     private val knockoff
@@ -43,7 +49,13 @@ class KnockoffListener : NotificationListenerService() {
         get() = knockoff.settingsStore
 
     private val silencer by lazy {
-        ChannelSilencer(ChannelAccess(this), BoundaryAlarm(this), settingsStore, knockoff.silencedChannelsStore)
+        ChannelSilencer(
+            ChannelAccess(this),
+            BoundaryAlarm(this),
+            settingsStore,
+            knockoff.silencedChannelsStore,
+            knockoff.seenChatsStore,
+        )
     }
 
     override fun onCreate() {
@@ -72,7 +84,28 @@ class KnockoffListener : NotificationListenerService() {
                             }
                         }
 
-                    combine(rules, deviceZones(this@KnockoffListener), ::Evaluation)
+                    val seen =
+                        knockoff.seenChatsStore.loads
+                            .scan(SeenChats.NONE) { last, load ->
+                                when (load) {
+                                    is SeenChatsLoad.Loaded -> {
+                                        load.seen
+                                    }
+
+                                    is SeenChatsLoad.Corrupt -> {
+                                        SeenChats.NONE
+                                    }
+
+                                    is SeenChatsLoad.ReadFailed -> {
+                                        Log.w(LOG_TAG, "seen chats unreadable, keeping the last: ${load.detail}")
+                                        last
+                                    }
+                                }
+                            }.drop(1)
+
+                    combine(rules, seen, deviceZones(this@KnockoffListener)) { ruleSet, chats, zone ->
+                        Evaluation(chats.expand(ruleSet), zone)
+                    }.distinctUntilChanged()
                         .scan(applied) { change, evaluation -> change.next(evaluation) }
                         .drop(1)
                         .collect(::apply)
@@ -93,20 +126,48 @@ class KnockoffListener : NotificationListenerService() {
 
         scope.launch { record(ChatSighting.of(posted, sbn.shortcutLabels(rankingMap))) }
         scope.launch {
-            when (val load = settingsStore.loads.first()) {
-                is SettingsLoad.Usable -> {
-                    sweeper.evaluate(sbn, posted, Evaluation(load.settings.rules, ZoneId.systemDefault()))
-                }
-
-                is SettingsLoad.Failure -> {
-                    Log.e(
-                        LOG_TAG,
-                        "key=${sbn.key} not evaluated, settings failed to load: ${load.detail}",
-                    )
-                }
+            when (val change = applied) {
+                Change.Pending -> evaluateBeforeConnected(sbn, posted)
+                is Change.Initial -> sweeper.evaluate(sbn, posted, change.value)
+                is Change.Changed -> sweeper.evaluate(sbn, posted, change.after)
             }
         }
     }
+
+    private suspend fun evaluateBeforeConnected(
+        sbn: StatusBarNotification,
+        posted: PostedNotification,
+    ) {
+        when (val load = settingsStore.loads.first()) {
+            is SettingsLoad.Usable -> {
+                sweeper.evaluate(
+                    sbn,
+                    posted,
+                    Evaluation(currentSeen().expand(load.settings.rules), ZoneId.systemDefault()),
+                )
+            }
+
+            is SettingsLoad.Failure -> {
+                Log.e(LOG_TAG, "key=${sbn.key} not evaluated, settings failed to load: ${load.detail}")
+            }
+        }
+    }
+
+    private suspend fun currentSeen(): SeenChats =
+        when (val load = knockoff.seenChatsStore.loads.first()) {
+            is SeenChatsLoad.Loaded -> {
+                load.seen
+            }
+
+            is SeenChatsLoad.Corrupt -> {
+                SeenChats.NONE
+            }
+
+            is SeenChatsLoad.ReadFailed -> {
+                Log.w(LOG_TAG, "seen chats unreadable, deciding without them: ${load.detail}")
+                SeenChats.NONE
+            }
+        }
 
     private suspend fun record(sighting: ChatSighting) {
         when (sighting) {

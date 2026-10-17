@@ -46,6 +46,17 @@ class SeenChatsStoreTest {
         }
 
     @Test
+    fun `a known chat seen again after another moves first`() =
+        runTest {
+            val store = store()
+            val friend = COLLEAGUE_CHAT.copy(id = ConversationId("1000000000002@lid"))
+            store.record(COLLEAGUE_CHAT)
+            store.record(friend)
+
+            assertEquals(ChatRecord.Recorded, store.record(COLLEAGUE_CHAT))
+        }
+
+    @Test
     fun `the latest chat with a new name or channel is recorded again`() =
         runTest {
             val store = store()
@@ -83,6 +94,18 @@ class SeenChatsStoreTest {
             assertInstanceOf(SeenChatsLoad.Corrupt::class.java, store.loads.first())
             assertEquals(ChatRecord.Recorded, store.record(COLLEAGUE_CHAT))
             assertEquals(SeenChatsLoad.Loaded(SeenChats.NONE.seen(COLLEAGUE_CHAT)), store.loads.first())
+        }
+
+    @Test
+    fun `recording onto a file with chats named by their id writes it without them`() =
+        runTest {
+            val byId = """{"app": "com.whatsapp", "channel": "chats", "id": "2@lid", "name": "2@lid"}"""
+            file().writeText("""{"version": 1, "chats": [$byId]}""")
+            val store = store()
+
+            store.record(COLLEAGUE_CHAT)
+
+            assertEquals(SeenChats.NONE.seen(COLLEAGUE_CHAT).toJson(), file().readText())
         }
 
     @Test

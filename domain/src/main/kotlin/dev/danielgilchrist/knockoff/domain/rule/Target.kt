@@ -22,6 +22,8 @@ sealed interface Target {
         kind: ChannelKind,
     ): Boolean
 
+    fun expandsTo(chat: Chat): Boolean = false
+
     data class App(
         override val packageName: PackageName,
     ) : Target {
@@ -119,5 +121,8 @@ sealed interface Target {
             channel: ChannelKey,
             kind: ChannelKind,
         ): Boolean = false
+
+        override fun expandsTo(chat: Chat): Boolean =
+            chat.packageName == packageName && pattern.matches(chat.name.value)
     }
 }

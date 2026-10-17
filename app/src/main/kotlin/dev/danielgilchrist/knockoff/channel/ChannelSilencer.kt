@@ -2,6 +2,8 @@ package dev.danielgilchrist.knockoff.channel
 
 import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
+import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
+import dev.danielgilchrist.knockoff.chat.SeenChatsStore
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
@@ -25,6 +27,7 @@ internal class ChannelSilencer(
     private val alarm: BoundaryAlarm,
     private val settings: SettingsStore,
     private val store: SilencedChannelsStore,
+    private val seenChats: SeenChatsStore,
 ) {
     companion object {
         private val RESTORE_GRACE = 5.seconds
@@ -107,12 +110,21 @@ internal class ChannelSilencer(
     }
 
     private suspend fun prepare(): Preparation =
-        when (val load = settings.loads.first()) {
-            is SettingsLoad.Failure -> Preparation.Failed("settings failed to load: ${load.detail}")
-            is SettingsLoad.Usable -> withRules(load.settings.rules)
+        when (val settingsLoad = settings.loads.first()) {
+            is SettingsLoad.Failure -> {
+                Preparation.Failed("settings failed to load: ${settingsLoad.detail}")
+            }
+
+            is SettingsLoad.Usable -> {
+                when (val seenLoad = seenChats.loads.first()) {
+                    is SeenChatsLoad.Loaded -> withExpandedRules(seenLoad.seen.expand(settingsLoad.settings.rules))
+                    is SeenChatsLoad.Corrupt -> withExpandedRules(settingsLoad.settings.rules)
+                    is SeenChatsLoad.ReadFailed -> Preparation.Failed("seen chats failed to load: ${seenLoad.detail}")
+                }
+            }
         }
 
-    private suspend fun withRules(rules: RuleSet): Preparation =
+    private suspend fun withExpandedRules(rules: RuleSet): Preparation =
         when (val load = store.load()) {
             is SilencedChannelsLoad.Failed -> Preparation.Failed("silenced channels failed to load: ${load.detail}")
             is SilencedChannelsLoad.Loaded -> withSilenced(rules, load.silenced)

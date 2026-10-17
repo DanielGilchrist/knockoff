@@ -29,25 +29,26 @@ SURVIVED dev.danielgilchrist.knockoff.domain.rule.Boundary noLaterThan L15 remov
 SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Interval without L31 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredBreak parse L20 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule schedule$lambda$1$1 L111 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChannelPattern matches L85 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$Chat matches L65 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L109 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$GmailInbox matches L44 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChannelPattern matches L87 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$Chat matches L67 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L111 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$GmailInbox matches L46 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredPattern parse L30 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChannelPattern covers L95 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L113 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion nameOf-aFPeR5Q L63 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion titleOrId-yw6qvjE L69 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels saved L122 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L37 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChannelPattern covers L97 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L115 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion nameOf L69 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L50 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion labelOrTitle L80 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels saved L122 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L36 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L44 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels silencing L56 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels restoring L62 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels silenceIfAlerting L106 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet nextBoundary L100 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.schedule.DailyHours occurrenceStartingOn$knockoff_domain L64 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.change.ChangeKt next L20 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule scheduledVerdictAt L72 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule scheduledVerdictAt L98 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holds L180 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holds L180 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet releaseFrom L167 removed conditional - replaced equality check with true
@@ -55,12 +56,15 @@ SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Window occurrencesStarting
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule ruleName L90 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredWindow weekDays L45 removed conditional - replaced equality check with true
 
-# Inlined Iterable.none and Map.none: the empty-collection shortcut and the Collection type check only skip a loop
-# that would return the same answer.
+# Inlined Iterable.none, Iterable.any and Map.none: the empty-collection shortcut and the Collection type check only
+# skip a loop that would return the same answer.
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule withSeenChats$knockoff_domain L41 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule withSeenChats$knockoff_domain L41 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule withSeenChats$knockoff_domain L41 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet chatChannelNeeds L77 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictWhere L50 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictWhere L50 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictWhere L50 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictWhere L76 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictWhere L76 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictWhere L76 removed conditional - replaced equality check with true
 
 # The predicate always matches before the list runs out: a weekly schedule that isn't always covered has a stretch
 # ending within the next fortnight. Forcing the inlined first() loop on only changes which NoSuchElementException

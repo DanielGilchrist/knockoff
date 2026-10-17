@@ -2,7 +2,6 @@ package dev.danielgilchrist.knockoff.domain.chat
 
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
-import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
@@ -37,14 +36,15 @@ sealed interface ChatSighting {
                 is Conversation.Known -> {
                     when (val channel = origin.channel) {
                         is Channel.Named -> {
-                            Seen(
-                                Target.Chat(
-                                    origin.packageName,
-                                    channel.id,
-                                    conversation.id,
-                                    nameOf(conversation, shortcutLabels),
-                                ),
-                            )
+                            when (val name = nameOf(conversation, shortcutLabels)) {
+                                is ConversationTitle.Named -> {
+                                    Seen(Target.Chat(origin.packageName, channel.id, conversation.id, name.name))
+                                }
+
+                                ConversationTitle.Untitled -> {
+                                    NotAChat
+                                }
+                            }
                         }
 
                         Channel.Unnamed -> {
@@ -57,16 +57,27 @@ sealed interface ChatSighting {
         private fun nameOf(
             conversation: Conversation.Known,
             shortcutLabels: List<String>,
-        ): ConversationName =
-            when (val label = ConversationTitle.of(shortcutLabels)) {
-                is ConversationTitle.Named -> label.name
-                ConversationTitle.Untitled -> titleOrId(conversation)
+        ): ConversationTitle =
+            when (val name = labelOrTitle(conversation, shortcutLabels)) {
+                is ConversationTitle.Named -> {
+                    when (name.name.value) {
+                        conversation.id.value -> ConversationTitle.Untitled
+                        else -> name
+                    }
+                }
+
+                ConversationTitle.Untitled -> {
+                    name
+                }
             }
 
-        private fun titleOrId(conversation: Conversation.Known): ConversationName =
-            when (val title = conversation.title) {
-                is ConversationTitle.Named -> title.name
-                ConversationTitle.Untitled -> ConversationName(conversation.id.value)
+        private fun labelOrTitle(
+            conversation: Conversation.Known,
+            shortcutLabels: List<String>,
+        ): ConversationTitle =
+            when (val label = ConversationTitle.of(shortcutLabels)) {
+                is ConversationTitle.Named -> label
+                ConversationTitle.Untitled -> conversation.title
             }
     }
 }

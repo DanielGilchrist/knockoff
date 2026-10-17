@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelState
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
 import dev.danielgilchrist.knockoff.domain.chat.ChatChannelNeed
+import dev.danielgilchrist.knockoff.domain.chat.SeenChats
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
@@ -27,6 +28,11 @@ data class RuleSet private constructor(
             rule: Rule,
             defaultZone: ZoneChoice,
         ): RuleSet = RuleSet(listOf(rule), defaultZone)
+
+        internal fun expanded(
+            rules: RuleSet,
+            seen: SeenChats,
+        ): RuleSet = RuleSet(rules.rules.map { it.withSeenChats(seen) }, rules.defaultZone)
 
         internal fun parse(
             rules: List<Rule>,
@@ -67,14 +73,8 @@ data class RuleSet private constructor(
         silenced: SilencedChannels,
     ): Set<ChatChannelNeed> =
         enabled()
-            .flatMap { rule ->
-                rule.targets.flatMap { target ->
-                    when (target) {
-                        is Target.App, is Target.GmailInbox, is Target.Pattern -> emptyList()
-                        is Target.Chat -> listOf(target)
-                    }
-                }
-            }.filter { chat -> read.none { (key, channel) -> chat.covers(key, channel.kind) } }
+            .flatMap { it.chats }
+            .filter { chat -> read.none { (key, channel) -> chat.covers(key, channel.kind) } }
             .map { chat ->
                 val parent = ChannelKey(chat.packageName, chat.channel)
 

@@ -6,7 +6,6 @@ import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
-import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
@@ -52,21 +51,32 @@ class ChatSightingTest {
 
     @Test
     fun `a chat is named from its shortcut label before its title`() {
-        val sighting =
-            ChatSighting.of(
-                posted(whatsappOrigin(known(COLLEAGUE, "Colleague (2 messages)"))),
-                listOf("Colleague"),
-            )
-
-        sighting shouldBe ChatSighting.Seen(COLLEAGUE_CHAT)
+        ChatSighting.of(
+            posted(whatsappOrigin(known(COLLEAGUE, "Colleague (2 messages)"))),
+            listOf(" ", "Colleague"),
+        ) shouldBe
+            ChatSighting.Seen(COLLEAGUE_CHAT)
     }
 
     @Test
-    fun `an untitled chat without a label is named by its id`() {
+    fun `a chat without a label is named from its title`() {
+        ChatSighting.of(posted(whatsappOrigin(known(COLLEAGUE))), emptyList()) shouldBe
+            ChatSighting.Seen(COLLEAGUE_CHAT)
+    }
+
+    @Test
+    fun `a chat with neither a label nor a title is not recorded`() {
         val untitled = whatsappOrigin(Conversation.Known(COLLEAGUE, ConversationTitle.Untitled))
 
-        ChatSighting.of(posted(untitled), emptyList()) shouldBe
-            ChatSighting.Seen(COLLEAGUE_CHAT.copy(name = ConversationName(COLLEAGUE.value)))
+        ChatSighting.of(posted(untitled), listOf(" ")) shouldBe ChatSighting.NotAChat
+    }
+
+    @Test
+    fun `a chat named only by its id is not recorded`() {
+        ChatSighting.of(posted(whatsappOrigin(known(COLLEAGUE, COLLEAGUE.value))), emptyList()) shouldBe
+            ChatSighting.NotAChat
+        ChatSighting.of(posted(whatsappOrigin(known(COLLEAGUE))), listOf(COLLEAGUE.value)) shouldBe
+            ChatSighting.NotAChat
     }
 
     private fun posted(origin: Origin): PostedNotification = PostedNotification.Snoozable(key, origin)

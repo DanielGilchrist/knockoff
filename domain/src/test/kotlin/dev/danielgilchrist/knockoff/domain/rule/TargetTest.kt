@@ -18,6 +18,7 @@ import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
+import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
@@ -175,5 +176,15 @@ class TargetTest {
 
         work.covers(ChannelKey(WHATSAPP, WHATSAPP_CHATS), ChannelKind.Shared) shouldBe false
         work.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND) shouldBe false
+    }
+
+    @Test
+    fun `only chat name patterns expand to seen chats`() {
+        val named = COLLEAGUE_CHAT.copy(name = ConversationName("Work chat"))
+
+        Target.ChatNamePattern(WHATSAPP, textPattern("^Work")).expandsTo(named) shouldBe true
+        Target.ChatNamePattern(WHATSAPP, textPattern("^Work")).expandsTo(COLLEAGUE_CHAT) shouldBe false
+        Target.ChatNamePattern(SLACK, textPattern("^Work")).expandsTo(named) shouldBe false
+        Target.App(WHATSAPP).expandsTo(named) shouldBe false
     }
 }
