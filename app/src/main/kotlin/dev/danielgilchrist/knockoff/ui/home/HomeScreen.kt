@@ -16,10 +16,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.NewChats
 import dev.danielgilchrist.knockoff.ui.NewChatsView
+import dev.danielgilchrist.knockoff.ui.NotificationPermission
 import dev.danielgilchrist.knockoff.ui.RuleChange
 import dev.danielgilchrist.knockoff.ui.SaveStatus
 import dev.danielgilchrist.knockoff.ui.SettingsOrigin
@@ -78,8 +80,27 @@ internal fun HomeScreen(
                         item { Text(text = "Using defaults. Nothing is saved until you change something.") }
                     }
                 }
+                asking(setup.notifications, settings.settings, actions)
                 rules(settings.settings, actions)
                 newChats(newChats, apps, settings.settings.rules.rules, actions)
+            }
+        }
+    }
+}
+
+private fun LazyListScope.asking(
+    notifications: NotificationPermission,
+    settings: Settings,
+    actions: HomeActions,
+) {
+    val asks = settings.rules.rules.any { it.state == RuleState.Enabled && it.asking.isNotEmpty() }
+
+    when (notifications) {
+        NotificationPermission.Granted -> {}
+
+        NotificationPermission.NotGranted -> {
+            if (asks) {
+                item { AskingCard(onAllowNotifications = actions.system.onAllowNotifications) }
             }
         }
     }

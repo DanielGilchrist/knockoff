@@ -7,7 +7,9 @@ sealed interface SettingsUpdate {
 
     data class DuplicateNames(
         val names: Set<RuleName>,
-    ) : SettingsUpdate
+    ) : SettingsUpdate {
+        val detail: String get() = "Duplicate rule names ${names.map { it.value }}"
+    }
 
     sealed interface Failure : SettingsUpdate {
         val detail: String

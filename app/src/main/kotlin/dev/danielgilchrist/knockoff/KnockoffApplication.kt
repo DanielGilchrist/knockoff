@@ -1,17 +1,30 @@
 package dev.danielgilchrist.knockoff
 
 import android.app.Application
+import dev.danielgilchrist.knockoff.ask.ChatAnswers
+import dev.danielgilchrist.knockoff.ask.ChatPrompt
+import dev.danielgilchrist.knockoff.ask.ChatQuestionNotifier
 import dev.danielgilchrist.knockoff.channel.SilencedChannelsStore
 import dev.danielgilchrist.knockoff.chat.ChatDecisionsStore
 import dev.danielgilchrist.knockoff.chat.SeenChatsStore
 import dev.danielgilchrist.knockoff.settings.SettingsStore
+import dev.danielgilchrist.knockoff.ui.NotificationPermission
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.launch
 import java.io.File
 
 class KnockoffApplication : Application() {
+    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     val settingsStore: SettingsStore by lazy {
         SettingsStore(File(filesDir, "settings.json"))
     }
@@ -28,10 +41,34 @@ class KnockoffApplication : Application() {
         ChatDecisionsStore(File(filesDir, "chat-decisions.json"))
     }
 
+    val chatAnswers: ChatAnswers by lazy { ChatAnswers(settingsStore, chatDecisionsStore) }
+
+    private val notificationPermission: MutableStateFlow<NotificationPermission> by lazy {
+        MutableStateFlow(NotificationPermission.of(this))
+    }
+
     private val mutableSilencingRequests =
         MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     val silencingRequests: SharedFlow<Unit> = mutableSilencingRequests.asSharedFlow()
+
+    override fun onCreate() {
+        super.onCreate()
+        val notifier = ChatQuestionNotifier(this)
+
+        scope.launch {
+            combine(
+                combine(settingsStore.loads, seenChatsStore.loads, chatDecisionsStore.loads, ChatPrompt::of),
+                notificationPermission,
+                ::Pair,
+            ).distinctUntilChanged()
+                .collect { (prompt, permission) -> notifier.show(prompt, permission) }
+        }
+    }
+
+    fun refreshNotificationPermission() {
+        notificationPermission.value = NotificationPermission.of(this)
+    }
 
     fun requestSilencing() {
         mutableSilencingRequests.tryEmit(Unit)

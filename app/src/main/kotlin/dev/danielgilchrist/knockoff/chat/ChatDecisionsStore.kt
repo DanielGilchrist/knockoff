@@ -24,11 +24,15 @@ class ChatDecisionsStore(
 
     val loads: Flow<ChatDecisionsLoad> = writes.map { read() }.distinctUntilChanged()
 
-    suspend fun letThrough(key: ChatKey): ChatDecisionSave =
+    suspend fun letThrough(key: ChatKey): ChatDecisionSave = decide { it.lettingThrough(key) }
+
+    suspend fun askedAbout(keys: Set<ChatKey>): ChatDecisionSave = decide { it.askedAbout(keys) }
+
+    private suspend fun decide(change: (ChatDecisions) -> ChatDecisions): ChatDecisionSave =
         mutex.withLock {
             when (val load = read()) {
-                is ChatDecisionsLoad.Loaded -> write(load.decisions.lettingThrough(key))
-                is ChatDecisionsLoad.Corrupt -> write(ChatDecisions.NONE.lettingThrough(key))
+                is ChatDecisionsLoad.Loaded -> write(change(load.decisions))
+                is ChatDecisionsLoad.Corrupt -> write(change(ChatDecisions.NONE))
                 is ChatDecisionsLoad.ReadFailed -> ChatDecisionSave.Failed(load.detail)
             }
         }

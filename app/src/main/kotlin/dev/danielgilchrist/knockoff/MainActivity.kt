@@ -54,7 +54,13 @@ class MainActivity : ComponentActivity() {
                     KnockoffTheme(dark = dark) {
                         KnockoffScreen(
                             viewModel = viewModel,
-                            system = SystemActions(::openAccessSettings, ::linkDevice, ::openExactAlarmSettings),
+                            system =
+                                SystemActions(
+                                    ::openAccessSettings,
+                                    ::linkDevice,
+                                    ::openExactAlarmSettings,
+                                    ::openNotificationSettings,
+                                ),
                         )
                     }
                 }
@@ -112,5 +118,11 @@ class MainActivity : ComponentActivity() {
 
     private fun openExactAlarmSettings() {
         startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", packageName, null)))
+    }
+
+    private fun openNotificationSettings() {
+        startActivity(
+            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+        )
     }
 }

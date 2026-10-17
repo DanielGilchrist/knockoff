@@ -152,9 +152,7 @@ class SettingsEditor(
                 }
 
                 is SettingsUpdate.DuplicateNames -> {
-                    SaveStatus.Failed(
-                        "Duplicate rule names ${update.names.map { it.value }}",
-                    )
+                    SaveStatus.Failed(update.detail)
                 }
 
                 is SettingsUpdate.Failure -> {

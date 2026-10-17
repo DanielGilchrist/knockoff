@@ -64,5 +64,6 @@ class MainViewModel(
     fun refreshSetup() {
         mutableSetup.value = Setup.of(getApplication())
         getApplication<KnockoffApplication>().requestSilencing()
+        getApplication<KnockoffApplication>().refreshNotificationPermission()
     }
 }

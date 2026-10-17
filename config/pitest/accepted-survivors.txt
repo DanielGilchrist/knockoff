@@ -20,6 +20,7 @@ NO_COVERAGE dev.danielgilchrist.knockoff.domain.channel.ChannelKind$Conversation
 
 # The last branch of an exhaustive when compiles to equality checks whose only alternative is an unreachable
 # NoWhenBranchMatchedException. Forcing those checks towards the branch is equivalent.
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.StoredChatAnswer$Hold parse L23 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot parse L26 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.PostedNotification describe L24 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Decision describe L26 removed conditional - replaced equality check with true

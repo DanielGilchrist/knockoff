@@ -43,6 +43,16 @@ class ChatDecisionsStoreTest {
         }
 
     @Test
+    fun `asked chats are saved alongside those let through`() =
+        runTest {
+            val store = store()
+            store.letThrough(COLLEAGUE_CHAT.key)
+
+            assertEquals(ChatDecisionSave.Saved, store.askedAbout(setOf(COLLEAGUE_CHAT.key)))
+            assertEquals(ChatDecisionsLoad.Loaded(decided.askedAbout(setOf(COLLEAGUE_CHAT.key))), store().loads.first())
+        }
+
+    @Test
     fun `a corrupt file is replaced`() =
         runTest {
             file().writeText("not json")
