@@ -12,6 +12,7 @@ import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.rule.TextPattern
 import dev.danielgilchrist.knockoff.domain.rule.TextPatternParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
+import dev.danielgilchrist.knockoff.ui.SeenChatsState
 import dev.danielgilchrist.knockoff.ui.describe
 import dev.danielgilchrist.knockoff.ui.describeCoverage
 import dev.danielgilchrist.knockoff.ui.describeTargets
@@ -30,6 +31,20 @@ class RuleDraftTest {
     @Test
     fun `a rule survives a round trip through a draft`() {
         assertEquals(Checked.Ok(defaultRule), RuleDraft.from(defaultRule).parse())
+    }
+
+    @Test
+    fun `apps to ask about come from seen and picked chats, less whole apps, plus earlier choices`() {
+        val slack = PackageName("com.Slack")
+        val gmail = PackageName.GMAIL
+        val whatsapp = COLLEAGUE_CHAT.packageName
+        val draft = RuleDraft.NEW.copy(chats = mapOf(COLLEAGUE_CHAT.key to COLLEAGUE_CHAT), asking = setOf(gmail))
+        val seen = SeenChatsState.Loaded(listOf(COLLEAGUE_CHAT.copy(packageName = slack), COLLEAGUE_CHAT))
+
+        assertEquals(setOf(slack, whatsapp, gmail), draft.askableApps(seen))
+        assertEquals(setOf(whatsapp, gmail), draft.askableApps(SeenChatsState.Loading))
+        assertEquals(setOf(whatsapp, gmail), draft.askableApps(SeenChatsState.Failed("x")))
+        assertEquals(setOf(whatsapp, gmail), draft.copy(apps = setOf(slack, gmail)).askableApps(seen))
     }
 
     @Test
@@ -174,6 +189,20 @@ class RuleDraftTest {
         assertEquals(
             "2 apps, accounts, chats or patterns",
             valid(RuleDraft.NEW.copy(name = "x", apps = setOf(PackageName("a"), PackageName("b")))).describeTargets(),
+        )
+        assertEquals(
+            "Nothing held yet. Asks about new chats from 1 app",
+            valid(RuleDraft.NEW.copy(name = "x", asking = setOf(PackageName("a")))).describeTargets(),
+        )
+        assertEquals(
+            "1 app, account, chat or pattern. Asks about new chats from 2 apps",
+            valid(
+                RuleDraft.NEW.copy(
+                    name = "x",
+                    apps = setOf(PackageName("a")),
+                    asking = setOf(PackageName("b"), PackageName("c")),
+                ),
+            ).describeTargets(),
         )
     }
 

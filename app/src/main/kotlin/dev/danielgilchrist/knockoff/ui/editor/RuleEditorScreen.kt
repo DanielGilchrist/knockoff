@@ -55,8 +55,8 @@ internal fun RuleEditorScreen(
             ChatsEditor(
                 seen = choices.chats,
                 apps = choices.apps,
-                selected = draft.chats,
-                onSelectedChange = { change(draft.copy(chats = it)) },
+                draft = draft,
+                onDraftChange = change,
             )
         }
         item { GmailAccountsEditor(draft = draft, onDraftChange = change) }

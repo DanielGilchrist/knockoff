@@ -79,7 +79,8 @@ sealed interface Editing {
             }
 
         fun picksSomething(): Boolean =
-            listOf(draft.apps, draft.chats.keys, draft.gmailAccounts).any { it.isNotEmpty() } || typesAnAccount()
+            listOf(draft.apps, draft.chats.keys, draft.gmailAccounts, draft.asking).any { it.isNotEmpty() } ||
+                typesAnAccount()
 
         fun stepProblems(): List<DraftProblem> {
             val live =

@@ -22,18 +22,20 @@ import dev.danielgilchrist.knockoff.ui.SeenChatsState
 internal fun ChatsEditor(
     seen: SeenChatsState,
     apps: InstalledApps,
-    selected: Map<ChatKey, Target.Chat>,
-    onSelectedChange: (Map<ChatKey, Target.Chat>) -> Unit,
+    draft: RuleDraft,
+    onDraftChange: (RuleDraft) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var picking by rememberSaveable { mutableStateOf(false) }
+    val selected = draft.chats
+    val onSelectedChange = { chats: Map<ChatKey, Target.Chat> -> onDraftChange(draft.copy(chats = chats)) }
 
     Column(modifier = modifier) {
         Text(text = "Chats", style = MaterialTheme.typography.titleSmall)
         Text(
             text =
                 "Hold single conversations in an app, such as work contacts on WhatsApp. A chat appears here " +
-                    "once it has sent you a notification. You can add more later.",
+                    "once it has sent you a notification.",
             style = MaterialTheme.typography.bodySmall,
         )
         selected.forEach { (key, chat) ->
@@ -46,6 +48,7 @@ internal fun ChatsEditor(
             }
         }
         OutlinedButton(onClick = { picking = true }) { Text(text = "Choose chats") }
+        AskingEditor(apps = apps, seen = seen, draft = draft, onDraftChange = onDraftChange)
     }
 
     if (picking) {

@@ -14,6 +14,7 @@ import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.domain.zone.RuleZone
+import dev.danielgilchrist.knockoff.ui.SeenChatsState
 
 data class RuleDraft(
     val name: String,
@@ -107,6 +108,16 @@ data class RuleDraft(
             }
 
         return copy(breaks = breaks + added)
+    }
+
+    fun askableApps(seen: SeenChatsState): Set<PackageName> {
+        val seenApps =
+            when (seen) {
+                is SeenChatsState.Loaded -> seen.chats.map { it.packageName }
+                SeenChatsState.Loading, is SeenChatsState.Failed -> emptyList()
+            }
+
+        return (seenApps + chats.values.map { it.packageName }).toSet() - apps + asking
     }
 
     fun withPendingGmailAdded(): RuleDraft =

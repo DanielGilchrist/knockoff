@@ -31,12 +31,20 @@ internal fun Window.describe(): String {
 
 internal fun Break.describe(): String = "Except ${name.value}: ${window.describe()}"
 
-internal fun Rule.describeTargets(): String =
-    when (targets.size) {
-        0 -> "Nothing chosen yet, so this rule does nothing"
-        1 -> "1 app, account, chat or pattern"
-        else -> "${targets.size} apps, accounts, chats or patterns"
+internal fun Rule.describeTargets(): String {
+    val held =
+        when (targets.size) {
+            0 -> "Nothing held yet"
+            1 -> "1 app, account, chat or pattern"
+            else -> "${targets.size} apps, accounts, chats or patterns"
+        }
+
+    return when (asking.size) {
+        0 -> if (targets.isEmpty()) "Nothing chosen yet, so this rule does nothing" else held
+        1 -> "$held. Asks about new chats from 1 app"
+        else -> "$held. Asks about new chats from ${asking.size} apps"
     }
+}
 
 internal fun DayOfWeek.shortName(): String = getDisplayName(TextStyle.SHORT, Locale.UK)
 

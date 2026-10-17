@@ -83,6 +83,13 @@ class WizardTest {
     }
 
     @Test
+    fun `asking about an app's new chats counts as a pick`() {
+        val work = start.choosing(WizardGoal.WorkHours).toStep(WizardStep.What)
+
+        assertEquals(true, work.copy(draft = work.draft.copy(asking = setOf(COLLEAGUE_CHAT.packageName))).canContinue())
+    }
+
+    @Test
     fun `steps run in order`() {
         assertEquals(
             listOf(WizardStep.What, WizardStep.When, WizardStep.Review),

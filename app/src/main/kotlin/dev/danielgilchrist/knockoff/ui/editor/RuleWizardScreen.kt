@@ -142,8 +142,8 @@ private fun WhatStep(
         ChatsEditor(
             seen = choices.chats,
             apps = choices.apps,
-            selected = draft.chats,
-            onSelectedChange = { onDraftChange(draft.copy(chats = it)) },
+            draft = draft,
+            onDraftChange = onDraftChange,
         )
         GmailAccountsEditor(draft = draft, onDraftChange = onDraftChange)
         when {
