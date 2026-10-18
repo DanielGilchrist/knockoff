@@ -2,12 +2,12 @@ package dev.danielgilchrist.knockoff.ui.preferences
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.Theme
+import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import dev.danielgilchrist.knockoff.ui.SaveStatus
 import dev.danielgilchrist.knockoff.ui.Setup
 import dev.danielgilchrist.knockoff.ui.components.Caption
@@ -17,8 +17,9 @@ import dev.danielgilchrist.knockoff.ui.components.ListScreen
 import dev.danielgilchrist.knockoff.ui.components.ScreenNavigation
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 import dev.danielgilchrist.knockoff.ui.saveProblem
-import dev.danielgilchrist.knockoff.ui.zone.ZoneChoiceRows
-import dev.danielgilchrist.knockoff.ui.zone.ZoneSelection
+import dev.danielgilchrist.knockoff.ui.zone.DEVICE_ZONE
+import dev.danielgilchrist.knockoff.ui.zone.ZoneRow
+import dev.danielgilchrist.knockoff.ui.zone.label
 
 @Composable
 internal fun PreferencesScreen(
@@ -34,15 +35,22 @@ internal fun PreferencesScreen(
         saveProblem(saveStatus)
         item { SectionHeader(text = "Setup") }
         item { SetupGroup(setup = setup, actions = actions) }
-        item { SectionHeader(text = "Default time zone") }
-        item { Caption(text = "Rules set to App default follow this.") }
+        item { SectionHeader(text = "General") }
         item {
-            ListGroup(modifier = Modifier.selectableGroup()) {
-                ZoneChoiceRows(
-                    selection = ZoneSelection.Chosen(settings.rules.defaultZone),
-                    onChoose = actions.onDefaultZoneChange,
-                )
-            }
+            ZoneRow(
+                headline = "Default time zone",
+                label = { it.label() },
+                leading = listOf(DEVICE_ZONE),
+                selected = settings.rules.defaultZone,
+                fixed = { ZoneChoice.Fixed(it) },
+                onPick = actions.onDefaultZoneChange,
+            )
+        }
+        item {
+            Caption(
+                text = "Rules set to App default follow this.",
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
         }
         item { SectionHeader(text = "Theme") }
         item {

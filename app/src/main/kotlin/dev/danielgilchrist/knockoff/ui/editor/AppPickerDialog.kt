@@ -1,13 +1,7 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,7 +12,9 @@ import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.ui.InstalledApp
 import dev.danielgilchrist.knockoff.ui.InstalledApps
+import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.CheckboxListItem
+import dev.danielgilchrist.knockoff.ui.components.PickerScreen
 import dev.danielgilchrist.knockoff.ui.toggled
 
 @Composable
@@ -31,39 +27,35 @@ internal fun AppPickerDialog(
 ) {
     var query by rememberSaveable { mutableStateOf("") }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
+    PickerScreen(
+        title = "Choose apps",
+        query = query,
+        onQueryChange = { query = it },
+        searchHint = "Search apps",
+        onDone = onDismiss,
         modifier = modifier,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(text = "Done") } },
-        title = { Text(text = "Apps") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = { Text(text = "Search") },
-                    singleLine = true,
-                )
-                when (apps) {
-                    InstalledApps.Loading -> {
-                        Text(text = "Loading installed apps…")
-                    }
+    ) {
+        when (apps) {
+            InstalledApps.Loading -> {
+                item { Caption(text = "Loading installed apps…", modifier = Modifier.padding(16.dp)) }
+            }
 
-                    is InstalledApps.Loaded -> {
-                        LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                            items(apps.apps.filter { it.matches(query) }, key = { it.packageName.value }) { app ->
-                                CheckboxListItem(
-                                    headline = app.label,
-                                    checked = app.packageName in selected,
-                                    onToggle = { onSelectedChange(selected.toggled(app.packageName)) },
-                                )
-                            }
-                        }
-                    }
+            is InstalledApps.Loaded -> {
+                val matching = apps.apps.filter { it.matches(query) }
+
+                if (matching.isEmpty()) {
+                    item { Caption(text = "No apps match \"$query\".", modifier = Modifier.padding(16.dp)) }
+                }
+                items(matching, key = { it.packageName.value }) { app ->
+                    CheckboxListItem(
+                        headline = app.label,
+                        checked = app.packageName in selected,
+                        onToggle = { onSelectedChange(selected.toggled(app.packageName)) },
+                    )
                 }
             }
-        },
-    )
+        }
+    }
 }
 
 private fun InstalledApp.matches(query: String): Boolean =

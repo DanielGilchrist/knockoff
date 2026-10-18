@@ -2,10 +2,13 @@ package dev.danielgilchrist.knockoff.ui.zone
 
 import java.time.ZoneId
 
+private val REGIONS =
+    setOf("Africa", "America", "Antarctica", "Arctic", "Asia", "Atlantic", "Australia", "Europe", "Indian", "Pacific")
+
 private val ZONES: List<ZoneId> =
     ZoneId
         .getAvailableZoneIds()
-        .filterNot { it.startsWith("Etc/GMT+") || it.startsWith("Etc/GMT-") }
+        .filter { id -> id == "UTC" || REGIONS.any { id.startsWith("$it/") } }
         .sorted()
         .map(ZoneId::of)
 

@@ -2,7 +2,8 @@ package dev.danielgilchrist.knockoff.ui.editor
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -11,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
@@ -38,12 +40,11 @@ internal fun PatternsEditor(
         SectionHeader(text = "Patterns")
         Caption(
             text =
-                "Match an app's chat names or channel IDs with a regular expression. Case-sensitive; matches " +
-                    "anywhere unless anchored with ^ or $.",
+                "Match chat names or channel IDs with a regular expression. Case-sensitive; matches anywhere " +
+                    "unless anchored.",
         )
         patterns.forEachIndexed { index, pattern ->
             PatternCard(
-                number = index + 1,
                 pattern = pattern,
                 choices = choices,
                 onPatternChange = { onPatternsChange(patterns.replacedAt(index, it)) },
@@ -72,14 +73,13 @@ internal fun PatternsEditor(
 
 @Composable
 private fun PatternCard(
-    number: Int,
     pattern: PatternDraft,
     choices: TargetChoices,
     onPatternChange: (PatternDraft) -> Unit,
     onRemove: () -> Unit,
 ) {
     EditCard(
-        title = "Pattern $number · ${choices.apps.labelOf(pattern.app)}",
+        title = choices.apps.labelOf(pattern.app),
         removal = CardRemoval.Remove("Remove this pattern", onRemove),
     ) {
         ChoiceSegments(
@@ -100,8 +100,10 @@ private fun PatternCard(
             label = { Text(text = "Regular expression") },
             singleLine = true,
             isError = preview is PatternPreview.Invalid,
+            textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+            supportingText = { Text(text = describe(preview, choices.chats)) },
+            modifier = Modifier.fillMaxWidth(),
         )
-        Text(text = describe(preview, choices.chats), style = MaterialTheme.typography.bodySmall)
     }
 }
 

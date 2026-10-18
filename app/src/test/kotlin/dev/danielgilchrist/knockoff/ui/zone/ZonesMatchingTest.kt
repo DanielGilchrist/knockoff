@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.ui.zone
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -32,5 +33,16 @@ class ZonesMatchingTest {
     fun `Etc zones with inverted GMT signs are left out`() {
         assertEquals(emptyList<String>(), zonesMatching("Etc/GMT+5").map { it.id })
         assertEquals(emptyList<String>(), zonesMatching("Etc/GMT-5").map { it.id })
+    }
+
+    @Test
+    fun `only region zones and UTC are offered`() {
+        val all = zonesMatching("").map { it.id }
+
+        assertTrue("UTC" in all)
+        listOf("GMT", "EST5EDT", "Japan", "Etc/UTC", "SystemV/EST5", "US/Pacific", "Canada/Eastern").forEach {
+            assertFalse(it in all, it)
+        }
+        assertTrue(all.all { it == "UTC" || '/' in it })
     }
 }

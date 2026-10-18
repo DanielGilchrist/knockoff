@@ -1,20 +1,20 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.ui.InstalledApps
-import dev.danielgilchrist.knockoff.ui.components.SectionHeader
+import dev.danielgilchrist.knockoff.ui.components.AddButton
+import dev.danielgilchrist.knockoff.ui.components.CategoryCard
+import dev.danielgilchrist.knockoff.ui.components.RemovableChip
 
 @Composable
 internal fun AppsEditor(
@@ -25,15 +25,17 @@ internal fun AppsEditor(
 ) {
     var picking by rememberSaveable { mutableStateOf(false) }
 
-    Column(modifier = modifier) {
-        SectionHeader(text = "Apps")
-        selected.forEach { packageName ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = apps.labelOf(packageName), modifier = Modifier.weight(1f))
-                TextButton(onClick = { onSelectedChange(selected - packageName) }) { Text(text = "Remove") }
+    CategoryCard(icon = R.drawable.ic_apps, title = "Apps", count = selected.size, modifier = modifier) {
+        if (selected.isNotEmpty()) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                selected.sortedBy { apps.labelOf(it) }.forEach { packageName ->
+                    RemovableChip(label = apps.labelOf(packageName), onRemove = {
+                        onSelectedChange(selected - packageName)
+                    })
+                }
             }
         }
-        OutlinedButton(onClick = { picking = true }) { Text(text = "Choose apps") }
+        AddButton(text = "Choose apps", onClick = { picking = true })
     }
 
     if (picking) {
