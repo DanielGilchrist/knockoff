@@ -10,10 +10,11 @@ import dev.danielgilchrist.knockoff.ui.describe
 internal fun DraftProblems(
     problems: List<DraftProblem>,
     modifier: Modifier = Modifier,
+    title: String = "Fix before saving",
 ) {
     if (problems.isNotEmpty()) {
         NoticeCard(
-            title = "Fix before saving",
+            title = title,
             body = problems.joinToString("\n") { "• ${it.describe()}" },
             tone = NoticeTone.Problem,
             modifier = modifier,

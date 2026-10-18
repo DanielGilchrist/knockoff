@@ -1,8 +1,5 @@
 package dev.danielgilchrist.knockoff.ui
 
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.safeDrawing
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -132,7 +129,7 @@ private fun Wizard(
                 onCreate = editor::saveDraft,
                 onCancel = { editor.show(Editing.Closed) },
             ),
-        modifier = modifier.windowInsetsPadding(WindowInsets.safeDrawing),
+        modifier = modifier,
     )
 }
 
