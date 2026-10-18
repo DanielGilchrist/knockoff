@@ -17,7 +17,9 @@ import dev.danielgilchrist.knockoff.ui.SeenChatsState
 import dev.danielgilchrist.knockoff.ui.TargetChoices
 import dev.danielgilchrist.knockoff.ui.components.AddButton
 import dev.danielgilchrist.knockoff.ui.components.Caption
+import dev.danielgilchrist.knockoff.ui.components.CardRemoval
 import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
+import dev.danielgilchrist.knockoff.ui.components.EditCard
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 import dev.danielgilchrist.knockoff.ui.describeCoverage
 import dev.danielgilchrist.knockoff.ui.removedAt
@@ -76,10 +78,9 @@ private fun PatternCard(
     onPatternChange: (PatternDraft) -> Unit,
     onRemove: () -> Unit,
 ) {
-    NumberedCard(
+    EditCard(
         title = "Pattern $number · ${choices.apps.labelOf(pattern.app)}",
-        removeLabel = "Remove this pattern",
-        onRemove = onRemove,
+        removal = CardRemoval.Remove("Remove this pattern", onRemove),
     ) {
         ChoiceSegments(
             options = PatternField.entries,

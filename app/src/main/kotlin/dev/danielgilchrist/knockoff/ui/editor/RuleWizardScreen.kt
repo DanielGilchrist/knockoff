@@ -25,6 +25,8 @@ import dev.danielgilchrist.knockoff.ui.Editing
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.TargetChoices
+import dev.danielgilchrist.knockoff.ui.components.CardRemoval
+import dev.danielgilchrist.knockoff.ui.components.EditCard
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
 import dev.danielgilchrist.knockoff.ui.components.SwitchListItem
 
@@ -161,9 +163,11 @@ private fun WhenStep(
     guided: Editing.Guided,
     actions: WizardActions,
 ) {
-    Column {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         guided.draft.windows.take(1).forEach { window ->
-            WindowFields(window = window, onWindowChange = { hours -> actions.onGuide { it.withHours(hours) } })
+            EditCard(title = "Hours", removal = CardRemoval.None) {
+                WindowFields(window = window, onWindowChange = { hours -> actions.onGuide { it.withHours(hours) } })
+            }
         }
         when (val goal = guided.goal) {
             GoalChoice.Unchosen -> {}

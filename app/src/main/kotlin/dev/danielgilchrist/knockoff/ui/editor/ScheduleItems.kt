@@ -15,7 +15,7 @@ internal fun LazyListScope.hoursItems(
 ) {
     itemsIndexed(draft.windows) { index, window ->
         WindowEditor(
-            number = index + 1,
+            position = WindowPosition.of(index, draft.windows.size),
             window = window,
             onWindowChange = { onDraftChange(draft.copy(windows = draft.windows.replacedAt(index, it))) },
             onRemove = { onDraftChange(draft.copy(windows = draft.windows.removedAt(index))) },

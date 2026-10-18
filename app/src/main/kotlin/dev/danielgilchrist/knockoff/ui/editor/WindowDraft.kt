@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.schedule.DailyHours
 import dev.danielgilchrist.knockoff.domain.schedule.WeekDays
 import dev.danielgilchrist.knockoff.domain.schedule.WeekDaysParse
 import dev.danielgilchrist.knockoff.domain.schedule.Window
+import dev.danielgilchrist.knockoff.ui.components.TileNote
 import dev.danielgilchrist.knockoff.ui.toggled
 import java.time.DayOfWeek
 import java.time.LocalTime
@@ -19,11 +20,11 @@ data class WindowDraft(
         fun from(window: Window): WindowDraft = WindowDraft(window.days.days, window.hours.start, window.hours.end)
     }
 
-    fun spanDescription(): String =
+    fun endNote(): TileNote =
         when (DailyHours.between(start, end)) {
-            is DailyHours.SameDay -> "Same day"
-            is DailyHours.Overnight -> "Runs past midnight into the next day"
-            is DailyHours.FullDay -> "A full 24 hours"
+            is DailyHours.SameDay -> TileNote.None
+            is DailyHours.Overnight -> TileNote.Shown("Next day")
+            is DailyHours.FullDay -> TileNote.Shown("24 hours later")
         }
 
     fun runsPastMidnight(): Boolean =
