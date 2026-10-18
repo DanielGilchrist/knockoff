@@ -23,13 +23,13 @@ data class QuestionView(
             val waiting =
                 when (rest.size) {
                     0 -> ""
-                    1 -> " 1 more chat is waiting in Knockoff."
-                    else -> " ${rest.size} more chats are waiting in Knockoff."
+                    1 -> " 1 more is waiting."
+                    else -> " ${rest.size} more are waiting."
                 }
 
             return QuestionView(
-                title = "New chat: ${chat.name.value}",
-                text = "${labelOf(chat.packageName)}. Hold it with a rule, or let it through.$waiting",
+                title = chat.name.value,
+                text = "On ${labelOf(chat.packageName)}. Hold it or let it through.$waiting",
                 holds = first.rules.take(HOLD_ACTIONS).map { ChatAnswer.Hold(it, chat) },
                 letThrough = ChatAnswer.LetThrough(chat.key),
                 dismiss = ChatAnswer.Dismiss((listOf(first) + rest).map { it.chat.key }.toSet()),

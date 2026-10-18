@@ -50,6 +50,7 @@ import dev.danielgilchrist.knockoff.ui.components.EditCard
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
 import dev.danielgilchrist.knockoff.ui.components.NavigationListItem
 import dev.danielgilchrist.knockoff.ui.components.SwitchListItem
+import dev.danielgilchrist.knockoff.ui.icon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -163,14 +164,14 @@ private fun GoalStep(
 ) {
     Column(modifier = Modifier.selectableGroup(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         ChoiceCard(
-            icon = R.drawable.ic_work,
+            icon = WizardGoal.WorkHours.policy.icon,
             title = "Keep work to work hours",
             description = "Hold notifications outside the hours you set, so work stays at work.",
             selected = goal == GoalChoice.Chosen(WizardGoal.WorkHours),
             onClick = { actions.onGuide { it.choosing(WizardGoal.WorkHours) } },
         )
         ChoiceCard(
-            icon = R.drawable.ic_bedtime,
+            icon = WizardGoal.QuietTime.policy.icon,
             title = "Quiet time",
             description = "Hold notifications during the hours you set, such as evenings and nights.",
             selected = goal == GoalChoice.Chosen(WizardGoal.QuietTime),

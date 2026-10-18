@@ -68,6 +68,7 @@ class ChatQuestionNotifier(
             .Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_new_chat)
             .setContentTitle(view.title)
+            .setSubText("New chat")
             .setContentText(view.text)
             .setStyle(Notification.BigTextStyle().bigText(view.text))
             .setOnlyAlertOnce(true)

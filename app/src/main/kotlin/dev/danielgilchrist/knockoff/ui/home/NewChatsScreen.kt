@@ -1,9 +1,21 @@
 package dev.danielgilchrist.knockoff.ui.home
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.NewChats
@@ -65,7 +77,7 @@ internal fun NewChatsScreen(
 
             is NewChats.Ready -> {
                 if (chats.chats.isEmpty()) {
-                    item { Caption(text = "No new chats.") }
+                    item { AllCaughtUp() }
                 }
                 items(chats.chats, key = { "chat:${it.packageName.value}/${it.id.value}" }) { chat ->
                     NewChatCard(
@@ -78,5 +90,23 @@ internal fun NewChatsScreen(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AllCaughtUp(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth().padding(vertical = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_check_circle),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(48.dp),
+        )
+        Text(text = "All caught up", style = MaterialTheme.typography.titleMedium)
+        Caption(text = "New chats show up here when they first notify you.")
     }
 }

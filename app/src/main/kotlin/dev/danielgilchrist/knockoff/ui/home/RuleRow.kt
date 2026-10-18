@@ -15,12 +15,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import dev.danielgilchrist.knockoff.R
-import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.ui.components.IconBadge
 import dev.danielgilchrist.knockoff.ui.components.groupedItemColors
+import dev.danielgilchrist.knockoff.ui.icon
 
 @Composable
 internal fun RuleRow(
@@ -30,11 +29,7 @@ internal fun RuleRow(
     onStateChange: (RuleState) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val icon =
-        when (rule.policy) {
-            Policy.DeliverOnlyDuring -> R.drawable.ic_work
-            Policy.HoldDuring -> R.drawable.ic_bedtime
-        }
+    val icon = rule.policy.icon
 
     ListItem(
         headlineContent = { Text(text = rule.name.value) },
