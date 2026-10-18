@@ -20,10 +20,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.ui.Editing
-import dev.danielgilchrist.knockoff.ui.RadioRow
 import dev.danielgilchrist.knockoff.ui.RuleSection
 import dev.danielgilchrist.knockoff.ui.TargetChoices
-import dev.danielgilchrist.knockoff.ui.describe
+import dev.danielgilchrist.knockoff.ui.components.Caption
+import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
+import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 
 @Composable
 internal fun RuleSectionScreen(
@@ -115,10 +116,26 @@ private fun PolicyChoice(
     policy: Policy,
     onPolicyChange: (Policy) -> Unit,
 ) {
-    Column {
-        Policy.entries.forEach { option ->
-            RadioRow(text = option.describe(), selected = policy == option, onClick = { onPolicyChange(option) })
-        }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SectionHeader(text = "During these hours")
+        ChoiceSegments(
+            options = Policy.entries,
+            selected = policy,
+            label = {
+                when (it) {
+                    Policy.DeliverOnlyDuring -> "Let through"
+                    Policy.HoldDuring -> "Hold"
+                }
+            },
+            onSelect = onPolicyChange,
+        )
+        Caption(
+            text =
+                when (policy) {
+                    Policy.DeliverOnlyDuring -> "Held at all other times."
+                    Policy.HoldDuring -> "Let through at all other times."
+                },
+        )
     }
 }
 

@@ -17,6 +17,8 @@ import dev.danielgilchrist.knockoff.domain.rule.ChatKey
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
+import dev.danielgilchrist.knockoff.ui.components.Caption
+import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 
 @Composable
 internal fun ChatsEditor(
@@ -31,12 +33,11 @@ internal fun ChatsEditor(
     val onSelectedChange = { chats: Map<ChatKey, Target.Chat> -> onDraftChange(draft.copy(chats = chats)) }
 
     Column(modifier = modifier) {
-        Text(text = "Chats", style = MaterialTheme.typography.titleSmall)
-        Text(
+        SectionHeader(text = "Chats")
+        Caption(
             text =
-                "Hold single conversations in an app, such as work contacts on WhatsApp. A chat appears here " +
-                    "once it has sent you a notification.",
-            style = MaterialTheme.typography.bodySmall,
+                "Hold single conversations, such as work contacts on WhatsApp. A chat shows up once it has " +
+                    "notified you.",
         )
         selected.forEach { (key, chat) ->
             Row(verticalAlignment = Alignment.CenterVertically) {

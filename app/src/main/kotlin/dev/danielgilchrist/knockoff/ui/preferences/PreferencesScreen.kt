@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -14,9 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.Theme
-import dev.danielgilchrist.knockoff.ui.RadioRow
 import dev.danielgilchrist.knockoff.ui.SaveStatus
 import dev.danielgilchrist.knockoff.ui.Setup
+import dev.danielgilchrist.knockoff.ui.components.Caption
+import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
+import dev.danielgilchrist.knockoff.ui.components.ListGroup
+import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 import dev.danielgilchrist.knockoff.ui.saveProblem
 import dev.danielgilchrist.knockoff.ui.zone.ZoneChoiceRows
 import dev.danielgilchrist.knockoff.ui.zone.ZoneSelection
@@ -37,7 +41,7 @@ internal fun PreferencesScreen(
     ) {
         item { Text(text = "Settings", style = MaterialTheme.typography.titleLarge) }
         saveProblem(saveStatus)
-        item { Text(text = "Setup", style = MaterialTheme.typography.titleSmall) }
+        item { SectionHeader(text = "Setup") }
         item { AccessCard(access = setup.access, onOpenSettings = actions.system.onOpenAccessSettings) }
         item {
             SilentHoldsCard(
@@ -55,24 +59,26 @@ internal fun PreferencesScreen(
         }
         item {
             Column {
-                Text(text = "Default time zone", style = MaterialTheme.typography.titleSmall)
-                Text(text = "Rules set to \"App default\" follow this.", style = MaterialTheme.typography.bodySmall)
-                ZoneChoiceRows(
-                    selection = ZoneSelection.Chosen(settings.rules.defaultZone),
-                    onChoose = actions.onDefaultZoneChange,
-                )
+                SectionHeader(text = "Default time zone")
+                Caption(text = "Rules set to App default follow this.")
+                ListGroup(modifier = Modifier.padding(top = 8.dp).selectableGroup()) {
+                    ZoneChoiceRows(
+                        selection = ZoneSelection.Chosen(settings.rules.defaultZone),
+                        onChoose = actions.onDefaultZoneChange,
+                    )
+                }
             }
         }
         item {
             Column {
-                Text(text = "Theme", style = MaterialTheme.typography.titleSmall)
-                Theme.entries.forEach { theme ->
-                    RadioRow(
-                        text = theme.describe(),
-                        selected = settings.theme == theme,
-                        onClick = { actions.onThemeChange(theme) },
-                    )
-                }
+                SectionHeader(text = "Theme")
+                ChoiceSegments(
+                    options = Theme.entries,
+                    selected = settings.theme,
+                    label = { it.describe() },
+                    onSelect = actions.onThemeChange,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
         }
         item { OutlinedButton(onClick = actions.onBack) { Text(text = "Done") } }
@@ -81,7 +87,7 @@ internal fun PreferencesScreen(
 
 private fun Theme.describe(): String =
     when (this) {
-        Theme.System -> "Follow the system"
+        Theme.System -> "System"
         Theme.Light -> "Light"
         Theme.Dark -> "Dark"
     }

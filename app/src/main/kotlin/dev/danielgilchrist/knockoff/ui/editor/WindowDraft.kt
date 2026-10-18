@@ -26,6 +26,12 @@ data class WindowDraft(
             is DailyHours.FullDay -> "A full 24 hours"
         }
 
+    fun runsPastMidnight(): Boolean =
+        when (DailyHours.between(start, end)) {
+            is DailyHours.Overnight -> true
+            is DailyHours.SameDay, is DailyHours.FullDay -> false
+        }
+
     fun toggle(day: DayOfWeek): WindowDraft = copy(days = days.toggled(day))
 
     fun parse(withoutDays: DraftProblem.MissingDays): Checked<Window> =

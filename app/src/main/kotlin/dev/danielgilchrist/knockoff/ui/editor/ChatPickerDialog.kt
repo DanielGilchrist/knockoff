@@ -19,6 +19,7 @@ import dev.danielgilchrist.knockoff.domain.rule.ChatKey
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
+import dev.danielgilchrist.knockoff.ui.components.CheckboxListItem
 import dev.danielgilchrist.knockoff.ui.toggled
 
 @Composable
@@ -91,11 +92,11 @@ private fun ChatRows(
         else -> {
             LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                 items(matching, key = { "${it.packageName.value}/${it.id.value}" }) { chat ->
-                    CheckboxRow(
-                        title = chat.name.value,
-                        subtitle = apps.labelOf(chat.packageName),
+                    CheckboxListItem(
+                        headline = chat.name.value,
                         checked = chat.key in selected,
                         onToggle = { onSelectedChange(selected.toggled(chat.key, chat)) },
+                        supporting = apps.labelOf(chat.packageName),
                     )
                 }
             }

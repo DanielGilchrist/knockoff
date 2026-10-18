@@ -3,7 +3,6 @@ package dev.danielgilchrist.knockoff.ui.editor
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,9 +13,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.rule.Target
-import dev.danielgilchrist.knockoff.ui.RadioRow
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
 import dev.danielgilchrist.knockoff.ui.TargetChoices
+import dev.danielgilchrist.knockoff.ui.components.AddButton
+import dev.danielgilchrist.knockoff.ui.components.Caption
+import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
+import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 import dev.danielgilchrist.knockoff.ui.describeCoverage
 import dev.danielgilchrist.knockoff.ui.removedAt
 import dev.danielgilchrist.knockoff.ui.replacedAt
@@ -31,13 +33,11 @@ internal fun PatternsEditor(
     var picking by rememberSaveable(stateSaver = AppPicking.SAVER) { mutableStateOf<AppPicking>(AppPicking.Closed) }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = "Patterns", style = MaterialTheme.typography.titleSmall)
-        Text(
+        SectionHeader(text = "Patterns")
+        Caption(
             text =
-                "For power users: pick an app's notifications whose chat name or channel ID matches a regular " +
-                    "expression. It matches anywhere unless anchored with ^ or $, and is case-sensitive. Chats " +
-                    "not seen yet are matched by their notification title.",
-            style = MaterialTheme.typography.bodySmall,
+                "Match an app's chat names or channel IDs with a regular expression. Case-sensitive; matches " +
+                    "anywhere unless anchored with ^ or $.",
         )
         patterns.forEachIndexed { index, pattern ->
             PatternCard(
@@ -48,7 +48,7 @@ internal fun PatternsEditor(
                 onRemove = { onPatternsChange(patterns.removedAt(index)) },
             )
         }
-        OutlinedButton(onClick = { picking = AppPicking.Open(emptySet()) }) { Text(text = "Add pattern") }
+        AddButton(text = "Add pattern", onClick = { picking = AppPicking.Open(emptySet()) })
     }
 
     when (val current = picking) {
@@ -81,15 +81,16 @@ private fun PatternCard(
         removeLabel = "Remove this pattern",
         onRemove = onRemove,
     ) {
-        RadioRow(
-            text = "Chat name",
-            selected = pattern.field == PatternField.ChatName,
-            onClick = { onPatternChange(pattern.copy(field = PatternField.ChatName)) },
-        )
-        RadioRow(
-            text = "Channel ID",
-            selected = pattern.field == PatternField.ChannelId,
-            onClick = { onPatternChange(pattern.copy(field = PatternField.ChannelId)) },
+        ChoiceSegments(
+            options = PatternField.entries,
+            selected = pattern.field,
+            label = {
+                when (it) {
+                    PatternField.ChatName -> "Chat name"
+                    PatternField.ChannelId -> "Channel ID"
+                }
+            },
+            onSelect = { onPatternChange(pattern.copy(field = it)) },
         )
         val preview = pattern.preview()
         OutlinedTextField(

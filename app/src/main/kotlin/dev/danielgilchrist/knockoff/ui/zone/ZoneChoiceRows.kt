@@ -8,10 +8,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
-import dev.danielgilchrist.knockoff.ui.RadioRow
+import dev.danielgilchrist.knockoff.ui.components.RadioListItem
 import dev.danielgilchrist.knockoff.ui.describe
 
-private const val SPECIFIC = "A specific time zone"
+private const val CHOOSE = "Choose a time zone"
 
 @Composable
 internal fun ZoneChoiceRows(
@@ -23,24 +23,30 @@ internal fun ZoneChoiceRows(
     val (specific, specificSelected) =
         when (selection) {
             ZoneSelection.None -> {
-                SPECIFIC to false
+                CHOOSE to false
             }
 
             is ZoneSelection.Chosen -> {
                 when (val choice = selection.choice) {
-                    ZoneChoice.Device -> SPECIFIC to false
+                    ZoneChoice.Device -> CHOOSE to false
                     is ZoneChoice.Fixed -> choice.zone.describe() to true
                 }
             }
         }
 
     Column(modifier = modifier) {
-        RadioRow(
-            text = "Device time zone",
+        RadioListItem(
+            headline = "Device time zone",
             selected = selection == ZoneSelection.Chosen(ZoneChoice.Device),
             onClick = { onChoose(ZoneChoice.Device) },
+            supporting = "Follows the phone when you travel",
         )
-        RadioRow(text = specific, selected = specificSelected, onClick = { picking = true })
+        RadioListItem(
+            headline = "A specific time zone",
+            selected = specificSelected,
+            onClick = { picking = true },
+            supporting = specific,
+        )
     }
 
     if (picking) {

@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.ui.InstalledApp
 import dev.danielgilchrist.knockoff.ui.InstalledApps
+import dev.danielgilchrist.knockoff.ui.components.CheckboxListItem
 import dev.danielgilchrist.knockoff.ui.toggled
 
 @Composable
@@ -51,9 +52,8 @@ internal fun AppPickerDialog(
                     is InstalledApps.Loaded -> {
                         LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
                             items(apps.apps.filter { it.matches(query) }, key = { it.packageName.value }) { app ->
-                                CheckboxRow(
-                                    title = app.label,
-                                    subtitle = app.packageName.value,
+                                CheckboxListItem(
+                                    headline = app.label,
                                     checked = app.packageName in selected,
                                     onToggle = { onSelectedChange(selected.toggled(app.packageName)) },
                                 )

@@ -2,7 +2,6 @@ package dev.danielgilchrist.knockoff.ui.editor
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -11,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
+import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 
 @Composable
 internal fun GmailAccountsEditor(
@@ -21,7 +21,7 @@ internal fun GmailAccountsEditor(
     val pending = AccountAddress.parse(draft.pendingGmail)
 
     Column(modifier = modifier) {
-        Text(text = "Gmail accounts", style = MaterialTheme.typography.titleSmall)
+        SectionHeader(text = "Gmail accounts")
         draft.gmailAccounts.forEach { account ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = account.value, modifier = Modifier.weight(1f))

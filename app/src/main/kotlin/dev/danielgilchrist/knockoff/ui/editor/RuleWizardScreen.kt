@@ -25,6 +25,8 @@ import dev.danielgilchrist.knockoff.ui.Editing
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.TargetChoices
+import dev.danielgilchrist.knockoff.ui.components.ListGroup
+import dev.danielgilchrist.knockoff.ui.components.SwitchListItem
 
 @Composable
 internal fun RuleWizardScreen(
@@ -184,19 +186,21 @@ private fun LunchBreak(
     draft: RuleDraft,
     onDraftChange: (RuleDraft) -> Unit,
 ) {
-    CheckboxRow(
-        title = "Take a lunch break",
-        subtitle = "12:00 to 13:00 on the same days, when notifications are held too",
-        checked = draft.breaks.isNotEmpty(),
-        onToggle = {
-            onDraftChange(
-                when {
-                    draft.breaks.isEmpty() -> draft.withBreakAdded()
-                    else -> draft.copy(breaks = emptyList())
-                },
-            )
-        },
-    )
+    ListGroup {
+        SwitchListItem(
+            headline = "Lunch break",
+            supporting = "12:00 to 13:00 on the same days, held too",
+            checked = draft.breaks.isNotEmpty(),
+            onToggle = {
+                onDraftChange(
+                    when {
+                        draft.breaks.isEmpty() -> draft.withBreakAdded()
+                        else -> draft.copy(breaks = emptyList())
+                    },
+                )
+            },
+        )
+    }
 }
 
 @Composable

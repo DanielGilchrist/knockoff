@@ -1,6 +1,5 @@
 package dev.danielgilchrist.knockoff.ui
 
-import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
 import java.time.DayOfWeek
@@ -14,12 +13,6 @@ internal fun ZoneId.describe(): String {
 
     return "${id.replace('_', ' ')} (UTC$offset)"
 }
-
-internal fun Policy.describe(): String =
-    when (this) {
-        Policy.DeliverOnlyDuring -> "Deliver only during these hours"
-        Policy.HoldDuring -> "Hold during these hours"
-    }
 
 private const val EVERY_DAY = "Every day"
 private const val WEEKDAYS = "Weekdays"

@@ -1,12 +1,16 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
+import dev.danielgilchrist.knockoff.ui.components.Caption
+import dev.danielgilchrist.knockoff.ui.components.ListGroup
+import dev.danielgilchrist.knockoff.ui.components.SectionHeader
+import dev.danielgilchrist.knockoff.ui.components.SwitchListItem
 import dev.danielgilchrist.knockoff.ui.toggled
 
 @Composable
@@ -21,20 +25,16 @@ internal fun AskingEditor(
 
     if (askable.isNotEmpty()) {
         Column(modifier = modifier) {
-            Text(text = "Ask about new chats", style = MaterialTheme.typography.titleSmall)
-            Text(
-                text =
-                    "When a chat from one of these apps first notifies you, a quiet notification offers to add " +
-                        "it to this rule or let it through.",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            askable.sortedBy { apps.labelOf(it) }.forEach { app ->
-                CheckboxRow(
-                    title = apps.labelOf(app),
-                    subtitle = "Ask about its new chats",
-                    checked = app in draft.asking,
-                    onToggle = { onDraftChange(draft.copy(asking = draft.asking.toggled(app))) },
-                )
+            SectionHeader(text = "Ask about new chats")
+            Caption(text = "A quiet notification asks whether to hold each new chat with this rule.")
+            ListGroup(modifier = Modifier.padding(top = 8.dp)) {
+                askable.sortedBy { apps.labelOf(it) }.forEach { app ->
+                    SwitchListItem(
+                        headline = apps.labelOf(app),
+                        checked = app in draft.asking,
+                        onToggle = { onDraftChange(draft.copy(asking = draft.asking.toggled(app))) },
+                    )
+                }
             }
         }
     }

@@ -2,7 +2,6 @@ package dev.danielgilchrist.knockoff.ui.editor
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -15,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.ui.InstalledApps
+import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 
 @Composable
 internal fun AppsEditor(
@@ -26,7 +26,7 @@ internal fun AppsEditor(
     var picking by rememberSaveable { mutableStateOf(false) }
 
     Column(modifier = modifier) {
-        Text(text = "Apps", style = MaterialTheme.typography.titleSmall)
+        SectionHeader(text = "Apps")
         selected.forEach { packageName ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(text = apps.labelOf(packageName), modifier = Modifier.weight(1f))

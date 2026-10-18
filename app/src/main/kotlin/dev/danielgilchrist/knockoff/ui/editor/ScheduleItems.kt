@@ -3,9 +3,9 @@ package dev.danielgilchrist.knockoff.ui.editor
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import dev.danielgilchrist.knockoff.ui.components.AddButton
+import dev.danielgilchrist.knockoff.ui.components.Caption
+import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 import dev.danielgilchrist.knockoff.ui.removedAt
 import dev.danielgilchrist.knockoff.ui.replacedAt
 
@@ -22,9 +22,10 @@ internal fun LazyListScope.hoursItems(
         )
     }
     item {
-        OutlinedButton(onClick = { onDraftChange(draft.copy(windows = draft.windows + WindowDraft.WORKING_HOURS)) }) {
-            Text(text = "Add hours")
-        }
+        AddButton(
+            text = "Add more hours",
+            onClick = { onDraftChange(draft.copy(windows = draft.windows + WindowDraft.WORKING_HOURS)) },
+        )
     }
 }
 
@@ -34,14 +35,13 @@ internal fun LazyListScope.breakItems(
 ) {
     item {
         Column {
-            Text(text = "Breaks", style = MaterialTheme.typography.titleSmall)
-            Text(
-                text =
-                    "Time taken out of the hours, such as lunch. A break counts on the day it starts, so in " +
-                        "overnight hours a break after midnight needs the following day: for Fri 22:00–06:00, " +
-                        "pick Sat for a 02:00 break.",
-                style = MaterialTheme.typography.bodySmall,
-            )
+            SectionHeader(text = "Breaks")
+            Caption(text = "Time taken out of the hours, such as lunch.")
+            if (draft.windows.any { it.runsPastMidnight() }) {
+                Caption(
+                    text = "A break counts on the day it starts. For Fri 22:00 to 06:00, pick Sat for a 02:00 break.",
+                )
+            }
         }
     }
     itemsIndexed(draft.breaks) { index, breakDraft ->
@@ -53,8 +53,6 @@ internal fun LazyListScope.breakItems(
         )
     }
     item {
-        OutlinedButton(onClick = { onDraftChange(draft.withBreakAdded()) }) {
-            Text(text = "Add break")
-        }
+        AddButton(text = "Add break", onClick = { onDraftChange(draft.withBreakAdded()) })
     }
 }
