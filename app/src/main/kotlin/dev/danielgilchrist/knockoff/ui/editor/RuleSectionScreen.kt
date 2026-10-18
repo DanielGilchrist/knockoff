@@ -3,12 +3,8 @@ package dev.danielgilchrist.knockoff.ui.editor
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -24,6 +20,7 @@ import dev.danielgilchrist.knockoff.ui.RuleSection
 import dev.danielgilchrist.knockoff.ui.TargetChoices
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
+import dev.danielgilchrist.knockoff.ui.components.EditorScreen
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 
 @Composable
@@ -38,17 +35,11 @@ internal fun RuleSectionScreen(
 
     BackHandler(onBack = back)
 
-    Column(modifier = modifier.fillMaxWidth()) {
-        ScreenHeader(title = title(editing.section), onBack = back, modifier = Modifier.padding(8.dp)) {
-            Button(onClick = actions.onSave, modifier = Modifier.padding(end = 8.dp)) { Text(text = "Save") }
-        }
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
+    EditorScreen(title = title(editing.section), onClose = back, onSave = actions.onSave, modifier = modifier) {
+        if (editing.problems.isNotEmpty()) {
             item { DraftProblems(problems = editing.problems) }
-            section(editing.section, editing.draft, choices, actions.onDraftChange)
         }
+        section(editing.section, editing.draft, choices, actions.onDraftChange)
     }
 
     if (discarding) {

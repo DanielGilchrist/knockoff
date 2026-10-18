@@ -1,11 +1,9 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
@@ -21,12 +19,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.RuleSection
 import dev.danielgilchrist.knockoff.ui.SaveStatus
-import dev.danielgilchrist.knockoff.ui.SectionRow
+import dev.danielgilchrist.knockoff.ui.components.ListGroup
+import dev.danielgilchrist.knockoff.ui.components.ListScreen
+import dev.danielgilchrist.knockoff.ui.components.NavigationListItem
+import dev.danielgilchrist.knockoff.ui.components.ScreenNavigation
 import dev.danielgilchrist.knockoff.ui.home.RuleStateSwitch
 import dev.danielgilchrist.knockoff.ui.saveProblem
 
@@ -43,53 +46,86 @@ internal fun RuleOverviewScreen(
 
     BackHandler(onBack = actions.onBack)
 
-    LazyColumn(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    ListScreen(
+        title = rule.name.value,
+        navigation = ScreenNavigation.Back(actions.onBack),
+        modifier = modifier,
+        actions = { TextButton(onClick = { actions.onEditSection(RuleSection.Name) }) { Text(text = "Rename") } },
+    ) {
+        item { SummaryCard(rule = rule, sentence = overview.sentence, onStateChange = actions.onStateChange) }
+        saveProblem(saveStatus)
         item {
-            ScreenHeader(title = rule.name.value, onBack = actions.onBack, modifier = Modifier.padding(8.dp)) {
-                TextButton(onClick = { actions.onEditSection(RuleSection.Name) }) { Text(text = "Rename") }
+            ListGroup {
+                NavigationListItem(
+                    R.drawable.ic_apps,
+                    "What",
+                    overview.what,
+                    onClick = { actions.onEditSection(RuleSection.What) },
+                )
+                NavigationListItem(R.drawable.ic_schedule, "When", overview.hours, onClick = {
+                    actions.onEditSection(RuleSection.When)
+                })
+                NavigationListItem(
+                    R.drawable.ic_tune,
+                    "Advanced",
+                    overview.advanced,
+                    onClick = { actions.onEditSection(RuleSection.Advanced) },
+                )
             }
         }
         item {
-            Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = overview.sentence,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f).padding(end = 12.dp),
-                    )
-                    RuleStateSwitch(
-                        state = rule.state,
-                        onStateChange = actions.onStateChange,
-                        modifier = Modifier.semantics { contentDescription = rule.name.value },
-                    )
-                }
-            }
-        }
-        saveProblem(saveStatus, Modifier.padding(horizontal = 16.dp))
-        item { SectionRow("What", overview.what, onClick = { actions.onEditSection(RuleSection.What) }) }
-        item { SectionRow("When", overview.hours, onClick = { actions.onEditSection(RuleSection.When) }) }
-        item { SectionRow("Advanced", overview.advanced, onClick = { actions.onEditSection(RuleSection.Advanced) }) }
-        item {
-            TextButton(onClick = { deleting = true }, modifier = Modifier.padding(horizontal = 8.dp)) {
+            TextButton(onClick = { deleting = true }) {
                 Text(text = "Delete rule", color = MaterialTheme.colorScheme.error)
             }
         }
     }
 
     if (deleting) {
-        AlertDialog(
-            onDismissRequest = { deleting = false },
-            title = { Text(text = "Delete ${rule.name.value}?") },
-            text = { Text(text = "Its notifications stop being held. This can't be undone.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        deleting = false
-                        actions.onDelete()
-                    },
-                ) { Text(text = "Delete") }
+        DeleteDialog(
+            name = rule.name.value,
+            onConfirm = {
+                deleting = false
+                actions.onDelete()
             },
-            dismissButton = { TextButton(onClick = { deleting = false }) { Text(text = "Cancel") } },
+            onDismiss = { deleting = false },
         )
     }
+}
+
+@Composable
+private fun SummaryCard(
+    rule: Rule,
+    sentence: String,
+    onStateChange: (RuleState) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = sentence,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f).padding(end = 12.dp),
+            )
+            RuleStateSwitch(
+                state = rule.state,
+                onStateChange = onStateChange,
+                modifier = Modifier.semantics { contentDescription = rule.name.value },
+            )
+        }
+    }
+}
+
+@Composable
+private fun DeleteDialog(
+    name: String,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Delete $name?") },
+        text = { Text(text = "Its notifications stop being held. This can't be undone.") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(text = "Delete") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(text = "Cancel") } },
+    )
 }

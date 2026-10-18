@@ -1,15 +1,8 @@
 package dev.danielgilchrist.knockoff.ui.preferences
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -20,6 +13,8 @@ import dev.danielgilchrist.knockoff.ui.Setup
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
+import dev.danielgilchrist.knockoff.ui.components.ListScreen
+import dev.danielgilchrist.knockoff.ui.components.ScreenNavigation
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 import dev.danielgilchrist.knockoff.ui.saveProblem
 import dev.danielgilchrist.knockoff.ui.zone.ZoneChoiceRows
@@ -35,53 +30,54 @@ internal fun PreferencesScreen(
 ) {
     BackHandler(onBack = actions.onBack)
 
-    LazyColumn(
-        modifier = modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { Text(text = "Settings", style = MaterialTheme.typography.titleLarge) }
+    ListScreen(title = "Settings", navigation = ScreenNavigation.Back(actions.onBack), modifier = modifier) {
         saveProblem(saveStatus)
         item { SectionHeader(text = "Setup") }
-        item { AccessCard(access = setup.access, onOpenSettings = actions.system.onOpenAccessSettings) }
+        item { SetupGroup(setup = setup, actions = actions) }
+        item { SectionHeader(text = "Default time zone") }
+        item { Caption(text = "Rules set to App default follow this.") }
         item {
-            SilentHoldsCard(
-                link = setup.link,
-                alarms = setup.alarms,
-                onLinkDevice = actions.system.onLinkDevice,
-                onAllowExactAlarms = actions.system.onAllowExactAlarms,
-            )
-        }
-        item {
-            NotificationsCard(
-                permission = setup.notifications,
-                onAllowNotifications = actions.system.onAllowNotifications,
-            )
-        }
-        item {
-            Column {
-                SectionHeader(text = "Default time zone")
-                Caption(text = "Rules set to App default follow this.")
-                ListGroup(modifier = Modifier.padding(top = 8.dp).selectableGroup()) {
-                    ZoneChoiceRows(
-                        selection = ZoneSelection.Chosen(settings.rules.defaultZone),
-                        onChoose = actions.onDefaultZoneChange,
-                    )
-                }
-            }
-        }
-        item {
-            Column {
-                SectionHeader(text = "Theme")
-                ChoiceSegments(
-                    options = Theme.entries,
-                    selected = settings.theme,
-                    label = { it.describe() },
-                    onSelect = actions.onThemeChange,
-                    modifier = Modifier.padding(top = 8.dp),
+            ListGroup(modifier = Modifier.selectableGroup()) {
+                ZoneChoiceRows(
+                    selection = ZoneSelection.Chosen(settings.rules.defaultZone),
+                    onChoose = actions.onDefaultZoneChange,
                 )
             }
         }
-        item { OutlinedButton(onClick = actions.onBack) { Text(text = "Done") } }
+        item { SectionHeader(text = "Theme") }
+        item {
+            ChoiceSegments(
+                options = Theme.entries,
+                selected = settings.theme,
+                label = { it.describe() },
+                onSelect = actions.onThemeChange,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun SetupGroup(
+    setup: Setup,
+    actions: PreferencesActions,
+    modifier: Modifier = Modifier,
+) {
+    val system = actions.system
+
+    ListGroup(modifier = modifier) {
+        SetupItem.of(setup).forEach { item ->
+            SetupRow(
+                item = item,
+                onAction =
+                    when (item.action) {
+                        SetupAction.Access -> system.onOpenAccessSettings
+                        SetupAction.Link -> system.onLinkDevice
+                        SetupAction.ExactAlarms -> system.onAllowExactAlarms
+                        SetupAction.Notifications -> system.onAllowNotifications
+                    },
+            )
+        }
     }
 }
 

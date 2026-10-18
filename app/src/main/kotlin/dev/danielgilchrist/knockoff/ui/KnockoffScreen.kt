@@ -1,10 +1,10 @@
 package dev.danielgilchrist.knockoff.ui
 
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.consumeWindowInsets
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBars
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,7 +59,7 @@ fun KnockoffScreen(
             onOpenNewChats = { screen = Screen.NewChats },
         )
 
-    Scaffold(modifier = modifier) { padding ->
+    Surface(modifier = modifier, color = MaterialTheme.colorScheme.background) {
         when (val current = editing) {
             Editing.Closed -> {
                 ClosedScreen(
@@ -74,16 +74,15 @@ fun KnockoffScreen(
                             onThemeChange = viewModel.preferences::setTheme,
                             onBack = { screen = Screen.Home },
                         ),
-                    modifier = Modifier.padding(padding),
                 )
             }
 
             is Editing.Viewing -> {
-                RuleOverview(current, settings, choices.apps, saveStatus, editor, Modifier.padding(padding))
+                RuleOverview(current, settings, choices.apps, saveStatus, editor)
             }
 
             is Editing.Active -> {
-                RuleEditor(editing = current, choices = choices, editor = editor, modifier = Modifier.padding(padding))
+                RuleEditor(editing = current, choices = choices, editor = editor)
             }
         }
     }
@@ -96,8 +95,6 @@ private fun RuleEditor(
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
 ) {
-    val insetModifier = modifier.consumeWindowInsets(WindowInsets.systemBars)
-
     when (editing) {
         is Editing.Section -> {
             RuleSectionScreen(
@@ -109,7 +106,7 @@ private fun RuleEditor(
                         onSave = editor::saveDraft,
                         onCancel = { editor.show(Editing.Viewing(editing.rule)) },
                     ),
-                modifier = insetModifier,
+                modifier = modifier,
             )
         }
 
@@ -124,7 +121,7 @@ private fun RuleEditor(
                         onCreate = editor::saveDraft,
                         onCancel = { editor.show(Editing.Closed) },
                     ),
-                modifier = insetModifier,
+                modifier = modifier.windowInsetsPadding(WindowInsets.safeDrawing),
             )
         }
     }
@@ -179,7 +176,7 @@ private fun RuleOverview(
                 onEditSection = { section -> editor.show(Editing.Section.of(rule, section)) },
                 onDelete = { editor.deleteRule(rule.name) },
             ),
-        modifier = modifier.consumeWindowInsets(WindowInsets.systemBars),
+        modifier = modifier,
     )
 }
 

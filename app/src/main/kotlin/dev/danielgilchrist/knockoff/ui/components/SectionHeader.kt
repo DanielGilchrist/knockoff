@@ -18,6 +18,6 @@ internal fun SectionHeader(
         text = text,
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
-        modifier = modifier.padding(top = 16.dp, bottom = 4.dp).semantics { heading() },
+        modifier = modifier.padding(top = 16.dp).semantics { heading() },
     )
 }
