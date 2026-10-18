@@ -52,6 +52,7 @@ class RuleOverviewTest {
             overview.sentence,
         )
         assertEquals("Slack · 1 chat · 1 pattern · asks about new WhatsApp chats", overview.what)
+        assertEquals(overview.sentence, overview.effect)
         assertEquals("Weekdays 08:00–17:00 · except Lunch", overview.hours)
         assertEquals("Etc/UTC (UTC+00:00) · 1 pattern", overview.advanced)
     }
@@ -86,6 +87,10 @@ class RuleOverviewTest {
         assertEquals(
             "Off. Holds nothing yet. Asks about new chats from 1 app.",
             RuleOverview.of(rule(draft), labelOf).sentence,
+        )
+        assertEquals(
+            "Holds nothing yet. Asks about new chats from 1 app.",
+            RuleOverview.of(rule(draft), labelOf).effect,
         )
     }
 

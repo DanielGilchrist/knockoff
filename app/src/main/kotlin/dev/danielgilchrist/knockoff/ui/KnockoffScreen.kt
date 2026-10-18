@@ -14,6 +14,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.ui.editor.RenameDialog
 import dev.danielgilchrist.knockoff.ui.editor.RuleOverviewActions
 import dev.danielgilchrist.knockoff.ui.editor.RuleOverviewScreen
 import dev.danielgilchrist.knockoff.ui.editor.RuleSectionActions
@@ -78,53 +80,60 @@ fun KnockoffScreen(
             }
 
             is Editing.Viewing -> {
-                RuleOverview(current, settings, choices.apps, saveStatus, editor)
+                RuleOverview(current.rule, settings, choices.apps, saveStatus, editor)
             }
 
-            is Editing.Active -> {
-                RuleEditor(editing = current, choices = choices, editor = editor)
+            is Editing.Renaming -> {
+                RuleOverview(current.rule, settings, choices.apps, saveStatus, editor) {
+                    RenameDialog(renaming = current, actions = sectionActions(editor, current.rule))
+                }
+            }
+
+            is Editing.Section -> {
+                SectionEditor(editing = current, choices = choices, editor = editor)
+            }
+
+            is Editing.Guided -> {
+                Wizard(guided = current, choices = choices, editor = editor)
             }
         }
     }
 }
 
 @Composable
-private fun RuleEditor(
-    editing: Editing.Active,
+private fun SectionEditor(
+    editing: Editing.Section,
     choices: TargetChoices,
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
 ) {
-    when (editing) {
-        is Editing.Section -> {
-            RuleSectionScreen(
-                editing = editing,
-                choices = choices,
-                actions =
-                    RuleSectionActions(
-                        onDraftChange = editor::updateDraft,
-                        onSave = editor::saveDraft,
-                        onCancel = { editor.show(Editing.Viewing(editing.rule)) },
-                    ),
-                modifier = modifier,
-            )
-        }
+    RuleSectionScreen(
+        editing = editing,
+        choices = choices,
+        actions = sectionActions(editor, editing.rule),
+        modifier = modifier,
+    )
+}
 
-        is Editing.Guided -> {
-            RuleWizardScreen(
-                guided = editing,
-                choices = choices,
-                actions =
-                    WizardActions(
-                        onDraftChange = editor::updateDraft,
-                        onGuide = editor::guide,
-                        onCreate = editor::saveDraft,
-                        onCancel = { editor.show(Editing.Closed) },
-                    ),
-                modifier = modifier.windowInsetsPadding(WindowInsets.safeDrawing),
-            )
-        }
-    }
+@Composable
+private fun Wizard(
+    guided: Editing.Guided,
+    choices: TargetChoices,
+    editor: SettingsEditor,
+    modifier: Modifier = Modifier,
+) {
+    RuleWizardScreen(
+        guided = guided,
+        choices = choices,
+        actions =
+            WizardActions(
+                onDraftChange = editor::updateDraft,
+                onGuide = editor::guide,
+                onCreate = editor::saveDraft,
+                onCancel = { editor.show(Editing.Closed) },
+            ),
+        modifier = modifier.windowInsetsPadding(WindowInsets.safeDrawing),
+    )
 }
 
 private fun homeActions(
@@ -146,24 +155,25 @@ private fun homeActions(
 
 @Composable
 private fun RuleOverview(
-    viewing: Editing.Viewing,
+    shown: Rule,
     settings: SettingsState,
     apps: InstalledApps,
     saveStatus: SaveStatus,
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
+    overlay: @Composable () -> Unit = {},
 ) {
     val rule =
         when (settings) {
             is SettingsState.Ready -> {
                 settings.settings.rules.rules
-                    .firstOrNull { it.name == viewing.rule.name }
+                    .firstOrNull { it.name == shown.name }
             }
 
             SettingsState.Loading, is SettingsState.Failed -> {
                 null
             }
-        } ?: viewing.rule
+        } ?: shown
 
     RuleOverviewScreen(
         rule = rule,
@@ -174,9 +184,11 @@ private fun RuleOverview(
                 onBack = { editor.show(Editing.Closed) },
                 onStateChange = { state -> editor.changeRule(rule.name, RuleChange.SetState(state)) },
                 onEditSection = { section -> editor.show(Editing.Section.of(rule, section)) },
+                onRename = { editor.show(Editing.Renaming.of(rule)) },
                 onDelete = { editor.deleteRule(rule.name) },
             ),
         modifier = modifier,
+        overlay = overlay,
     )
 }
 
@@ -225,3 +237,13 @@ private fun ClosedScreen(
         }
     }
 }
+
+private fun sectionActions(
+    editor: SettingsEditor,
+    rule: Rule,
+): RuleSectionActions =
+    RuleSectionActions(
+        onDraftChange = editor::updateDraft,
+        onSave = editor::saveDraft,
+        onCancel = { editor.show(Editing.Viewing(rule)) },
+    )

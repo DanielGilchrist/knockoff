@@ -7,5 +7,6 @@ data class RuleOverviewActions(
     val onBack: () -> Unit,
     val onStateChange: (RuleState) -> Unit,
     val onEditSection: (RuleSection) -> Unit,
+    val onRename: () -> Unit,
     val onDelete: () -> Unit,
 )

@@ -10,6 +10,7 @@ import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 
 data class RuleOverview(
     val sentence: String,
+    val effect: String,
     val what: String,
     val hours: String,
     val advanced: String,
@@ -18,22 +19,29 @@ data class RuleOverview(
         fun of(
             rule: Rule,
             labelOf: (PackageName) -> String,
-        ): RuleOverview =
-            RuleOverview(
-                sentence = sentence(rule),
+        ): RuleOverview {
+            val effect = effect(rule)
+
+            return RuleOverview(
+                sentence = sentence(rule, effect),
+                effect = effect,
                 what = what(rule, labelOf),
                 hours = hours(rule),
                 advanced = "${zone(rule.zone)} · ${counted(patterns(rule), "pattern")}",
             )
+        }
 
-        private fun sentence(rule: Rule): String {
+        private fun sentence(
+            rule: Rule,
+            effect: String,
+        ): String {
             val off =
                 when (rule.state) {
                     RuleState.Enabled -> ""
                     RuleState.Disabled -> "Off. "
                 }
 
-            return off + effect(rule)
+            return off + effect
         }
 
         private fun effect(rule: Rule): String {

@@ -99,7 +99,7 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
             editor.readySettings()
-            editor.show(Editing.Section.of(work, RuleSection.Name))
+            editor.show(Editing.Renaming.of(work))
             editor.updateDraft(RuleDraft.from(work).copy(name = "Office"))
 
             editor.saveDraft()

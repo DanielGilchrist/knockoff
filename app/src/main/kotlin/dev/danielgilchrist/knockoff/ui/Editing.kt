@@ -54,6 +54,25 @@ sealed interface Editing {
         ): Active = copy(draft = draft, problems = problems)
     }
 
+    data class Renaming(
+        val rule: Rule,
+        override val draft: RuleDraft,
+        override val problems: List<DraftProblem>,
+    ) : Active {
+        companion object {
+            fun of(rule: Rule): Renaming = Renaming(rule, RuleDraft.from(rule), emptyList())
+        }
+
+        override val target: EditTarget get() = EditTarget.Existing(rule)
+
+        override fun saving(edited: Rule): Rule = rule.copy(name = edited.name)
+
+        override fun with(
+            draft: RuleDraft,
+            problems: List<DraftProblem>,
+        ): Active = copy(draft = draft, problems = problems)
+    }
+
     data class Guided(
         override val draft: RuleDraft,
         override val problems: List<DraftProblem>,

@@ -46,7 +46,7 @@ class SettingsEditor(
     fun guide(change: (Editing.Guided) -> Editing.Active) {
         mutableEditing.update { editing ->
             when (editing) {
-                Editing.Closed, is Editing.Viewing, is Editing.Section -> editing
+                Editing.Closed, is Editing.Viewing, is Editing.Section, is Editing.Renaming -> editing
                 is Editing.Guided -> change(editing)
             }
         }

@@ -31,7 +31,7 @@ class SettingsEditsTest {
     fun `an edited rule replaces the one it came from, even when renamed`() {
         assertEquals(
             listOf(evenings),
-            rulesOf(Settings.DEFAULT.withSaved(Editing.Section.of(work, RuleSection.Name), evenings)),
+            rulesOf(Settings.DEFAULT.withSaved(Editing.Renaming.of(work), evenings)),
         )
     }
 
@@ -53,7 +53,7 @@ class SettingsEditsTest {
         val duplicates =
             assertInstanceOf(
                 RuleSetParse.DuplicateNames::class.java,
-                settings.withSaved(Editing.Section.of(work, RuleSection.Name), work.copy(name = evenings.name)),
+                settings.withSaved(Editing.Renaming.of(work), work.copy(name = evenings.name)),
             )
 
         assertEquals(setOf(evenings.name), duplicates.names)

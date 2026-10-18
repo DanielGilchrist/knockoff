@@ -27,8 +27,15 @@ internal fun Settings.withSaved(
         }
 
         is Editing.Section -> {
-            val original = editing.rule.name
+            replacing(editing.rule) { editing.section.merge(it, edited) }
+        }
 
-            rules.withRules(rules.rules.map { if (it.name == original) editing.section.merge(it, edited) else it })
+        is Editing.Renaming -> {
+            replacing(editing.rule) { it.copy(name = edited.name) }
         }
     }
+
+private fun Settings.replacing(
+    original: Rule,
+    change: (Rule) -> Rule,
+): RuleSetParse = rules.withRules(rules.rules.map { if (it.name == original.name) change(it) else it })

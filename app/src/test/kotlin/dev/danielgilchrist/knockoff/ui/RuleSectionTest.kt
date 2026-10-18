@@ -35,7 +35,6 @@ class RuleSectionTest {
 
     @Test
     fun `each section takes only its own fields from the edited rule`() {
-        assertEquals(current.copy(name = edited.name), RuleSection.Name.merge(current, edited))
         assertEquals(
             current.copy(targets = setOf(pattern, slack), asking = edited.asking),
             RuleSection.What.merge(current, edited),
@@ -45,6 +44,11 @@ class RuleSectionTest {
             current.copy(zone = edited.zone, targets = setOf(COLLEAGUE_CHAT)),
             RuleSection.Advanced.merge(current, edited),
         )
+    }
+
+    @Test
+    fun `renaming takes only the name`() {
+        assertEquals(current.copy(name = edited.name), Editing.Renaming.of(current).saving(edited))
     }
 
     private fun textPattern(source: String): TextPattern =

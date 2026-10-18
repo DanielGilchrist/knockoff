@@ -67,10 +67,6 @@ private fun LazyListScope.section(
     change: (RuleDraft) -> Unit,
 ) {
     when (section) {
-        RuleSection.Name -> {
-            item { RuleNameField(draft = draft, onDraftChange = change) }
-        }
-
         RuleSection.What -> {
             item {
                 AppsEditor(
@@ -132,7 +128,6 @@ private fun PolicyChoice(
 
 private fun title(section: RuleSection): String =
     when (section) {
-        RuleSection.Name -> "Name"
         RuleSection.What -> "What it holds"
         RuleSection.When -> "When"
         RuleSection.Advanced -> "Advanced"
