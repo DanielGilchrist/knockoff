@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.ui
 
+import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
@@ -8,9 +9,7 @@ import dev.danielgilchrist.knockoff.settings.SettingsStore
 import dev.danielgilchrist.knockoff.settings.SettingsUpdate
 import dev.danielgilchrist.knockoff.ui.editor.Checked
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
-import dev.danielgilchrist.knockoff.ui.editor.GoalChoice
 import dev.danielgilchrist.knockoff.ui.editor.RuleDraft
-import dev.danielgilchrist.knockoff.ui.editor.WizardStep
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -40,18 +39,14 @@ class SettingsEditor(
                 }
             }.stateIn(scope, SharingStarted.Eagerly, SettingsState.Loading)
 
-    fun startEditing(target: EditTarget) {
-        mutableEditing.value =
-            when (target) {
-                EditTarget.New -> Editing.Guided(RuleDraft.NEW, emptyList(), WizardStep.Goal, GoalChoice.Unchosen)
-                is EditTarget.Existing -> Editing.Open(target, RuleDraft.from(target.rule), emptyList())
-            }
+    fun show(editing: Editing) {
+        mutableEditing.value = editing
     }
 
     fun guide(change: (Editing.Guided) -> Editing.Active) {
         mutableEditing.update { editing ->
             when (editing) {
-                Editing.Closed, is Editing.Open -> editing
+                Editing.Closed, is Editing.Viewing, is Editing.Section -> editing
                 is Editing.Guided -> change(editing)
             }
         }
@@ -60,19 +55,15 @@ class SettingsEditor(
     fun updateDraft(draft: RuleDraft) {
         mutableEditing.update { editing ->
             when (editing) {
-                Editing.Closed -> editing
+                Editing.Closed, is Editing.Viewing -> editing
                 is Editing.Active -> editing.with(draft, emptyList())
             }
         }
     }
 
-    fun closeEditor() {
-        mutableEditing.value = Editing.Closed
-    }
-
     fun saveDraft() {
         when (val editing = mutableEditing.value) {
-            Editing.Closed -> {}
+            Editing.Closed, is Editing.Viewing -> {}
 
             is Editing.Active -> {
                 when (val checked = editing.draft.parse()) {
@@ -82,7 +73,9 @@ class SettingsEditor(
 
                     is Checked.Ok -> {
                         scope.launch {
-                            closeOrShowProblems(editing, store.update { it.withRule(editing.target, checked.value) })
+                            val update = store.update { it.withSaved(editing, checked.value) }
+
+                            closeOrShowProblems(editing, editing.saving(checked.value), update)
                         }
                     }
                 }
@@ -91,11 +84,21 @@ class SettingsEditor(
     }
 
     fun deleteRule(name: RuleName) {
-        when (val editing = mutableEditing.value) {
-            Editing.Closed -> {}
+        scope.launch {
+            val update = store.update { it.withoutRule(name) }
 
-            is Editing.Active -> {
-                scope.launch { closeOrShowProblems(editing, store.update { it.withoutRule(name) }) }
+            report(update)
+            when (update) {
+                SettingsUpdate.Saved -> {
+                    mutableEditing.update { editing ->
+                        when {
+                            editing is Editing.Viewing && editing.rule.name == name -> Editing.Closed
+                            else -> editing
+                        }
+                    }
+                }
+
+                is SettingsUpdate.DuplicateNames, is SettingsUpdate.Failure -> {}
             }
         }
     }
@@ -119,27 +122,38 @@ class SettingsEditor(
 
     private fun closeOrShowProblems(
         saving: Editing.Active,
+        saved: Rule,
         update: SettingsUpdate,
     ) {
+        when (update) {
+            SettingsUpdate.Saved -> {
+                report(update)
+            }
+
+            is SettingsUpdate.DuplicateNames, is SettingsUpdate.Failure -> {}
+        }
         mutableEditing.update { editing ->
             when (editing) {
-                Editing.Closed -> {
+                Editing.Closed, is Editing.Viewing -> {
                     editing
                 }
 
                 is Editing.Active -> {
                     when {
                         editing.target != saving.target -> editing
-                        else -> editing.afterSaving(update)
+                        else -> editing.afterSaving(saved, update)
                     }
                 }
             }
         }
     }
 
-    private fun Editing.Active.afterSaving(update: SettingsUpdate): Editing =
+    private fun Editing.Active.afterSaving(
+        saved: Rule,
+        update: SettingsUpdate,
+    ): Editing =
         when (update) {
-            SettingsUpdate.Saved -> Editing.Closed
+            SettingsUpdate.Saved -> Editing.Viewing(saved)
             is SettingsUpdate.DuplicateNames -> with(draft, listOf(DraftProblem.DuplicateName))
             is SettingsUpdate.Failure -> with(draft, listOf(DraftProblem.NotSaved(update.detail)))
         }

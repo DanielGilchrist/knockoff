@@ -266,7 +266,7 @@ class RuleDraftTest {
         val rule = valid(RuleDraft.NEW.copy(name = "x", breaks = listOf(BreakDraft.LUNCH)))
 
         assertEquals(
-            "Except Lunch: Mon, Tue, Wed, Thu, Fri 12:00–13:00",
+            "Except Lunch: Weekdays 12:00–13:00",
             rule.schedule.breaks
                 .single()
                 .describe(),

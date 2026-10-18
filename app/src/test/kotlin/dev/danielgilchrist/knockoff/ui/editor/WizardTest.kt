@@ -3,7 +3,6 @@ package dev.danielgilchrist.knockoff.ui.editor
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
-import dev.danielgilchrist.knockoff.ui.EditTarget
 import dev.danielgilchrist.knockoff.ui.Editing
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -32,7 +31,7 @@ class WizardTest {
             )
     }
 
-    private val start = Editing.Guided(RuleDraft.NEW, emptyList(), WizardStep.Goal, GoalChoice.Unchosen)
+    private val start = Editing.Guided.START
     private val quietHours = WindowDraft(DayOfWeek.entries.toSet(), LocalTime.of(21, 0), LocalTime.of(7, 0))
     private val dayJob = WindowDraft(setOf(DayOfWeek.MONDAY), LocalTime.of(9, 0), LocalTime.of(15, 0))
 
@@ -218,12 +217,5 @@ class WizardTest {
 
         assertEquals(listOf(DraftProblem.BlankName), unnamed.stepProblems())
         assertEquals(listOf(DraftProblem.HoursWithoutDays(1)), unnamed.toStep(WizardStep.When).stepProblems())
-    }
-
-    @Test
-    fun `the full editor takes over the draft as a new rule`() {
-        val work = start.choosing(WizardGoal.WorkHours)
-
-        assertEquals(Editing.Open(EditTarget.New, work.draft, emptyList()), work.inFullEditor())
     }
 }

@@ -23,10 +23,31 @@ internal fun Policy.describe(): String =
         Policy.HoldDuring -> "Hold during these hours"
     }
 
-internal fun Window.describe(): String {
-    val dayNames = DayOfWeek.entries.filter { it in days }.joinToString { it.shortName() }
+private const val EVERY_DAY = "Every day"
+private const val WEEKDAYS = "Weekdays"
+private const val WEEKENDS = "Weekends"
 
-    return "$dayNames ${hours.start}–${hours.end}"
+internal fun Window.describe(): String = "${describeDays()} ${hours.start}–${hours.end}"
+
+internal fun Window.describeInSentence(): String {
+    val hours = "${hours.start}–${hours.end}"
+
+    return when (val days = describeDays()) {
+        EVERY_DAY -> "every day $hours"
+        WEEKDAYS, WEEKENDS -> "on ${days.lowercase()} $hours"
+        else -> "on $days $hours"
+    }
+}
+
+private fun Window.describeDays(): String {
+    val chosen = DayOfWeek.entries.filter { it in days }.toSet()
+
+    return when (chosen) {
+        DayOfWeek.entries.toSet() -> EVERY_DAY
+        DayOfWeek.entries.toSet() - setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> WEEKDAYS
+        setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> WEEKENDS
+        else -> chosen.joinToString { it.shortName() }
+    }
 }
 
 internal fun Break.describe(): String = "Except ${name.value}: ${window.describe()}"

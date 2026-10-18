@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
+import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.ui.editor.Checked
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
 import dev.danielgilchrist.knockoff.ui.editor.GoalChoice
@@ -13,10 +14,16 @@ import dev.danielgilchrist.knockoff.ui.editor.WizardStep
 sealed interface Editing {
     data object Closed : Editing
 
+    data class Viewing(
+        val rule: Rule,
+    ) : Editing
+
     sealed interface Active : Editing {
         val target: EditTarget
         val draft: RuleDraft
         val problems: List<DraftProblem>
+
+        fun saving(edited: Rule): Rule
 
         fun with(
             draft: RuleDraft,
@@ -24,11 +31,23 @@ sealed interface Editing {
         ): Active
     }
 
-    data class Open(
-        override val target: EditTarget,
+    data class Section(
+        val rule: Rule,
+        val section: RuleSection,
         override val draft: RuleDraft,
         override val problems: List<DraftProblem>,
     ) : Active {
+        companion object {
+            fun of(
+                rule: Rule,
+                section: RuleSection,
+            ): Section = Section(rule, section, RuleDraft.from(rule), emptyList())
+        }
+
+        override val target: EditTarget get() = EditTarget.Existing(rule)
+
+        override fun saving(edited: Rule): Rule = section.merge(rule, edited)
+
         override fun with(
             draft: RuleDraft,
             problems: List<DraftProblem>,
@@ -41,7 +60,13 @@ sealed interface Editing {
         val step: WizardStep,
         val goal: GoalChoice,
     ) : Active {
+        companion object {
+            val START: Guided get() = Guided(RuleDraft.NEW, emptyList(), WizardStep.Goal, GoalChoice.Unchosen)
+        }
+
         override val target: EditTarget get() = EditTarget.New
+
+        override fun saving(edited: Rule): Rule = edited
 
         override fun with(
             draft: RuleDraft,
@@ -55,8 +80,6 @@ sealed interface Editing {
                 GoalChoice.Unchosen -> replacingWith(chosen)
                 is GoalChoice.Chosen -> if (current.goal == chosen) this else replacingWith(chosen)
             }
-
-        fun inFullEditor(): Open = Open(EditTarget.New, draft, problems)
 
         fun withHours(window: WindowDraft): Guided =
             copy(

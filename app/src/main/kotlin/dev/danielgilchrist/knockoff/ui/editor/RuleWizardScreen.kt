@@ -34,7 +34,7 @@ internal fun RuleWizardScreen(
     BackHandler { goBack(guided.step, actions) }
 
     Column(modifier = modifier.fillMaxSize().imePadding()) {
-        WizardHeader(step = guided.step, onFullEditor = { actions.onGuide { it.inFullEditor() } })
+        WizardHeader(step = guided.step)
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 20.dp),
             contentPadding = PaddingValues(bottom = 16.dp),
@@ -70,10 +70,7 @@ internal fun RuleWizardScreen(
 }
 
 @Composable
-private fun WizardHeader(
-    step: WizardStep,
-    onFullEditor: () -> Unit,
-) {
+private fun WizardHeader(step: WizardStep) {
     Column(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -82,7 +79,6 @@ private fun WizardHeader(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f),
             )
-            TextButton(onClick = onFullEditor) { Text(text = "Switch to full editor") }
         }
         LinearProgressIndicator(
             progress = { step.position / WizardStep.entries.size.toFloat() },

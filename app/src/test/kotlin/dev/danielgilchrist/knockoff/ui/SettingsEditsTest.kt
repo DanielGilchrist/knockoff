@@ -24,30 +24,36 @@ class SettingsEditsTest {
 
     @Test
     fun `a new rule is appended`() {
-        assertEquals(listOf(work, evenings), rulesOf(Settings.DEFAULT.withRule(EditTarget.New, evenings)))
+        assertEquals(listOf(work, evenings), rulesOf(Settings.DEFAULT.withSaved(Editing.Guided.START, evenings)))
     }
 
     @Test
     fun `an edited rule replaces the one it came from, even when renamed`() {
-        assertEquals(listOf(evenings), rulesOf(Settings.DEFAULT.withRule(EditTarget.Existing(work), evenings)))
+        assertEquals(
+            listOf(evenings),
+            rulesOf(Settings.DEFAULT.withSaved(Editing.Section.of(work, RuleSection.Name), evenings)),
+        )
     }
 
     @Test
     fun `a new rule with a taken name is a duplicate`() {
         val duplicates =
-            assertInstanceOf(RuleSetParse.DuplicateNames::class.java, Settings.DEFAULT.withRule(EditTarget.New, work))
+            assertInstanceOf(
+                RuleSetParse.DuplicateNames::class.java,
+                Settings.DEFAULT.withSaved(Editing.Guided.START, work),
+            )
 
         assertEquals(setOf(work.name), duplicates.names)
     }
 
     @Test
     fun `renaming a rule onto another rule's name is a duplicate`() {
-        val settings = Settings(valid(Settings.DEFAULT.withRule(EditTarget.New, evenings)), Theme.System)
+        val settings = Settings(valid(Settings.DEFAULT.withSaved(Editing.Guided.START, evenings)), Theme.System)
 
         val duplicates =
             assertInstanceOf(
                 RuleSetParse.DuplicateNames::class.java,
-                settings.withRule(EditTarget.Existing(work), work.copy(name = evenings.name)),
+                settings.withSaved(Editing.Section.of(work, RuleSection.Name), work.copy(name = evenings.name)),
             )
 
         assertEquals(setOf(evenings.name), duplicates.names)
@@ -60,7 +66,7 @@ class SettingsEditsTest {
 
     @Test
     fun `changing state touches only the named rule`() {
-        val settings = Settings(valid(Settings.DEFAULT.withRule(EditTarget.New, evenings)), Theme.System)
+        val settings = Settings(valid(Settings.DEFAULT.withSaved(Editing.Guided.START, evenings)), Theme.System)
 
         assertEquals(
             listOf(work.copy(state = RuleState.Disabled), evenings),
@@ -91,7 +97,7 @@ class SettingsEditsTest {
         val settings = Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.System)
         val work = settings.rules.rules.single()
 
-        assertEquals(tokyo, valid(settings.withRule(EditTarget.New, evenings)).defaultZone)
+        assertEquals(tokyo, valid(settings.withSaved(Editing.Guided.START, evenings)).defaultZone)
         assertEquals(tokyo, valid(settings.withoutRule(work.name)).defaultZone)
         assertEquals(
             tokyo,

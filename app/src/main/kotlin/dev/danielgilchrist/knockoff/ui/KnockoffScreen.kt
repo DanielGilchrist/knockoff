@@ -14,8 +14,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.danielgilchrist.knockoff.ui.editor.RuleEditorActions
-import dev.danielgilchrist.knockoff.ui.editor.RuleEditorScreen
+import dev.danielgilchrist.knockoff.ui.editor.RuleOverviewActions
+import dev.danielgilchrist.knockoff.ui.editor.RuleOverviewScreen
+import dev.danielgilchrist.knockoff.ui.editor.RuleSectionActions
+import dev.danielgilchrist.knockoff.ui.editor.RuleSectionScreen
 import dev.danielgilchrist.knockoff.ui.editor.RuleWizardScreen
 import dev.danielgilchrist.knockoff.ui.editor.WizardActions
 import dev.danielgilchrist.knockoff.ui.home.HomeActions
@@ -85,6 +87,10 @@ fun KnockoffScreen(
                 }
             }
 
+            is Editing.Viewing -> {
+                RuleOverview(current, settings, choices.apps, saveStatus, editor, Modifier.padding(padding))
+            }
+
             is Editing.Active -> {
                 RuleEditor(editing = current, choices = choices, editor = editor, modifier = Modifier.padding(padding))
             }
@@ -102,16 +108,15 @@ private fun RuleEditor(
     val insetModifier = modifier.consumeWindowInsets(WindowInsets.systemBars)
 
     when (editing) {
-        is Editing.Open -> {
-            RuleEditorScreen(
+        is Editing.Section -> {
+            RuleSectionScreen(
                 editing = editing,
                 choices = choices,
                 actions =
-                    RuleEditorActions(
+                    RuleSectionActions(
                         onDraftChange = editor::updateDraft,
                         onSave = editor::saveDraft,
-                        onCancel = editor::closeEditor,
-                        onDelete = { target -> editor.deleteRule(target.rule.name) },
+                        onCancel = { editor.show(Editing.Viewing(editing.rule)) },
                     ),
                 modifier = insetModifier,
             )
@@ -126,7 +131,7 @@ private fun RuleEditor(
                         onDraftChange = editor::updateDraft,
                         onGuide = editor::guide,
                         onCreate = editor::saveDraft,
-                        onCancel = editor::closeEditor,
+                        onCancel = { editor.show(Editing.Closed) },
                     ),
                 modifier = insetModifier,
             )
@@ -142,9 +147,45 @@ private fun homeActions(
     HomeActions(
         system = system,
         onOpenPreferences = onOpenPreferences,
-        onNewRule = { viewModel.editor.startEditing(EditTarget.New) },
-        onEditRule = { rule -> viewModel.editor.startEditing(EditTarget.Existing(rule)) },
+        onNewRule = { viewModel.editor.show(Editing.Guided.START) },
+        onEditRule = { rule -> viewModel.editor.show(Editing.Viewing(rule)) },
         onRuleChange = viewModel.editor::changeRule,
         onLetChatThrough = viewModel::letChatThrough,
         onResetToDefaults = viewModel.editor::resetToDefaults,
     )
+
+@Composable
+private fun RuleOverview(
+    viewing: Editing.Viewing,
+    settings: SettingsState,
+    apps: InstalledApps,
+    saveStatus: SaveStatus,
+    editor: SettingsEditor,
+    modifier: Modifier = Modifier,
+) {
+    val rule =
+        when (settings) {
+            is SettingsState.Ready -> {
+                settings.settings.rules.rules
+                    .firstOrNull { it.name == viewing.rule.name }
+            }
+
+            SettingsState.Loading, is SettingsState.Failed -> {
+                null
+            }
+        } ?: viewing.rule
+
+    RuleOverviewScreen(
+        rule = rule,
+        apps = apps,
+        saveStatus = saveStatus,
+        actions =
+            RuleOverviewActions(
+                onBack = { editor.show(Editing.Closed) },
+                onStateChange = { state -> editor.changeRule(rule.name, RuleChange.SetState(state)) },
+                onEditSection = { section -> editor.show(Editing.Section.of(rule, section)) },
+                onDelete = { editor.deleteRule(rule.name) },
+            ),
+        modifier = modifier.consumeWindowInsets(WindowInsets.systemBars),
+    )
+}

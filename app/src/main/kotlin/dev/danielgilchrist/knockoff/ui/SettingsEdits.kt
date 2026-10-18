@@ -5,17 +5,6 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 
-internal fun Settings.withRule(
-    target: EditTarget,
-    rule: Rule,
-): RuleSetParse =
-    rules.withRules(
-        when (target) {
-            EditTarget.New -> rules.rules + rule
-            is EditTarget.Existing -> rules.rules.map { if (it.name == target.rule.name) rule else it }
-        },
-    )
-
 internal fun Settings.withoutRule(name: RuleName): RuleSetParse =
     rules.withRules(
         rules.rules.filterNot {
@@ -27,3 +16,19 @@ internal fun Settings.withRuleChanged(
     name: RuleName,
     change: RuleChange,
 ): RuleSetParse = rules.withRules(rules.rules.map { if (it.name == name) change.applyTo(it) else it })
+
+internal fun Settings.withSaved(
+    editing: Editing.Active,
+    edited: Rule,
+): RuleSetParse =
+    when (editing) {
+        is Editing.Guided -> {
+            rules.withRules(rules.rules + edited)
+        }
+
+        is Editing.Section -> {
+            val original = editing.rule.name
+
+            rules.withRules(rules.rules.map { if (it.name == original) editing.section.merge(it, edited) else it })
+        }
+    }

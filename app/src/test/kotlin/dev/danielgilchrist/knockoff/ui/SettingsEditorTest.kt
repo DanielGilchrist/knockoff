@@ -1,5 +1,7 @@
 package dev.danielgilchrist.knockoff.ui
 
+import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.settings.Settings
@@ -34,45 +36,16 @@ class SettingsEditorTest {
         }
 
     @Test
-    fun `a new rule starts in the wizard from the new draft`() =
-        runTest {
-            val editor = editor()
-
-            editor.startEditing(EditTarget.New)
-
-            assertEquals(
-                Editing.Guided(RuleDraft.NEW, emptyList(), WizardStep.Goal, GoalChoice.Unchosen),
-                editor.editing.value,
-            )
-        }
-
-    @Test
-    fun `the wizard hands over to the full editor keeping the draft`() =
-        runTest {
-            val editor = editor()
-            editor.startEditing(EditTarget.New)
-            editor.guide { it.toStep(WizardStep.When) }
-            editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
-
-            editor.guide { it.inFullEditor() }
-
-            assertEquals(
-                Editing.Open(EditTarget.New, RuleDraft.NEW.copy(name = "Evenings"), emptyList()),
-                editor.editing.value,
-            )
-        }
-
-    @Test
     fun `guiding does nothing outside the wizard`() =
         runTest {
             val editor = editor()
             editor.guide { it.toStep(WizardStep.Review) }
             assertEquals(Editing.Closed, editor.editing.value)
 
-            editor.startEditing(EditTarget.Existing(work))
+            editor.show(Editing.Section.of(work, RuleSection.When))
             editor.guide { it.toStep(WizardStep.Review) }
             assertEquals(
-                Editing.Open(EditTarget.Existing(work), RuleDraft.from(work), emptyList()),
+                Editing.Section.of(work, RuleSection.When),
                 editor.editing.value,
             )
         }
@@ -81,7 +54,7 @@ class SettingsEditorTest {
     fun `problems creating from the wizard keep it on its step`() =
         runTest {
             val editor = editor()
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.guide { it.toStep(WizardStep.Review) }
 
             editor.saveDraft()
@@ -96,7 +69,7 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
             editor.settings.first { it is SettingsState.Ready }
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.guide { it.choosing(WizardGoal.WorkHours).toStep(WizardStep.Review) }
 
             editor.saveDraft()
@@ -109,29 +82,43 @@ class SettingsEditorTest {
         }
 
     @Test
-    fun `editing an existing rule starts from that rule`() =
+    fun `editing a section of a rule starts from that rule`() =
         runTest {
             val editor = editor()
 
-            editor.startEditing(EditTarget.Existing(work))
+            editor.show(Editing.Section.of(work, RuleSection.What))
 
             assertEquals(
-                Editing.Open(EditTarget.Existing(work), RuleDraft.from(work), emptyList()),
+                Editing.Section(work, RuleSection.What, RuleDraft.from(work), emptyList()),
                 editor.editing.value,
             )
         }
 
     @Test
-    fun `saving a valid new rule stores it and closes the editor`() =
+    fun `saving a section shows the rule under its new name`() =
+        runTest {
+            val editor = editor()
+            editor.readySettings()
+            editor.show(Editing.Section.of(work, RuleSection.Name))
+            editor.updateDraft(RuleDraft.from(work).copy(name = "Office"))
+
+            editor.saveDraft()
+
+            val office = assertValid(RuleDraft.from(work).copy(name = "Office"))
+            assertEquals(Editing.Viewing(work.copy(name = office.name)), editor.editing.first { it is Editing.Viewing })
+        }
+
+    @Test
+    fun `saving a valid new rule stores it and shows it`() =
         runTest {
             val editor = editor()
             editor.readySettings()
 
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
             editor.saveDraft()
 
-            editor.editing.first { it == Editing.Closed }
+            editor.editing.first { it == Editing.Viewing(assertValid(RuleDraft.NEW.copy(name = "Evenings"))) }
             val saved = editor.settings.first { it is SettingsState.Ready && it.origin == SettingsOrigin.Saved }
             assertEquals(
                 listOf("Work", "Evenings"),
@@ -146,7 +133,7 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
 
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.saveDraft()
 
             assertEquals(listOf(DraftProblem.BlankName), openEditing(editor).problems)
@@ -156,7 +143,7 @@ class SettingsEditorTest {
     fun `changing the draft clears earlier problems`() =
         runTest {
             val editor = editor()
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.saveDraft()
 
             editor.updateDraft(RuleDraft.NEW.copy(name = "x"))
@@ -170,7 +157,7 @@ class SettingsEditorTest {
             val editor = editor()
             editor.readySettings()
 
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Work"))
             editor.saveDraft()
 
@@ -187,7 +174,7 @@ class SettingsEditorTest {
             settingsFile().writeText("not json")
             val editor = editor()
 
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
             editor.saveDraft()
 
@@ -241,14 +228,13 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
             editor.readySettings()
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
             editor.saveDraft()
-            editor.editing.first { it == Editing.Closed }
+            editor.editing.first { it is Editing.Viewing }
 
             editor.changeRule(work.name, RuleChange.SetState(RuleState.Disabled))
             val evenings = assertValid(RuleDraft.NEW.copy(name = "Evenings"))
-            editor.startEditing(EditTarget.Existing(evenings))
             editor.deleteRule(evenings.name)
 
             val expected = listOf(work.copy(state = RuleState.Disabled))
@@ -285,26 +271,60 @@ class SettingsEditorTest {
         }
 
     @Test
-    fun `a failed delete keeps the editor open and says why`() =
+    fun `saving a section keeps changes made elsewhere to the rest of the rule`() =
         runTest {
             val editor = editor()
             editor.readySettings()
-            editor.startEditing(EditTarget.Existing(work))
+            editor.show(Editing.Section.of(work, RuleSection.When))
+            editor.updateDraft(RuleDraft.from(work).copy(policy = Policy.HoldDuring))
+            editor.changeRule(work.name, RuleChange.AddChat(COLLEAGUE_CHAT))
+            editor.settings.first {
+                it is SettingsState.Ready &&
+                    it.settings.rules.rules
+                        .single()
+                        .chats
+                        .isNotEmpty()
+            }
+
+            editor.saveDraft()
+
+            editor.settings.first {
+                it is SettingsState.Ready &&
+                    it.settings.rules.rules
+                        .single() == work.withChat(COLLEAGUE_CHAT).copy(policy = Policy.HoldDuring)
+            }
+        }
+
+    @Test
+    fun `a failed delete keeps the rule shown and says why`() =
+        runTest {
+            val editor = editor()
+            editor.readySettings()
+            editor.show(Editing.Viewing(work))
             directory.setWritable(false)
 
             editor.deleteRule(work.name)
 
-            val open =
-                assertInstanceOf(
-                    Editing.Active::class.java,
-                    editor.editing.first {
-                        it is Editing.Active &&
-                            it.problems.isNotEmpty()
-                    },
-                )
-            assertInstanceOf(DraftProblem.NotSaved::class.java, open.problems.single())
-            assertEquals(RuleDraft.from(work), open.draft)
+            editor.saveStatus.first { it is SaveStatus.Failed }
+            assertEquals(Editing.Viewing(work), editor.editing.value)
             directory.setWritable(true)
+        }
+
+    @Test
+    fun `deleting the shown rule closes it`() =
+        runTest {
+            val editor = editor()
+            editor.readySettings()
+            editor.show(Editing.Viewing(work))
+
+            editor.deleteRule(work.name)
+
+            editor.editing.first { it == Editing.Closed }
+            editor.settings.first {
+                it is SettingsState.Ready &&
+                    it.settings.rules.rules
+                        .isEmpty()
+            }
         }
 
     @Test
@@ -312,15 +332,15 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
             editor.readySettings()
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
 
             editor.saveDraft()
-            editor.startEditing(EditTarget.Existing(work))
+            editor.show(Editing.Section.of(work, RuleSection.When))
             editor.settings.first { it is SettingsState.Ready && it.settings.rules.rules.size == 2 }
 
             assertEquals(
-                Editing.Open(EditTarget.Existing(work), RuleDraft.from(work), emptyList()),
+                Editing.Section.of(work, RuleSection.When),
                 editor.editing.value,
             )
         }
@@ -330,11 +350,11 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
             editor.readySettings()
-            editor.startEditing(EditTarget.New)
+            editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Work"))
 
             editor.saveDraft()
-            editor.startEditing(EditTarget.Existing(work))
+            editor.show(Editing.Section.of(work, RuleSection.When))
             editor.changeRule(work.name, RuleChange.SetState(RuleState.Disabled))
             editor.settings.first {
                 it is SettingsState.Ready &&
@@ -345,7 +365,7 @@ class SettingsEditorTest {
             testScheduler.advanceUntilIdle()
 
             assertEquals(
-                Editing.Open(EditTarget.Existing(work), RuleDraft.from(work), emptyList()),
+                Editing.Section.of(work, RuleSection.When),
                 editor.editing.value,
             )
         }
