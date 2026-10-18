@@ -9,6 +9,7 @@ import dev.danielgilchrist.knockoff.ui.SystemActions
 data class HomeActions(
     val system: SystemActions,
     val onOpenPreferences: () -> Unit,
+    val onOpenNewChats: () -> Unit,
     val onNewRule: () -> Unit,
     val onEditRule: (Rule) -> Unit,
     val onRuleChange: (RuleName, RuleChange) -> Unit,

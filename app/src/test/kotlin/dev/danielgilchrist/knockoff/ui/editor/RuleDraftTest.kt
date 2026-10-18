@@ -15,7 +15,6 @@ import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
 import dev.danielgilchrist.knockoff.ui.describe
 import dev.danielgilchrist.knockoff.ui.describeCoverage
-import dev.danielgilchrist.knockoff.ui.describeTargets
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.fail
@@ -172,37 +171,11 @@ class RuleDraftTest {
     }
 
     @Test
-    fun `pattern problems and targets are described`() {
+    fun `pattern problems are described`() {
         assertEquals("Pattern 1 is empty.", DraftProblem.BlankPattern(1).describe())
         assertEquals(
             "Pattern 2 isn't a valid regular expression: Unclosed group",
             DraftProblem.InvalidPattern(2, "Unclosed group").describe(),
-        )
-        assertEquals(
-            "Nothing chosen yet, so this rule does nothing",
-            valid(RuleDraft.NEW.copy(name = "x")).describeTargets(),
-        )
-        assertEquals(
-            "1 app, account, chat or pattern",
-            valid(RuleDraft.NEW.copy(name = "x", apps = setOf(PackageName("a")))).describeTargets(),
-        )
-        assertEquals(
-            "2 apps, accounts, chats or patterns",
-            valid(RuleDraft.NEW.copy(name = "x", apps = setOf(PackageName("a"), PackageName("b")))).describeTargets(),
-        )
-        assertEquals(
-            "Nothing held yet. Asks about new chats from 1 app",
-            valid(RuleDraft.NEW.copy(name = "x", asking = setOf(PackageName("a")))).describeTargets(),
-        )
-        assertEquals(
-            "1 app, account, chat or pattern. Asks about new chats from 2 apps",
-            valid(
-                RuleDraft.NEW.copy(
-                    name = "x",
-                    apps = setOf(PackageName("a")),
-                    asking = setOf(PackageName("b"), PackageName("c")),
-                ),
-            ).describeTargets(),
         )
     }
 
@@ -258,18 +231,6 @@ class RuleDraftTest {
         assertEquals(
             Checked.Problems(listOf(DraftProblem.HoursWithoutDays(1), DraftProblem.BreakWithoutDays(1))),
             draft.parse(),
-        )
-    }
-
-    @Test
-    fun `a break is described on the rule card`() {
-        val rule = valid(RuleDraft.NEW.copy(name = "x", breaks = listOf(BreakDraft.LUNCH)))
-
-        assertEquals(
-            "Except Lunch: Weekdays 12:00–13:00",
-            rule.schedule.breaks
-                .single()
-                .describe(),
         )
     }
 

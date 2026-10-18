@@ -15,6 +15,12 @@ internal sealed interface ShownScreen {
         override val screen = Screen.Preferences
     }
 
+    data class NewChats(
+        val settings: Settings,
+    ) : ShownScreen {
+        override val screen = Screen.NewChats
+    }
+
     companion object {
         fun of(
             screen: Screen,
@@ -25,6 +31,7 @@ internal sealed interface ShownScreen {
                     when (screen) {
                         Screen.Home -> Home
                         Screen.Preferences -> Preferences(settings.settings)
+                        Screen.NewChats -> NewChats(settings.settings)
                     }
                 }
 

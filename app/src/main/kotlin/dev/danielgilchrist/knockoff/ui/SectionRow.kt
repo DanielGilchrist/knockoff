@@ -1,4 +1,4 @@
-package dev.danielgilchrist.knockoff.ui.editor
+package dev.danielgilchrist.knockoff.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Icon

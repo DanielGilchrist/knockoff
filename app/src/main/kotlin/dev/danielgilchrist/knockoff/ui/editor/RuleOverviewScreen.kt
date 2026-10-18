@@ -26,6 +26,7 @@ import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.RuleSection
 import dev.danielgilchrist.knockoff.ui.SaveStatus
+import dev.danielgilchrist.knockoff.ui.SectionRow
 import dev.danielgilchrist.knockoff.ui.home.RuleStateSwitch
 import dev.danielgilchrist.knockoff.ui.saveProblem
 
@@ -64,7 +65,7 @@ internal fun RuleOverviewScreen(
                 }
             }
         }
-        saveProblem(saveStatus)
+        saveProblem(saveStatus, Modifier.padding(horizontal = 16.dp))
         item { SectionRow("What", overview.what, onClick = { actions.onEditSection(RuleSection.What) }) }
         item { SectionRow("When", overview.hours, onClick = { actions.onEditSection(RuleSection.When) }) }
         item { SectionRow("Advanced", overview.advanced, onClick = { actions.onEditSection(RuleSection.Advanced) }) }

@@ -16,6 +16,7 @@ import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.Theme
 import dev.danielgilchrist.knockoff.ui.RadioRow
 import dev.danielgilchrist.knockoff.ui.SaveStatus
+import dev.danielgilchrist.knockoff.ui.Setup
 import dev.danielgilchrist.knockoff.ui.saveProblem
 import dev.danielgilchrist.knockoff.ui.zone.ZoneChoiceRows
 import dev.danielgilchrist.knockoff.ui.zone.ZoneSelection
@@ -23,6 +24,7 @@ import dev.danielgilchrist.knockoff.ui.zone.ZoneSelection
 @Composable
 internal fun PreferencesScreen(
     settings: Settings,
+    setup: Setup,
     saveStatus: SaveStatus,
     actions: PreferencesActions,
     modifier: Modifier = Modifier,
@@ -35,6 +37,22 @@ internal fun PreferencesScreen(
     ) {
         item { Text(text = "Settings", style = MaterialTheme.typography.titleLarge) }
         saveProblem(saveStatus)
+        item { Text(text = "Setup", style = MaterialTheme.typography.titleSmall) }
+        item { AccessCard(access = setup.access, onOpenSettings = actions.system.onOpenAccessSettings) }
+        item {
+            SilentHoldsCard(
+                link = setup.link,
+                alarms = setup.alarms,
+                onLinkDevice = actions.system.onLinkDevice,
+                onAllowExactAlarms = actions.system.onAllowExactAlarms,
+            )
+        }
+        item {
+            NotificationsCard(
+                permission = setup.notifications,
+                onAllowNotifications = actions.system.onAllowNotifications,
+            )
+        }
         item {
             Column {
                 Text(text = "Default time zone", style = MaterialTheme.typography.titleSmall)

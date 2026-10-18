@@ -22,6 +22,7 @@ import dev.danielgilchrist.knockoff.ui.editor.RuleWizardScreen
 import dev.danielgilchrist.knockoff.ui.editor.WizardActions
 import dev.danielgilchrist.knockoff.ui.home.HomeActions
 import dev.danielgilchrist.knockoff.ui.home.HomeScreen
+import dev.danielgilchrist.knockoff.ui.home.NewChatsScreen
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesActions
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesScreen
 
@@ -50,41 +51,31 @@ fun KnockoffScreen(
 
     LaunchedEffect(shown) { screen = shown.screen }
 
+    val home =
+        homeActions(
+            viewModel,
+            system,
+            onOpenPreferences = { screen = Screen.Preferences },
+            onOpenNewChats = { screen = Screen.NewChats },
+        )
+
     Scaffold(modifier = modifier) { padding ->
         when (val current = editing) {
             Editing.Closed -> {
-                when (shown) {
-                    ShownScreen.Home -> {
-                        HomeScreen(
-                            setup = setup,
-                            settings = settings,
-                            saveStatus = saveStatus,
-                            newChats = newChats,
-                            apps = choices.apps,
-                            actions =
-                                homeActions(
-                                    viewModel,
-                                    system,
-                                    onOpenPreferences = { screen = Screen.Preferences },
-                                ),
-                            modifier = Modifier.padding(padding),
-                        )
-                    }
-
-                    is ShownScreen.Preferences -> {
-                        PreferencesScreen(
-                            settings = shown.settings,
-                            saveStatus = preferencesStatus,
-                            actions =
-                                PreferencesActions(
-                                    onDefaultZoneChange = viewModel.preferences::setDefaultZone,
-                                    onThemeChange = viewModel.preferences::setTheme,
-                                    onBack = { screen = Screen.Home },
-                                ),
-                            modifier = Modifier.padding(padding),
-                        )
-                    }
-                }
+                ClosedScreen(
+                    shown = shown,
+                    state = ClosedState(setup, settings, saveStatus, preferencesStatus, newChats, choices.apps),
+                    home = home,
+                    onBackToHome = { screen = Screen.Home },
+                    preferences =
+                        PreferencesActions(
+                            system = system,
+                            onDefaultZoneChange = viewModel.preferences::setDefaultZone,
+                            onThemeChange = viewModel.preferences::setTheme,
+                            onBack = { screen = Screen.Home },
+                        ),
+                    modifier = Modifier.padding(padding),
+                )
             }
 
             is Editing.Viewing -> {
@@ -143,10 +134,12 @@ private fun homeActions(
     viewModel: MainViewModel,
     system: SystemActions,
     onOpenPreferences: () -> Unit,
+    onOpenNewChats: () -> Unit,
 ): HomeActions =
     HomeActions(
         system = system,
         onOpenPreferences = onOpenPreferences,
+        onOpenNewChats = onOpenNewChats,
         onNewRule = { viewModel.editor.show(Editing.Guided.START) },
         onEditRule = { rule -> viewModel.editor.show(Editing.Viewing(rule)) },
         onRuleChange = viewModel.editor::changeRule,
@@ -188,4 +181,50 @@ private fun RuleOverview(
             ),
         modifier = modifier.consumeWindowInsets(WindowInsets.systemBars),
     )
+}
+
+@Composable
+private fun ClosedScreen(
+    shown: ShownScreen,
+    state: ClosedState,
+    home: HomeActions,
+    onBackToHome: () -> Unit,
+    preferences: PreferencesActions,
+    modifier: Modifier = Modifier,
+) {
+    when (shown) {
+        ShownScreen.Home -> {
+            HomeScreen(
+                setup = state.setup,
+                settings = state.settings,
+                saveStatus = state.saveStatus,
+                newChats = state.newChats.chats,
+                apps = state.apps,
+                actions = home,
+                modifier = modifier,
+            )
+        }
+
+        is ShownScreen.Preferences -> {
+            PreferencesScreen(
+                settings = shown.settings,
+                setup = state.setup,
+                saveStatus = state.preferencesStatus,
+                actions = preferences,
+                modifier = modifier,
+            )
+        }
+
+        is ShownScreen.NewChats -> {
+            NewChatsScreen(
+                view = state.newChats,
+                saveStatus = state.saveStatus,
+                apps = state.apps,
+                rules = shown.settings.rules.rules,
+                actions = home,
+                onBack = onBackToHome,
+                modifier = modifier,
+            )
+        }
+    }
 }

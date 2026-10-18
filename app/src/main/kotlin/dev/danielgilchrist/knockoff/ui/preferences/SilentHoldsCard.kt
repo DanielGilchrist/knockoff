@@ -1,4 +1,4 @@
-package dev.danielgilchrist.knockoff.ui.home
+package dev.danielgilchrist.knockoff.ui.preferences
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth

@@ -1,7 +1,6 @@
 package dev.danielgilchrist.knockoff.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,24 +9,23 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.danielgilchrist.knockoff.domain.rule.Rule
-import dev.danielgilchrist.knockoff.domain.rule.RuleState
-import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.NewChats
-import dev.danielgilchrist.knockoff.ui.NewChatsView
-import dev.danielgilchrist.knockoff.ui.NotificationPermission
 import dev.danielgilchrist.knockoff.ui.RuleChange
+import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.SaveStatus
+import dev.danielgilchrist.knockoff.ui.SectionRow
 import dev.danielgilchrist.knockoff.ui.SettingsOrigin
 import dev.danielgilchrist.knockoff.ui.SettingsProblemCard
 import dev.danielgilchrist.knockoff.ui.SettingsState
 import dev.danielgilchrist.knockoff.ui.Setup
+import dev.danielgilchrist.knockoff.ui.SetupNotice
 import dev.danielgilchrist.knockoff.ui.saveProblem
 
 @Composable
@@ -35,28 +33,17 @@ internal fun HomeScreen(
     setup: Setup,
     settings: SettingsState,
     saveStatus: SaveStatus,
-    newChats: NewChatsView,
+    newChats: NewChats,
     apps: InstalledApps,
     actions: HomeActions,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxWidth().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item { AccessCard(access = setup.access, onOpenSettings = actions.system.onOpenAccessSettings) }
-        item {
-            SilentHoldsCard(
-                link = setup.link,
-                alarms = setup.alarms,
-                onLinkDevice = actions.system.onLinkDevice,
-                onAllowExactAlarms = actions.system.onAllowExactAlarms,
-            )
-        }
-        saveProblem(saveStatus)
+    LazyColumn(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { Header(onOpenPreferences = actions.onOpenPreferences) }
+        saveProblem(saveStatus, Modifier.padding(horizontal = 16.dp))
         when (settings) {
             SettingsState.Loading -> {
-                item { Text(text = "Loading settings…") }
+                item { Text(text = "Loading settings…", modifier = Modifier.padding(horizontal = 16.dp)) }
             }
 
             is SettingsState.Failed -> {
@@ -64,6 +51,7 @@ internal fun HomeScreen(
                     SettingsProblemCard(
                         title = "Settings couldn't be loaded",
                         detail = settings.detail,
+                        modifier = Modifier.padding(horizontal = 16.dp),
                     ) {
                         Button(onClick = actions.onResetToDefaults, modifier = Modifier.padding(top = 8.dp)) {
                             Text(text = "Replace with defaults")
@@ -73,105 +61,104 @@ internal fun HomeScreen(
             }
 
             is SettingsState.Ready -> {
-                when (settings.origin) {
-                    SettingsOrigin.Saved -> {}
-
-                    SettingsOrigin.Defaults -> {
-                        item { Text(text = "Using defaults. Nothing is saved until you change something.") }
-                    }
+                item {
+                    SetupBanner(
+                        notice = SetupNotice.of(setup, settings.settings.rules),
+                        system = actions.system,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
                 }
-                asking(setup.notifications, settings.settings, actions)
-                rules(settings.settings, actions)
-                newChats(newChats, apps, settings.settings.rules.rules, actions)
+                newChatsRow(newChats, onOpen = actions.onOpenNewChats)
+                rules(settings, apps, actions)
             }
         }
     }
 }
 
-private fun LazyListScope.asking(
-    notifications: NotificationPermission,
-    settings: Settings,
-    actions: HomeActions,
+@Composable
+private fun Header(onOpenPreferences: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "Knockoff", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.weight(1f))
+        TextButton(onClick = onOpenPreferences) { Text(text = "Settings") }
+    }
+}
+
+private fun LazyListScope.newChatsRow(
+    newChats: NewChats,
+    onOpen: () -> Unit,
 ) {
-    val asks = settings.rules.rules.any { it.state == RuleState.Enabled && it.asking.isNotEmpty() }
+    when (newChats) {
+        NewChats.Loading -> {}
 
-    when (notifications) {
-        NotificationPermission.Granted -> {}
+        is NewChats.Failed -> {
+            item { SectionRow(title = "New chats couldn't be loaded", value = "Open to see why", onClick = onOpen) }
+        }
 
-        NotificationPermission.NotGranted -> {
-            if (asks) {
-                item { AskingCard(onAllowNotifications = actions.system.onAllowNotifications) }
+        is NewChats.Ready -> {
+            val count = newChats.chats.size
+
+            if (count > 0) {
+                item {
+                    SectionRow(
+                        title = if (count == 1) "1 new chat" else "$count new chats",
+                        value = "Hold them with a rule, or let them through",
+                        onClick = onOpen,
+                    )
+                }
             }
         }
     }
 }
 
 private fun LazyListScope.rules(
-    settings: Settings,
+    settings: SettingsState.Ready,
+    apps: InstalledApps,
     actions: HomeActions,
 ) {
-    item { Text(text = "Rules", style = MaterialTheme.typography.titleLarge) }
-    items(settings.rules.rules, key = { it.name.value }) { rule ->
-        RuleCard(
+    val rules = settings.settings.rules.rules
+
+    item {
+        Text(
+            text = "Rules",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+        )
+    }
+    when (settings.origin) {
+        SettingsOrigin.Saved -> {}
+
+        SettingsOrigin.Defaults -> {
+            item {
+                Text(
+                    text = "Using defaults. Nothing is saved until you change something.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+        }
+    }
+    if (rules.isEmpty()) {
+        item {
+            Text(
+                text = "No rules yet. Add one to start holding notifications.",
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
+    }
+    items(rules, key = { it.name.value }) { rule ->
+        RuleRow(
             rule = rule,
-            onEdit = { actions.onEditRule(rule) },
+            summary = RuleOverview.of(rule, apps::labelOf).sentence,
+            onOpen = { actions.onEditRule(rule) },
             onStateChange = { state -> actions.onRuleChange(rule.name, RuleChange.SetState(state)) },
         )
     }
     item {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = actions.onNewRule) { Text(text = "Add rule") }
-            OutlinedButton(onClick = actions.onOpenPreferences) { Text(text = "Settings") }
+        Button(onClick = actions.onNewRule, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Text(text = "Add rule")
         }
-    }
-}
-
-private fun LazyListScope.newChats(
-    view: NewChatsView,
-    apps: InstalledApps,
-    rules: List<Rule>,
-    actions: HomeActions,
-) {
-    when (val chats = view.chats) {
-        NewChats.Loading -> {}
-
-        is NewChats.Failed -> {
-            item { SettingsProblemCard(title = "New chats couldn't be loaded", detail = chats.detail) }
-        }
-
-        is NewChats.Ready -> {
-            if (chats.chats.isNotEmpty()) {
-                item { NewChatsHeader() }
-                items(chats.chats, key = { "chat:${it.packageName.value}/${it.id.value}" }) { chat ->
-                    NewChatCard(
-                        chat = chat,
-                        appLabel = apps.labelOf(chat.packageName),
-                        rules = rules,
-                        onAddTo = { name -> actions.onRuleChange(name, RuleChange.AddChat(chat)) },
-                        onLetThrough = { actions.onLetChatThrough(chat) },
-                    )
-                }
-            }
-        }
-    }
-    when (val save = view.saveStatus) {
-        SaveStatus.Idle -> {}
-
-        is SaveStatus.Failed -> {
-            item { SettingsProblemCard(title = "Couldn't let the chat through", detail = save.detail) }
-        }
-    }
-}
-
-@Composable
-private fun NewChatsHeader() {
-    Column {
-        Text(text = "New chats", style = MaterialTheme.typography.titleLarge)
-        Text(
-            text =
-                "Chats that have notified you but aren't in a rule yet. Hold them with a rule, or let them " +
-                    "through to stop seeing them here. Letting one through can't be undone yet.",
-            style = MaterialTheme.typography.bodySmall,
-        )
     }
 }

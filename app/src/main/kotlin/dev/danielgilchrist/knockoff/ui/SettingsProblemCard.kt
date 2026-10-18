@@ -31,12 +31,21 @@ internal fun SettingsProblemCard(
     }
 }
 
-internal fun LazyListScope.saveProblem(saveStatus: SaveStatus) {
+internal fun LazyListScope.saveProblem(
+    saveStatus: SaveStatus,
+    modifier: Modifier = Modifier,
+) {
     when (saveStatus) {
         SaveStatus.Idle -> {}
 
         is SaveStatus.Failed -> {
-            item { SettingsProblemCard(title = "Couldn't save settings", detail = saveStatus.detail) }
+            item {
+                SettingsProblemCard(
+                    title = "Couldn't save settings",
+                    detail = saveStatus.detail,
+                    modifier = modifier,
+                )
+            }
         }
     }
 }

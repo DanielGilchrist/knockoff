@@ -1,8 +1,6 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.domain.rule.Policy
-import dev.danielgilchrist.knockoff.domain.rule.Rule
-import dev.danielgilchrist.knockoff.domain.schedule.Break
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
 import java.time.DayOfWeek
@@ -47,23 +45,6 @@ private fun Window.describeDays(): String {
         DayOfWeek.entries.toSet() - setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> WEEKDAYS
         setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY) -> WEEKENDS
         else -> chosen.joinToString { it.shortName() }
-    }
-}
-
-internal fun Break.describe(): String = "Except ${name.value}: ${window.describe()}"
-
-internal fun Rule.describeTargets(): String {
-    val held =
-        when (targets.size) {
-            0 -> "Nothing held yet"
-            1 -> "1 app, account, chat or pattern"
-            else -> "${targets.size} apps, accounts, chats or patterns"
-        }
-
-    return when (asking.size) {
-        0 -> if (targets.isEmpty()) "Nothing chosen yet, so this rule does nothing" else held
-        1 -> "$held. Asks about new chats from 1 app"
-        else -> "$held. Asks about new chats from ${asking.size} apps"
     }
 }
 

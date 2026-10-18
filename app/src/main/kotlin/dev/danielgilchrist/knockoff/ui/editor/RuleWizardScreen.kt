@@ -22,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.ui.Editing
+import dev.danielgilchrist.knockoff.ui.InstalledApps
+import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.TargetChoices
 
 @Composable
@@ -59,7 +61,7 @@ internal fun RuleWizardScreen(
                     }
 
                     WizardStep.Review -> {
-                        ReviewStep(draft = guided.draft, onDraftChange = actions.onDraftChange)
+                        ReviewStep(draft = guided.draft, apps = choices.apps, onDraftChange = actions.onDraftChange)
                     }
                 }
             }
@@ -200,6 +202,7 @@ private fun LunchBreak(
 @Composable
 private fun ReviewStep(
     draft: RuleDraft,
+    apps: InstalledApps,
     onDraftChange: (RuleDraft) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -208,7 +211,11 @@ private fun ReviewStep(
             is Checked.Problems -> {}
 
             is Checked.Ok -> {
-                RuleSummary(rule = checked.value)
+                val overview = RuleOverview.of(checked.value, apps::labelOf)
+
+                Text(text = overview.sentence, style = MaterialTheme.typography.bodyLarge)
+                Text(text = overview.what, style = MaterialTheme.typography.bodySmall)
+                Text(text = overview.hours, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
