@@ -8,7 +8,6 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.IntentSender
 import android.graphics.Color
-import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -58,7 +57,6 @@ class MainActivity : ComponentActivity() {
                                 SystemActions(
                                     ::openAccessSettings,
                                     ::linkDevice,
-                                    ::openExactAlarmSettings,
                                     ::openNotificationSettings,
                                 ),
                         )
@@ -115,10 +113,6 @@ class MainActivity : ComponentActivity() {
             dark -> SystemBarStyle.dark(Color.TRANSPARENT)
             else -> SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
         }
-
-    private fun openExactAlarmSettings() {
-        startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.fromParts("package", packageName, null)))
-    }
 
     private fun openNotificationSettings() {
         startActivity(

@@ -14,7 +14,7 @@ class SetupNoticeTest {
         Settings.DEFAULT.rules.rules
             .single()
     private val ready =
-        Setup(ListenerAccess.Granted, DeviceLink.NotLinked, ExactAlarms.NotAllowed, NotificationPermission.NotGranted)
+        Setup(ListenerAccess.Granted, DeviceLink.NotLinked, NotificationPermission.NotGranted)
 
     @Test
     fun `missing access comes first and optional setup never shows`() {

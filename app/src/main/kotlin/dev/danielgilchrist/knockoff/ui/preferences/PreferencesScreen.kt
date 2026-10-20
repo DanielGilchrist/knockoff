@@ -81,7 +81,6 @@ private fun SetupGroup(
                     when (item.action) {
                         SetupAction.Access -> system.onOpenAccessSettings
                         SetupAction.Link -> system.onLinkDevice
-                        SetupAction.ExactAlarms -> system.onAllowExactAlarms
                         SetupAction.Notifications -> system.onAllowNotifications
                     },
             )
