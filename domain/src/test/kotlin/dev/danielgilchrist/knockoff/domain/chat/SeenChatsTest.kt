@@ -277,7 +277,7 @@ class SeenChatsTest {
     }
 
     @Test
-    fun `undecided chats are those in no rule and not let through, newest first`() {
+    fun `undecided chats are those asked about, in no rule and not let through, newest first`() {
         val work = friend.copy(name = ConversationName("Work – Sydney"))
         val other = friend.copy(id = ConversationId("3@lid"), name = ConversationName("Mum"))
         val dad = friend.copy(id = ConversationId("4@lid"), name = ConversationName("Dad"))
@@ -288,6 +288,7 @@ class SeenChatsTest {
                     Policy.DeliverOnlyDuring,
                     WORK_HOURS,
                     setOf(COLLEAGUE_CHAT, Target.ChatNamePattern(WHATSAPP, textPattern("^Work"))),
+                    asking = setOf(WHATSAPP),
                 ),
             )
         val seen =
@@ -307,7 +308,10 @@ class SeenChatsTest {
         val seen = SeenChats.NONE.seen(COLLEAGUE_CHAT)
         val heldBy = { target: Target ->
             seen.undecided(
-                ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(target), RuleState.Disabled)),
+                ruleSet(
+                    rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(target), RuleState.Disabled),
+                    rule("Ask", Policy.DeliverOnlyDuring, WORK_HOURS, emptySet(), asking = setOf(WHATSAPP)),
+                ),
                 ChatDecisions.NONE,
             )
         }
@@ -317,6 +321,22 @@ class SeenChatsTest {
         heldBy(Target.ChannelPattern(WHATSAPP, textPattern("^group"))) shouldBe listOf(COLLEAGUE_CHAT)
         heldBy(Target.App(SLACK)) shouldBe listOf(COLLEAGUE_CHAT)
         heldBy(COLLEAGUE_CHAT.copy(packageName = SLACK)) shouldBe listOf(COLLEAGUE_CHAT)
+    }
+
+    @Test
+    fun `chats from apps no enabled rule asks about are not undecided`() {
+        val seen = SeenChats.NONE.seen(COLLEAGUE_CHAT)
+        val undecided = { state: RuleState, apps: Set<PackageName> ->
+            seen.undecided(
+                ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, emptySet(), state, asking = apps)),
+                ChatDecisions.NONE,
+            )
+        }
+
+        undecided(RuleState.Enabled, emptySet()) shouldBe emptyList()
+        undecided(RuleState.Enabled, setOf(SLACK)) shouldBe emptyList()
+        undecided(RuleState.Disabled, setOf(WHATSAPP)) shouldBe emptyList()
+        undecided(RuleState.Enabled, setOf(WHATSAPP)) shouldBe listOf(COLLEAGUE_CHAT)
     }
 
     @Test
@@ -345,8 +365,8 @@ class SeenChatsTest {
 
         seen.questions(rules, decisions) shouldBe
             listOf(
-                ChatQuestion(slack, listOf(ruleName("Clients"))),
-                ChatQuestion(friend, listOf(ruleName("Work"), ruleName("Clients"))),
+                ChatQuestion(slack, ruleName("Clients")),
+                ChatQuestion(friend, ruleName("Work"), listOf(ruleName("Clients"))),
             )
         seen.questions(ruleSet(asking("Work", RuleState.Enabled, emptySet())), ChatDecisions.NONE) shouldBe emptyList()
         seen.questions(rules, decisions.lettingThrough(friend.key).lettingThrough(slack.key)) shouldBe emptyList()
@@ -364,7 +384,7 @@ class SeenChatsTest {
         }
 
         seen.questions(ruleSet(asker), ChatDecisions.NONE) shouldBe
-            listOf(ChatQuestion(COLLEAGUE_CHAT, listOf(asker.name)))
+            listOf(ChatQuestion(COLLEAGUE_CHAT, asker.name))
         holding(COLLEAGUE_CHAT) shouldBe emptyList()
         holding(Target.ChatNamePattern(WHATSAPP, textPattern("^Coll"))) shouldBe emptyList()
         holding(Target.App(WHATSAPP)) shouldBe emptyList()

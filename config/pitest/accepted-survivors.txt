@@ -12,9 +12,6 @@ NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.NotificationKey get
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.PackageName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/PackageName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.rule.RuleName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/rule/RuleName::getValue
 
-# A chat question's rules are read only by :app, to offer one action per rule; domain tests compare questions whole.
-NO_COVERAGE dev.danielgilchrist.knockoff.domain.chat.ChatQuestion getRules L8 replaced return value with Collections.emptyList for dev/danielgilchrist/knockoff/domain/chat/ChatQuestion::getRules
-
 # A conversation channel's id is only ever compared whole, through data class equality, so nothing reads it.
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.channel.ChannelKind$ConversationOf getId-rYnfllY L11 replaced return value with "" for dev/danielgilchrist/knockoff/domain/channel/ChannelKind$ConversationOf::getId-rYnfllY
 
@@ -62,6 +59,9 @@ SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredWindow weekDays L45 
 
 # Inlined Iterable.none, Iterable.any and Map.none: the empty-collection shortcut and the Collection type check only
 # skip a loop that would return the same answer.
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L49 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L49 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L49 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule withSeenChats$knockoff_domain L49 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule withSeenChats$knockoff_domain L49 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule withSeenChats$knockoff_domain L49 removed conditional - replaced equality check with true
@@ -72,9 +72,6 @@ SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule verdictWhere L84 removed 
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule holds L34 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule holds L34 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule holds L34 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats undecided L39 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats undecided L39 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats undecided L39 removed conditional - replaced equality check with true
 
 # The predicate always matches before the list runs out: a weekly schedule that isn't always covered has a stretch
 # ending within the next fortnight. Forcing the inlined first() loop on only changes which NoSuchElementException

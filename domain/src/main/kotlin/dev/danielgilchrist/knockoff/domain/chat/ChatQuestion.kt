@@ -5,5 +5,9 @@ import dev.danielgilchrist.knockoff.domain.rule.Target
 
 data class ChatQuestion(
     val chat: Target.Chat,
-    val rules: List<RuleName>,
-)
+    private val first: RuleName,
+    private val others: List<RuleName> = emptyList(),
+) {
+    val rules: List<RuleName>
+        get() = listOf(first) + others
+}

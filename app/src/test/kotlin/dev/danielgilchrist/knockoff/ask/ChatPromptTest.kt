@@ -29,7 +29,7 @@ class ChatPromptTest {
             ),
         )
     private val seen = SeenChatsLoad.Loaded(SeenChats.NONE.seen(COLLEAGUE_CHAT))
-    private val question = ChatQuestion(COLLEAGUE_CHAT, listOf(work.name))
+    private val question = ChatQuestion(COLLEAGUE_CHAT, work.name)
 
     @Test
     fun `loaded inputs ask about undecided chats`() {
@@ -49,7 +49,7 @@ class ChatPromptTest {
         val newestFirst = SeenChatsLoad.Loaded(SeenChats.NONE.seen(COLLEAGUE_CHAT).seen(aaron))
         val other = SeenChatsLoad.Loaded(SeenChats.NONE.seen(aaron).seen(COLLEAGUE_CHAT))
         val none = ChatDecisionsLoad.Loaded(ChatDecisions.NONE)
-        val expected = ChatPrompt.Ready(listOf(ChatQuestion(aaron, listOf(work.name)), question))
+        val expected = ChatPrompt.Ready(listOf(ChatQuestion(aaron, work.name), question))
 
         assertEquals(expected, ChatPrompt.of(asking, newestFirst, none))
         assertEquals(expected, ChatPrompt.of(asking, other, none))

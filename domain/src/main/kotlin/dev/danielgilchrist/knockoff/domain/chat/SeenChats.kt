@@ -34,24 +34,27 @@ data class SeenChats private constructor(
     fun undecided(
         rules: RuleSet,
         decisions: ChatDecisions,
-    ): List<Target.Chat> =
-        chats.filter { chat ->
-            rules.rules.none { it.holds(chat) } &&
-                chat.key !in decisions.letThrough
-        }
+    ): List<Target.Chat> = asked(rules, decisions).map { it.chat }
 
     fun questions(
         rules: RuleSet,
         decisions: ChatDecisions,
-    ): List<ChatQuestion> =
-        undecided(rules, decisions).filter { it.key !in decisions.asked }.flatMap { chat ->
-            val asking = rules.rules.filter { it.asks(chat) }.map { it.name }
+    ): List<ChatQuestion> = asked(rules, decisions).filter { it.chat.key !in decisions.asked }
 
-            when {
-                asking.isEmpty() -> emptyList()
-                else -> listOf(ChatQuestion(chat, asking))
+    private fun asked(
+        rules: RuleSet,
+        decisions: ChatDecisions,
+    ): List<ChatQuestion> =
+        chats
+            .filter { chat -> rules.rules.none { it.holds(chat) } && chat.key !in decisions.letThrough }
+            .flatMap { chat ->
+                val askers = rules.rules.filter { it.asks(chat) }.map { it.name }
+
+                when {
+                    askers.isEmpty() -> emptyList()
+                    else -> listOf(ChatQuestion(chat, askers.first(), askers.drop(1)))
+                }
             }
-        }
 
     fun toJson(): String = VersionedJson.json.encodeToString(StoredSeenChats.from(this))
 }

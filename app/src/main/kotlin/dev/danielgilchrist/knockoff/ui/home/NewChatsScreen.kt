@@ -45,7 +45,8 @@ internal fun NewChatsScreen(
         item {
             Caption(
                 text =
-                    "These chats have notified you but aren't in a rule. Letting one through can't be undone yet.",
+                    "These chats are from apps a rule that's on asks about, and aren't in a rule yet. " +
+                        "Letting one through can't be undone yet.",
             )
         }
         saveProblem(saveStatus)
@@ -107,6 +108,6 @@ private fun AllCaughtUp(modifier: Modifier = Modifier) {
             modifier = Modifier.size(48.dp),
         )
         Text(text = "All caught up", style = MaterialTheme.typography.titleMedium)
-        Caption(text = "New chats show up here when they first notify you.")
+        Caption(text = "New chats from apps a rule that's on asks about show up here.")
     }
 }

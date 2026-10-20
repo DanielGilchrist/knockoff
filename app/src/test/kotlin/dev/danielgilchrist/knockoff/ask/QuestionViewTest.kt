@@ -18,7 +18,11 @@ class QuestionViewTest {
 
     @Test
     fun `a lone question offers holds with its first two rules and letting it through`() {
-        val view = QuestionView.of(ChatQuestion(COLLEAGUE_CHAT, rules), emptyList()) { "WhatsApp" }
+        val view =
+            QuestionView.of(
+                ChatQuestion(COLLEAGUE_CHAT, rules.first(), rules.drop(1)),
+                emptyList(),
+            ) { "WhatsApp" }
 
         assertEquals(
             QuestionView(
@@ -34,9 +38,18 @@ class QuestionViewTest {
 
     @Test
     fun `waiting questions are counted and dismissed together`() {
-        val first = ChatQuestion(COLLEAGUE_CHAT, rules.take(1))
-        val one = QuestionView.of(first, listOf(ChatQuestion(friend, rules))) { "WhatsApp" }
-        val two = QuestionView.of(first, listOf(ChatQuestion(friend, rules), ChatQuestion(other, rules))) { "WhatsApp" }
+        val first = ChatQuestion(COLLEAGUE_CHAT, rules.first())
+        val one = QuestionView.of(first, listOf(ChatQuestion(friend, rules.first(), rules.drop(1)))) { "WhatsApp" }
+        val two =
+            QuestionView.of(
+                first,
+                listOf(
+                    ChatQuestion(friend, rules.first(), rules.drop(1)),
+                    ChatQuestion(other, rules.first(), rules.drop(1)),
+                ),
+            ) {
+                "WhatsApp"
+            }
 
         assertEquals("On WhatsApp. Hold it or let it through. 1 more is waiting.", one.text)
         assertEquals(
