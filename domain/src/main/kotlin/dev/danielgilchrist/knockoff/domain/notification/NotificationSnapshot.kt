@@ -4,6 +4,7 @@ class NotificationSnapshot(
     private val key: NotificationKey,
     private val packageName: PackageName,
     private val channelId: String?,
+    private val style: NotificationStyle,
     private val shortcutId: String?,
     private val titles: List<String>,
     private val traits: Set<NotificationTrait>,
@@ -17,7 +18,7 @@ class NotificationSnapshot(
         val conversation =
             when {
                 shortcutId.isNullOrBlank() -> Conversation.None
-                else -> Conversation.Known(ConversationId(shortcutId), ConversationTitle.of(titles))
+                else -> conversationOf(ConversationId(shortcutId))
             }
         val origin = Origin(packageName, channel, conversation)
 
@@ -26,4 +27,10 @@ class NotificationSnapshot(
             is NotificationTraitsParse.Present -> PostedNotification.Unsnoozable(key, origin, parse.traits)
         }
     }
+
+    private fun conversationOf(id: ConversationId): Conversation =
+        when (style) {
+            NotificationStyle.Messaging -> Conversation.Known(id, ConversationTitle.of(titles))
+            NotificationStyle.Other -> Conversation.Routed(id)
+        }
 }

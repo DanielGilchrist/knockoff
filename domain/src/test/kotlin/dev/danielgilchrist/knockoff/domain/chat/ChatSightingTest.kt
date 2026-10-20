@@ -31,6 +31,12 @@ class ChatSightingTest {
     }
 
     @Test
+    fun `a notification only routed to a conversation is not a chat, whatever its shortcut is labelled`() {
+        ChatSighting.of(posted(whatsappOrigin(Conversation.Routed(COLLEAGUE))), listOf("Colleague")) shouldBe
+            ChatSighting.NotAChat
+    }
+
+    @Test
     fun `a conversation without a channel is not a chat`() {
         val unnamed = Origin(WHATSAPP, Channel.Unnamed, known(COLLEAGUE))
 

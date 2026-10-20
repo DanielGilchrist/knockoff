@@ -29,7 +29,7 @@ sealed interface ChatSighting {
             shortcutLabels: List<String>,
         ): ChatSighting =
             when (val conversation = origin.conversation) {
-                Conversation.None -> {
+                Conversation.None, is Conversation.Routed -> {
                     NotAChat
                 }
 

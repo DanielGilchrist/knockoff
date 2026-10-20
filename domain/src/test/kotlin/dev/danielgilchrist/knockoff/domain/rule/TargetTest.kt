@@ -60,6 +60,8 @@ class TargetTest {
         COLLEAGUE_CHAT.matches(whatsappOrigin(known(COLLEAGUE))) shouldBe true
         COLLEAGUE_CHAT.matches(whatsappOrigin(known(FRIEND))) shouldBe false
         COLLEAGUE_CHAT.matches(whatsappOrigin(Conversation.None)) shouldBe false
+        COLLEAGUE_CHAT.matches(whatsappOrigin(Conversation.Routed(COLLEAGUE))) shouldBe true
+        COLLEAGUE_CHAT.matches(whatsappOrigin(Conversation.Routed(FRIEND))) shouldBe false
         COLLEAGUE_CHAT.matches(Origin(SLACK, Channel.Named(WHATSAPP_CHATS), known(COLLEAGUE))) shouldBe
             false
     }
@@ -166,6 +168,7 @@ class TargetTest {
         work.matches(whatsappOrigin(known(COLLEAGUE, "Work – Sydney"))) shouldBe true
         work.matches(whatsappOrigin(known(COLLEAGUE, "Mum"))) shouldBe false
         work.matches(whatsappOrigin(Conversation.None)) shouldBe false
+        work.matches(whatsappOrigin(Conversation.Routed(COLLEAGUE))) shouldBe false
         work.matches(whatsappOrigin(Conversation.Known(COLLEAGUE, ConversationTitle.Untitled))) shouldBe false
         work.matches(Origin(SLACK, Channel.Named(WHATSAPP_CHATS), known(COLLEAGUE, "Work"))) shouldBe false
     }

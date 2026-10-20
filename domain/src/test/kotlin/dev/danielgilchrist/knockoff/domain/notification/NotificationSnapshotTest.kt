@@ -38,7 +38,7 @@ class NotificationSnapshotTest {
     }
 
     @Test
-    fun `a notification with a shortcut belongs to that conversation`() {
+    fun `a messaging notification with a shortcut belongs to that conversation`() {
         snapshot(WHATSAPP, WHATSAPP_CHATS.value, shortcutId = COLLEAGUE.value).parse() shouldBe
             PostedNotification.Snoozable(key, whatsappOrigin(known(COLLEAGUE)))
     }
@@ -61,11 +61,21 @@ class NotificationSnapshotTest {
             .origin.conversation shouldBe Conversation.Known(COLLEAGUE, ConversationTitle.Untitled)
     }
 
+    @Test
+    fun `a notification that isn't a messaging one is only routed by its shortcut`() {
+        snapshot(WHATSAPP, WHATSAPP_CHATS.value, shortcutId = COLLEAGUE.value, style = NotificationStyle.Other)
+            .parse()
+            .origin.conversation shouldBe Conversation.Routed(COLLEAGUE)
+    }
+
     @ParameterizedTest
     @ValueSource(strings = ["", " "])
     fun `a blank shortcut is no conversation`(shortcutId: String) {
         snapshot(WHATSAPP, WHATSAPP_CHATS.value, shortcutId = shortcutId).parse().origin.conversation shouldBe
             Conversation.None
+        snapshot(WHATSAPP, WHATSAPP_CHATS.value, shortcutId = shortcutId, style = NotificationStyle.Other)
+            .parse()
+            .origin.conversation shouldBe Conversation.None
     }
 
     @ParameterizedTest
@@ -97,5 +107,6 @@ class NotificationSnapshotTest {
         traits: Set<NotificationTrait> = emptySet(),
         shortcutId: String? = null,
         titles: List<String> = listOf("Colleague"),
-    ): NotificationSnapshot = NotificationSnapshot(key, packageName, channelId, shortcutId, titles, traits)
+        style: NotificationStyle = NotificationStyle.Messaging,
+    ): NotificationSnapshot = NotificationSnapshot(key, packageName, channelId, style, shortcutId, titles, traits)
 }

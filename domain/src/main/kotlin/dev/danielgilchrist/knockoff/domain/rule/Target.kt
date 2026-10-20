@@ -68,6 +68,7 @@ sealed interface Target {
             origin.packageName == packageName &&
                 when (val conversation = origin.conversation) {
                     is Conversation.Known -> conversation.id == id
+                    is Conversation.Routed -> conversation.id == id
                     Conversation.None -> false
                 }
 
@@ -118,7 +119,7 @@ sealed interface Target {
                         }
                     }
 
-                    Conversation.None -> {
+                    Conversation.None, is Conversation.Routed -> {
                         false
                     }
                 }

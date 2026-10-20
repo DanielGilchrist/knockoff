@@ -6,5 +6,9 @@ sealed interface Conversation {
         val title: ConversationTitle,
     ) : Conversation
 
+    data class Routed(
+        val id: ConversationId,
+    ) : Conversation
+
     data object None : Conversation
 }
