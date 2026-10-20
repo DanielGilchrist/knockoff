@@ -23,6 +23,7 @@ sealed interface Decision {
                 when (reason) {
                     is LeaveReason.Unsnoozable -> "leave: unsnoozable (${reason.traits.values.joinToString()})"
                     LeaveReason.NoRuleTargets -> "leave: no enabled rule targets it"
+                    LeaveReason.GroupShowing -> "leave: a summary over notifications that stay showing"
                     is LeaveReason.Permitted -> "leave: permitted by ${reason.by.joinToString { it.value }}"
                 }
             }

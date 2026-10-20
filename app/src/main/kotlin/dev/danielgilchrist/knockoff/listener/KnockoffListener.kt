@@ -10,7 +10,6 @@ import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.channel.BoundaryAlarm
 import dev.danielgilchrist.knockoff.channel.ChannelAccess
 import dev.danielgilchrist.knockoff.channel.ChannelSilencer
-import dev.danielgilchrist.knockoff.chat.ChatRecord
 import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
 import dev.danielgilchrist.knockoff.domain.change.Change
 import dev.danielgilchrist.knockoff.domain.change.next
@@ -125,12 +124,36 @@ class KnockoffListener : NotificationListenerService() {
     ) {
         val posted = sbn.toSnapshot().parse()
 
-        scope.launch { record(ChatSighting.of(posted, sbn.shortcutLabels(rankingMap))) }
+        scope.launch { knockoff.seenChatsStore.record(ChatSighting.of(posted, sbn.shortcutLabels(rankingMap))) }
         scope.launch {
             when (val change = applied) {
                 Change.Pending -> evaluateBeforeConnected(sbn, posted)
                 is Change.Initial -> sweeper.evaluate(sbn, posted, change.value)
                 is Change.Changed -> sweeper.evaluate(sbn, posted, change.after)
+            }
+        }
+    }
+
+    override fun onNotificationRemoved(
+        sbn: StatusBarNotification,
+        rankingMap: RankingMap,
+        reason: Int,
+    ) {
+        when (reason) {
+            REASON_SNOOZED -> {}
+
+            else -> {
+                when (val change = applied) {
+                    Change.Pending -> {}
+
+                    is Change.Initial -> {
+                        sweeper.revisitSummaries(sbn, change.value)
+                    }
+
+                    is Change.Changed -> {
+                        sweeper.revisitSummaries(sbn, change.after)
+                    }
+                }
             }
         }
     }
@@ -169,22 +192,6 @@ class KnockoffListener : NotificationListenerService() {
                 SeenChats.NONE
             }
         }
-
-    private suspend fun record(sighting: ChatSighting) {
-        when (sighting) {
-            ChatSighting.NotAChat -> {}
-
-            is ChatSighting.Seen -> {
-                when (val record = knockoff.seenChatsStore.record(sighting.chat)) {
-                    ChatRecord.Recorded, ChatRecord.Unchanged -> {}
-
-                    is ChatRecord.Failed -> {
-                        Log.w(LOG_TAG, "${sighting.chat.packageName.value} chat not recorded: ${record.detail}")
-                    }
-                }
-            }
-        }
-    }
 
     override fun onNotificationChannelModified(
         pkg: String,

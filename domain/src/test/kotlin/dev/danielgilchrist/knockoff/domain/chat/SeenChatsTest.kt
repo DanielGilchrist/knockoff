@@ -21,6 +21,7 @@ import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
+import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
@@ -135,8 +136,12 @@ class SeenChatsTest {
             )
         val evening = london("2026-10-14T20:00")
 
-        Evaluation(seen.expand(rules), LONDON).decide(post, evening.toInstant()).shouldBeInstanceOf<Decision.Snooze>()
-        Evaluation(rules, LONDON).decide(post, evening.toInstant()) shouldBe Decision.Leave(LeaveReason.NoRuleTargets)
+        Evaluation(
+            seen.expand(rules),
+            LONDON,
+        ).decide(post, GroupRole.Member, evening.toInstant()).shouldBeInstanceOf<Decision.Snooze>()
+        Evaluation(rules, LONDON).decide(post, GroupRole.Member, evening.toInstant()) shouldBe
+            Decision.Leave(LeaveReason.NoRuleTargets)
     }
 
     @Test
@@ -162,7 +167,13 @@ class SeenChatsTest {
             )
         val snoozed = PostedNotification.Snoozable(NotificationKey("k"), whatsappOrigin(known(COLLEAGUE, "Family")))
 
-        after.recheck(snoozed, before, london("2026-10-14T20:00").toInstant()).shouldBeInstanceOf<Recheck.Release>()
+        after
+            .recheck(
+                snoozed,
+                GroupRole.Member,
+                before,
+                london("2026-10-14T20:00").toInstant(),
+            ).shouldBeInstanceOf<Recheck.Release>()
     }
 
     @Test

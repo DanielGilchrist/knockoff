@@ -9,6 +9,8 @@ sealed interface LeaveReason {
 
     data object NoRuleTargets : LeaveReason
 
+    data object GroupShowing : LeaveReason
+
     data class Permitted(
         val by: Set<RuleName>,
     ) : LeaveReason

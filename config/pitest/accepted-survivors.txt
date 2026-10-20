@@ -20,7 +20,8 @@ NO_COVERAGE dev.danielgilchrist.knockoff.domain.channel.ChannelKind$Conversation
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.StoredChatAnswer$Hold parse L23 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot parse L27 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.PostedNotification describe L24 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Decision describe L26 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Decision describe L27 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation decide L25 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Recheck describe L18 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.RuleZone resolve L31 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.RuleZone stored L37 removed conditional - replaced equality check with true
@@ -62,6 +63,9 @@ SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredWindow weekDays L45 
 
 # Inlined Iterable.none, Iterable.any and Map.none: the empty-collection shortcut and the Collection type check only
 # skip a loop that would return the same answer.
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L49 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L49 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L49 removed conditional - replaced equality check with true

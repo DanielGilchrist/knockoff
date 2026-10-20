@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import java.time.Instant
 import java.time.ZoneId
@@ -10,17 +11,31 @@ data class Evaluation(
 ) {
     fun decide(
         notification: PostedNotification,
+        role: GroupRole,
         at: Instant,
-    ): Decision = rules.decide(notification, at.atZone(zone))
+    ): Decision =
+        when (val own = decide(notification, at)) {
+            is Decision.Leave -> {
+                own
+            }
+
+            is Decision.Snooze -> {
+                when (role) {
+                    GroupRole.Member -> own
+                    is GroupRole.Summary -> held(own, role, at)
+                }
+            }
+        }
 
     fun recheck(
         snoozed: PostedNotification,
+        role: GroupRole,
         before: Evaluation,
         at: Instant,
     ): Recheck {
-        val previous = before.decide(snoozed, at)
+        val previous = before.decide(snoozed, role, at)
 
-        return when (val current = decide(snoozed, at)) {
+        return when (val current = decide(snoozed, role, at)) {
             is Decision.Snooze -> {
                 when {
                     previous is Decision.Snooze && previous.until.isEqual(current.until) -> Recheck.Unchanged
@@ -36,4 +51,19 @@ data class Evaluation(
             }
         }
     }
+
+    private fun decide(
+        notification: PostedNotification,
+        at: Instant,
+    ): Decision = rules.decide(notification, at.atZone(zone))
+
+    private fun held(
+        own: Decision.Snooze,
+        summary: GroupRole.Summary,
+        at: Instant,
+    ): Decision =
+        when {
+            summary.showing.any { decide(it, at) is Decision.Leave } -> Decision.Leave(LeaveReason.GroupShowing)
+            else -> own
+        }
 }

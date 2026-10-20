@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.london
+import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
@@ -119,5 +120,6 @@ class RecheckTest {
         snoozed: PostedNotification,
         before: RuleSet,
         at: ZonedDateTime,
-    ): Recheck = Evaluation(this, at.zone).recheck(snoozed, Evaluation(before, at.zone), at.toInstant())
+    ): Recheck =
+        Evaluation(this, at.zone).recheck(snoozed, GroupRole.Member, Evaluation(before, at.zone), at.toInstant())
 }
