@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.ui.preferences
 
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
@@ -8,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.ui.components.IconBadge
 import dev.danielgilchrist.knockoff.ui.components.groupedItemColors
@@ -32,12 +34,29 @@ internal fun SetupRow(
                     )
                 }
 
+                SetupStatus.Explained -> {
+                    Icon(painter = painterResource(R.drawable.ic_chevron), contentDescription = null)
+                }
+
                 is SetupStatus.Needed -> {
                     FilledTonalButton(onClick = onAction) { Text(text = status.label) }
                 }
             }
         },
         colors = groupedItemColors(),
-        modifier = modifier,
+        modifier =
+            when (item.status) {
+                SetupStatus.Explained -> {
+                    modifier.clickable(
+                        onClickLabel = "Open",
+                        role = Role.Button,
+                        onClick = onAction,
+                    )
+                }
+
+                SetupStatus.Done, is SetupStatus.Needed -> {
+                    modifier
+                }
+            },
     )
 }

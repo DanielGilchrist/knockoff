@@ -1,13 +1,21 @@
 package dev.danielgilchrist.knockoff
 
+import android.Manifest
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
 import android.companion.AssociationInfo
 import android.companion.AssociationRequest
+import android.companion.BluetoothDeviceFilter
 import android.companion.CompanionDeviceManager
 import android.content.ActivityNotFoundException
+import android.content.BroadcastReceiver
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.IntentSender
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
@@ -26,6 +34,8 @@ import dev.danielgilchrist.knockoff.listener.KnockoffListener
 import dev.danielgilchrist.knockoff.ui.Appearance
 import dev.danielgilchrist.knockoff.ui.KnockoffScreen
 import dev.danielgilchrist.knockoff.ui.MainViewModel
+import dev.danielgilchrist.knockoff.ui.NearbyAsk
+import dev.danielgilchrist.knockoff.ui.PairedDevice
 import dev.danielgilchrist.knockoff.ui.SystemActions
 import dev.danielgilchrist.knockoff.ui.theme.KnockoffTheme
 import dev.danielgilchrist.knockoff.ui.theme.isDark
@@ -34,6 +44,21 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
     private val linking =
         registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {}
+    private val nearbyDevices =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            viewModel.nearbyDevicesAnswered(
+                NearbyAsk.after(granted, shouldShowRequestPermissionRationale(Manifest.permission.BLUETOOTH_CONNECT)),
+            )
+        }
+    private val bluetoothChanges =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                viewModel.refreshPaired()
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -55,15 +80,47 @@ class MainActivity : ComponentActivity() {
                             viewModel = viewModel,
                             system =
                                 SystemActions(
-                                    ::openAccessSettings,
-                                    ::linkDevice,
-                                    ::openNotificationSettings,
+                                    onOpenAccessSettings = ::openAccessSettings,
+                                    onAllowNotifications = ::openNotificationSettings,
+                                    onAllowNearbyDevices = {
+                                        nearbyDevices.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                                    },
+                                    onOpenBluetoothSettings = {
+                                        startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                                    },
+                                    onOpenAppSettings = {
+                                        startActivity(
+                                            Intent(
+                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                Uri.fromParts("package", packageName, null),
+                                            ),
+                                        )
+                                    },
+                                    onLinkPaired = { device -> link(pairedRequest(device)) },
+                                    onLinkNearby = { link(AssociationRequest.Builder().build()) },
                                 ),
                         )
                     }
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        registerReceiver(
+            bluetoothChanges,
+            IntentFilter().apply {
+                addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+                addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
+            },
+            RECEIVER_NOT_EXPORTED,
+        )
+    }
+
+    override fun onStop() {
+        unregisterReceiver(bluetoothChanges)
+        super.onStop()
     }
 
     private fun openAccessSettings() {
@@ -80,9 +137,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun linkDevice() {
+    private fun pairedRequest(device: PairedDevice): AssociationRequest =
+        AssociationRequest
+            .Builder()
+            .setSingleDevice(true)
+            .addDeviceFilter(BluetoothDeviceFilter.Builder().setAddress(device.address.value).build())
+            .build()
+
+    private fun link(request: AssociationRequest) {
         getSystemService(CompanionDeviceManager::class.java).associate(
-            AssociationRequest.Builder().build(),
+            request,
             mainExecutor,
             object : CompanionDeviceManager.Callback() {
                 override fun onAssociationPending(intentSender: IntentSender) {

@@ -80,7 +80,7 @@ private fun SetupGroup(
                 onAction =
                     when (item.action) {
                         SetupAction.Access -> system.onOpenAccessSettings
-                        SetupAction.Link -> system.onLinkDevice
+                        SetupAction.Link -> actions.onOpenLink
                         SetupAction.Notifications -> system.onAllowNotifications
                     },
             )

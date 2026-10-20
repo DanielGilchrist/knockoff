@@ -11,6 +11,7 @@ class ShownScreenTest {
     fun `settings show once they're loaded`() {
         assertEquals(ShownScreen.Preferences(Settings.DEFAULT), ShownScreen.of(Screen.Preferences, ready))
         assertEquals(ShownScreen.Home, ShownScreen.of(Screen.Home, ready))
+        assertEquals(ShownScreen.Link, ShownScreen.of(Screen.Link, ready))
     }
 
     @Test
@@ -23,5 +24,6 @@ class ShownScreenTest {
     fun `each shown screen names the screen to remember`() {
         assertEquals(Screen.Home, ShownScreen.Home.screen)
         assertEquals(Screen.Preferences, ShownScreen.Preferences(Settings.DEFAULT).screen)
+        assertEquals(Screen.Link, ShownScreen.Link.screen)
     }
 }

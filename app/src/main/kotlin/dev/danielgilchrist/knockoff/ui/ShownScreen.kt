@@ -15,6 +15,10 @@ internal sealed interface ShownScreen {
         override val screen = Screen.Preferences
     }
 
+    data object Link : ShownScreen {
+        override val screen = Screen.Link
+    }
+
     data class NewChats(
         val settings: Settings,
     ) : ShownScreen {
@@ -31,6 +35,7 @@ internal sealed interface ShownScreen {
                     when (screen) {
                         Screen.Home -> Home
                         Screen.Preferences -> Preferences(settings.settings)
+                        Screen.Link -> Link
                         Screen.NewChats -> NewChats(settings.settings)
                     }
                 }

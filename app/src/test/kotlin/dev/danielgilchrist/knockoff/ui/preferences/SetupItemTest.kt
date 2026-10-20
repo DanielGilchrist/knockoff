@@ -9,14 +9,27 @@ import org.junit.jupiter.api.Test
 
 class SetupItemTest {
     @Test
-    fun `everything set up shows three done rows`() {
-        val setup = Setup(ListenerAccess.Granted, DeviceLink.Linked, NotificationPermission.Granted)
+    fun `everything set up shows done rows and the link explanation`() {
+        val setup = Setup(ListenerAccess.Granted, DeviceLink.Linked("Pixel Buds"), NotificationPermission.Granted)
 
         assertEquals(
-            listOf(SetupAction.Access, SetupAction.Link, SetupAction.Notifications),
-            SetupItem.of(setup).map { it.action },
+            listOf(
+                SetupAction.Access to SetupStatus.Done,
+                SetupAction.Link to SetupStatus.Explained,
+                SetupAction.Notifications to SetupStatus.Done,
+            ),
+            SetupItem.of(setup).map { it.action to it.status },
         )
-        assertEquals(List(3) { SetupStatus.Done }, SetupItem.of(setup).map { it.status })
+    }
+
+    @Test
+    fun `a link names its device`() {
+        val setup = Setup(ListenerAccess.Granted, DeviceLink.Linked("Pixel Buds"), NotificationPermission.Granted)
+
+        assertEquals(
+            "On. Linked to Pixel Buds. Held notifications stay quiet.",
+            SetupItem.of(setup).single { it.action == SetupAction.Link }.supporting,
+        )
     }
 
     @Test
@@ -26,7 +39,7 @@ class SetupItemTest {
         assertEquals(
             listOf(
                 SetupAction.Access to SetupStatus.Needed("Turn on"),
-                SetupAction.Link to SetupStatus.Needed("Link"),
+                SetupAction.Link to SetupStatus.Needed("Set up"),
                 SetupAction.Notifications to SetupStatus.Needed("Allow"),
             ),
             SetupItem.of(setup).map { it.action to it.status },

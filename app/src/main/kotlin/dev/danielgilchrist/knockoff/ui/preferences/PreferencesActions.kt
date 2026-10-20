@@ -8,5 +8,6 @@ data class PreferencesActions(
     val system: SystemActions,
     val onDefaultZoneChange: (ZoneChoice) -> Unit,
     val onThemeChange: (Theme) -> Unit,
+    val onOpenLink: () -> Unit,
     val onBack: () -> Unit,
 )

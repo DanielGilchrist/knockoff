@@ -27,15 +27,19 @@ data class SetupItem(
 
         private fun link(link: DeviceLink): SetupItem =
             when (link) {
-                DeviceLink.Linked -> {
-                    SetupItem(SetupAction.Link, "On. Held apps don't buzz first.", SetupStatus.Done)
+                is DeviceLink.Linked -> {
+                    SetupItem(
+                        SetupAction.Link,
+                        "On. Linked to ${link.device}. Held notifications stay quiet.",
+                        SetupStatus.Explained,
+                    )
                 }
 
                 DeviceLink.NotLinked -> {
                     SetupItem(
                         SetupAction.Link,
-                        "Off. Held notifications buzz once. Needs a linked device such as a watch.",
-                        SetupStatus.Needed("Link"),
+                        "Off. Held notifications still buzz before they're hidden.",
+                        SetupStatus.Needed("Set up"),
                     )
                 }
             }

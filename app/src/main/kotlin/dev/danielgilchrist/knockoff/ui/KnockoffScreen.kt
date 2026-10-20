@@ -22,6 +22,8 @@ import dev.danielgilchrist.knockoff.ui.editor.WizardActions
 import dev.danielgilchrist.knockoff.ui.home.HomeActions
 import dev.danielgilchrist.knockoff.ui.home.HomeScreen
 import dev.danielgilchrist.knockoff.ui.home.NewChatsScreen
+import dev.danielgilchrist.knockoff.ui.preferences.LinkActions
+import dev.danielgilchrist.knockoff.ui.preferences.LinkScreen
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesActions
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesScreen
 
@@ -32,6 +34,7 @@ fun KnockoffScreen(
     modifier: Modifier = Modifier,
 ) {
     val setup by viewModel.setup.collectAsStateWithLifecycle()
+    val paired by viewModel.paired.collectAsStateWithLifecycle()
     val editor = viewModel.editor
     val settings by editor.settings.collectAsStateWithLifecycle()
     val editing by editor.editing.collectAsStateWithLifecycle()
@@ -63,14 +66,16 @@ fun KnockoffScreen(
             Editing.Closed -> {
                 ClosedScreen(
                     shown = shown,
-                    state = ClosedState(setup, settings, saveStatus, preferencesStatus, newChats, choices.apps),
+                    state = ClosedState(setup, paired, settings, saveStatus, preferencesStatus, newChats, choices.apps),
                     home = home,
                     onBackToHome = { screen = Screen.Home },
+                    link = LinkActions(system, onBack = { screen = Screen.Preferences }),
                     preferences =
                         PreferencesActions(
                             system = system,
                             onDefaultZoneChange = viewModel.preferences::setDefaultZone,
                             onThemeChange = viewModel.preferences::setTheme,
+                            onOpenLink = { screen = Screen.Link },
                             onBack = { screen = Screen.Home },
                         ),
                 )
@@ -195,6 +200,7 @@ private fun ClosedScreen(
     state: ClosedState,
     home: HomeActions,
     onBackToHome: () -> Unit,
+    link: LinkActions,
     preferences: PreferencesActions,
     modifier: Modifier = Modifier,
 ) {
@@ -219,6 +225,10 @@ private fun ClosedScreen(
                 actions = preferences,
                 modifier = modifier,
             )
+        }
+
+        ShownScreen.Link -> {
+            LinkScreen(link = state.setup.link, paired = state.paired, actions = link, modifier = modifier)
         }
 
         is ShownScreen.NewChats -> {

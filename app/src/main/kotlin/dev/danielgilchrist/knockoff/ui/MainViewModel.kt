@@ -22,6 +22,8 @@ class MainViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
     private val mutableSetup = MutableStateFlow(Setup.of(application))
+    private var nearbyAsk = NearbyAsk.Askable
+    private val mutablePaired = MutableStateFlow(PairedDevices.of(application, nearbyAsk))
 
     private val knockoff = application as KnockoffApplication
     private val store = knockoff.settingsStore
@@ -29,6 +31,7 @@ class MainViewModel(
     val editor = SettingsEditor(store, viewModelScope)
     val preferences = PreferencesEditor(store, viewModelScope)
     val setup: StateFlow<Setup> = mutableSetup.asStateFlow()
+    val paired: StateFlow<PairedDevices> = mutablePaired.asStateFlow()
     val choices: StateFlow<TargetChoices> =
         combine(
             flow<InstalledApps> {
@@ -61,8 +64,18 @@ class MainViewModel(
         }
     }
 
+    fun refreshPaired() {
+        mutablePaired.value = PairedDevices.of(getApplication(), nearbyAsk)
+    }
+
+    fun nearbyDevicesAnswered(ask: NearbyAsk) {
+        nearbyAsk = ask
+        refreshPaired()
+    }
+
     fun refreshSetup() {
         mutableSetup.value = Setup.of(getApplication())
+        refreshPaired()
         getApplication<KnockoffApplication>().requestSilencing()
         getApplication<KnockoffApplication>().refreshNotificationPermission()
     }
