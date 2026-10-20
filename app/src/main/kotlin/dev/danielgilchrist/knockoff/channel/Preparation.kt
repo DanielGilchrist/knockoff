@@ -14,6 +14,7 @@ internal sealed interface Preparation {
     ) : Preparation
 
     data class Unavailable(
+        val rules: RuleSet,
         val detail: String,
     ) : Preparation
 

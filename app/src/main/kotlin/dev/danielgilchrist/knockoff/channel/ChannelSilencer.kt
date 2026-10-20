@@ -51,6 +51,9 @@ internal class ChannelSilencer(
         when (val first = prepare()) {
             is Preparation.Unavailable -> {
                 Log.w(LOG_TAG, "channels unchanged: ${first.detail}")
+                val now = ZonedDateTime.now()
+
+                alarm.schedule(first.rules.nextBoundary(now), now).report()
             }
 
             is Preparation.Failed -> {
@@ -136,12 +139,12 @@ internal class ChannelSilencer(
     ): Preparation {
         val packages = rules.channelPackages(silenced)
 
-        return read(packages) { channels ->
+        return read(rules, packages) { channels ->
             val chats = chatChannels.create(rules.chatChannelNeeds(channels, silenced))
 
             when (chats.creation) {
                 ChatChannelsCreation.SomeCreated -> {
-                    read(packages) { created -> planned(rules, silenced, created, chats.waiting) }
+                    read(rules, packages) { created -> planned(rules, silenced, created, chats.waiting) }
                 }
 
                 ChatChannelsCreation.NoneCreated -> {
@@ -152,13 +155,25 @@ internal class ChannelSilencer(
     }
 
     private inline fun read(
+        rules: RuleSet,
         packages: Set<PackageName>,
         onRead: (Map<ChannelKey, ReadChannel>) -> Preparation,
     ): Preparation =
         when (val read = access.read(packages)) {
-            is ChannelRead.NotLinked -> Preparation.Unavailable("not linked to a companion device: ${read.detail}")
-            ChannelRead.Unbound -> Preparation.Unavailable("listener unbound")
-            is ChannelRead.Read -> onRead(read.channels)
+            is ChannelRead.NotLinked -> {
+                Preparation.Unavailable(
+                    rules,
+                    "not linked to a companion device: ${read.detail}",
+                )
+            }
+
+            ChannelRead.Unbound -> {
+                Preparation.Unavailable(rules, "listener unbound")
+            }
+
+            is ChannelRead.Read -> {
+                onRead(read.channels)
+            }
         }
 
     private suspend fun planned(

@@ -62,6 +62,7 @@ class KnockoffListener : NotificationListenerService() {
         super.onCreate()
         scope.launch { silencer.run() }
         scope.launch { knockoff.silencingRequests.collect { silencer.request() } }
+        scope.launch { knockoff.boundaries.collect { sweepAtBoundary() } }
     }
 
     override fun onListenerConnected() {
@@ -197,6 +198,22 @@ class KnockoffListener : NotificationListenerService() {
     override fun onDestroy() {
         scope.cancel()
         super.onDestroy()
+    }
+
+    private fun sweepAtBoundary() {
+        Log.i(LOG_TAG, "boundary reached")
+
+        when (val change = applied) {
+            Change.Pending -> {}
+
+            is Change.Initial -> {
+                sweeper.sweep(change.value)
+            }
+
+            is Change.Changed -> {
+                sweeper.sweep(change.after)
+            }
+        }
     }
 
     private fun apply(change: Change<Evaluation>) {

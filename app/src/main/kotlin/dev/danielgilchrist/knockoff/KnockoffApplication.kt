@@ -52,6 +52,11 @@ class KnockoffApplication : Application() {
 
     val silencingRequests: SharedFlow<Unit> = mutableSilencingRequests.asSharedFlow()
 
+    private val mutableBoundaries =
+        MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    val boundaries: SharedFlow<Unit> = mutableBoundaries.asSharedFlow()
+
     override fun onCreate() {
         super.onCreate()
         val notifier = ChatQuestionNotifier(this)
@@ -68,6 +73,11 @@ class KnockoffApplication : Application() {
 
     fun refreshNotificationPermission() {
         notificationPermission.value = NotificationPermission.of(this)
+    }
+
+    fun reachBoundary() {
+        requestSilencing()
+        mutableBoundaries.tryEmit(Unit)
     }
 
     fun requestSilencing() {
