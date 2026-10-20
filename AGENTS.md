@@ -149,7 +149,7 @@ These rules pay off for values with several states or failure modes, that cross 
 
 - Every module compiles with `allWarningsAsErrors = true`; a new module must too.
 - Don't suppress lints; refactor instead (group a long parameter list into a data class, split a long method, model the missing sum type).
-- `:lint` holds project detekt rules, applied to `:domain` and `:app` through `config/detekt/{domain,app}.yml`. They match names without type resolution, because type-resolved rules don't run in plain `detekt`:
+- `:lint` holds project detekt rules, applied to `:domain` and `:app` (not `:fakechat`) through `config/detekt/{domain,app}.yml`. They match names without type resolution, because type-resolved rules don't run in plain `detekt`:
   - `UnapprovedCatch`: only exception types under `allowedExceptions` may be caught; catch operators such as `Flow.catch` are banned.
   - `UnapprovedThrow`: `throw`, `!!`, `require`, `requireNotNull`, `check`, `checkNotNull`, `error` and `TODO` only in declarations under `allowedDeclarations`, listed with parameter types (`dev.danielgilchrist.knockoff.domain.schedule.Schedule.coverageAt(ZonedDateTime)`) so an overload isn't approved by accident.
   - `UntypedResult`, `NoImportAlias`, `NoTypeFiltering` (`as?`, `filterIsInstance`) and `UnusedImport` (operator and delegate imports such as `getValue`, `plus`, `componentN` count as used; detekt's own needs type resolution).
@@ -197,7 +197,7 @@ adb shell am start -n dev.danielgilchrist.knockoff/.MainActivity
 adb logcat -s Knockoff:V
 ```
 
-- After every `installDebug`, launch the app without asking. Before asking for a repro, start `adb logcat` in the background and read it yourself.
+- After every `installDebug`, launch the app without asking. Use `:app:installDebug`; a bare `installDebug` installs FakeChat too. Before asking for a repro, start `adb logcat` in the background and read it yourself.
 - I do the on-device interaction; you handle setup and observation.
 - A green build isn't a working feature: a behaviour change isn't done until it's confirmed on the phone.
 - Grant listener access: `adb shell cmd notification allow_listener dev.danielgilchrist.knockoff/dev.danielgilchrist.knockoff.listener.KnockoffListener`. `disallow_listener` then `allow_listener` forces a rebind, which sweeps.
@@ -206,6 +206,30 @@ adb logcat -s Knockoff:V
 - Release a snooze by hand: `adb shell "cmd notification snooze --for 1 '<key>'"` (quote the key; it contains `|`). Never use `cmd notification unsnooze`: it fails with `Permission Denial: getIntentSender()` and loses the notification.
 - Link without the UI: `adb shell cmd companiondevice associate 0 dev.danielgilchrist.knockoff <mac>` (any address works); `disassociate` removes it; `adb shell cmd companiondevice list 0` lists.
 - Saved originals: `adb shell run-as dev.danielgilchrist.knockoff cat files/silenced-channels.json`. Channel importances: `adb shell dumpsys notification | grep "mId='<channel>'"`.
+
+### FakeChat
+
+`:fakechat` (`dev.danielgilchrist.knockoff.fakechat`) is a debug-only app that posts WhatsApp-shaped notifications, so chat and summary behaviour can be tested without real conversations. It's never shipped and Knockoff doesn't depend on it. It doesn't cover group chats or a shortcut label that differs from the title.
+
+- Chats: one `MessagingStyle` notification per chat on channel `individual_chat_defaults`, group `group_key_messages`, shortcut ID `<name>@lid` (lowercased, spaces as dots; IDs differ from names because a chat named by its ID is never recorded), plus an `InboxStyle` group summary tagged with the latest chat's shortcut.
+
+```
+./gradlew :fakechat:installDebug
+adb shell pm grant dev.danielgilchrist.knockoff.fakechat android.permission.POST_NOTIFICATIONS
+R=dev.danielgilchrist.knockoff.fakechat/.CommandReceiver
+adb shell "am broadcast -n $R --es chat Boss --es text 'Quick question'"   # a message; updates the summary
+adb shell "am broadcast -n $R --es do dismiss --es chat 'Mum Smith'"        # the app cancels that chat
+adb shell "am broadcast -n $R --es do clear"                               # cancels everything
+```
+
+- Quote the whole command: `adb shell` drops inner quotes, so `--es chat "Mum Smith"` arrives as `Mum`.
+- A reinstall loses the notification permission; grant it again as above.
+- An app can't cancel its own snoozed notification (`do clear` leaves held ones), and snoozed records survive an uninstall: release them by hand as above (`snooze --for 1`).
+- A follow-up to a held chat reposts a snoozed key, which Android replaces without calling listeners; use a fresh chat name to see a new decision.
+- `do dismiss` reposts the summary, which triggers its own decision; swipe the chat away in the shade to test the "member removed" re-decision alone.
+- To hold a fake chat, send it one message so Knockoff records it, then open a rule's Apps, add FakeChat, narrow it and tick the chat, with hours covering now.
+- Observe with `adb logcat -s Knockoff:V FakeChat:V` (FakeChat logs commands it ignores; `am broadcast` reports success either way), `adb shell dumpsys notification --noredact | grep -E "NotificationRecord.*fakechat"`, and `adb shell cmd statusbar expand-notifications` plus `adb exec-out screencap -p`.
+- Cleanup: take FakeChat out of every rule first and, if its channel was silenced, wait for the restore (`Low -> High`) before `adb uninstall dev.danielgilchrist.knockoff.fakechat`; uninstalling first leaves an original Knockoff can't restore. Then remove FakeChat's entries from `silenced-channels.json`.
 
 ## Git
 
