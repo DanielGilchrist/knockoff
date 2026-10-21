@@ -15,12 +15,13 @@ import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.AppScope
 import dev.danielgilchrist.knockoff.domain.rule.ChatPick
 import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
-import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.groupName
 import dev.danielgilchrist.knockoff.ruleApps
+import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 import dev.danielgilchrist.knockoff.ui.GroupNoun
+import dev.danielgilchrist.knockoff.ui.HeldPhrase
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -141,7 +142,26 @@ class AppDraftTest {
     }
 
     @Test
-    fun `narrowing is offered with a real choice or picks to keep, so a pattern-only app survives All and back`() {
+    fun `an app with nothing picked says what to tick and is flagged in the list`() {
+        assertEquals("Add at least one pattern.", unchosenCaption(AppKind.Plain, GroupNoun.Groups))
+        assertEquals("Tick at least one account.", unchosenCaption(AppKind.Accounts, GroupNoun.Accounts))
+        assertEquals(
+            "Tick at least one chat, or turn on Ask me about new chats.",
+            unchosenCaption(AppKind.Chats, GroupNoun.Groups),
+        )
+        assertEquals(
+            "Tick at least one group or chat, or turn on Ask me about new chats.",
+            unchosenCaption(AppKind.AccountsAndChats, GroupNoun.Groups),
+        )
+        assertEquals(
+            listOf("No patterns added", "No accounts picked", "No chats picked", "No accounts or chats picked"),
+            AppKind.entries.map { AppSummary.unpicked(it, GroupNoun.Accounts) },
+        )
+        assertEquals("No groups picked", AppSummary.unpicked(AppKind.Accounts, GroupNoun.Groups))
+    }
+
+    @Test
+    fun `narrowing is offered with anything to choose or picks to keep, so a pattern-only app survives All and back`() {
         val patterned = narrowed.copy(patterns = listOf(PatternDraft(PatternField.ChannelId, "^mail")))
         val whole = patterned.copy(mode = AppMode.Everything)
 
@@ -150,8 +170,8 @@ class AppDraftTest {
         assertEquals(patterned, whole.copy(mode = AppMode.Narrowed))
         assertEquals(Checked.Ok(AppScope.Everything), whole.parse(gmail))
         assertEquals(true, narrowed.offersNarrowing(0))
-        assertEquals(false, AppDraft.EVERYTHING.offersNarrowing(1))
-        assertEquals(true, AppDraft.EVERYTHING.offersNarrowing(2))
+        assertEquals(false, AppDraft.EVERYTHING.offersNarrowing(0))
+        assertEquals(true, AppDraft.EVERYTHING.offersNarrowing(1))
         assertEquals(
             listOf(false, true, true, true, true),
             listOf(
@@ -206,19 +226,40 @@ class AppDraftTest {
     }
 
     @Test
-    fun `the narrowed choice says how many there are and what happens to the others`() {
+    fun `the narrowed choice says how many there are and that the rule leaves the rest alone`() {
         val accounts = AccountChoices(GroupNoun.Accounts, mapOf(work to groupName("dan@work.example")))
         val none = AccountChoices(GroupNoun.Groups, emptyMap())
 
         assertEquals(
-            "Choose from 1 account. Others always reach you.",
-            narrowedSupporting(AppKind.Accounts, accounts, Policy.DeliverOnlyDuring, false),
+            "Choose from 1 account. This rule leaves other accounts alone.",
+            narrowedSupporting(AppKind.Accounts, accounts, false),
         )
-        assertEquals("Others are never held.", narrowedSupporting(AppKind.Chats, accounts, Policy.HoldDuring, false))
-        assertEquals("Others are never held.", narrowedSupporting(AppKind.Accounts, none, Policy.HoldDuring, false))
+        assertEquals("This rule leaves other chats alone.", narrowedSupporting(AppKind.Chats, accounts, false))
+        assertEquals("This rule leaves other groups alone.", narrowedSupporting(AppKind.Accounts, none, false))
         assertEquals(
-            "Others always reach you.",
-            narrowedSupporting(AppKind.Accounts, accounts, Policy.DeliverOnlyDuring, true),
+            "This rule leaves other accounts and chats alone.",
+            narrowedSupporting(AppKind.AccountsAndChats, accounts, true),
+        )
+        assertEquals("This rule leaves other notifications alone.", narrowedSupporting(AppKind.Plain, none, false))
+    }
+
+    @Test
+    fun `an app's caption names the app when whole and what's picked when narrowed`() {
+        assertEquals(
+            HeldPhrase.of("WhatsApp", GrammaticalNumber.One),
+            appHeld("WhatsApp", AppMode.Everything, AppKind.Chats, GroupNoun.Groups),
+        )
+        assertEquals(
+            HeldPhrase.of("The chats you pick", GrammaticalNumber.Many),
+            appHeld("WhatsApp", AppMode.Narrowed, AppKind.Chats, GroupNoun.Groups),
+        )
+        assertEquals(
+            HeldPhrase.of("The accounts you pick", GrammaticalNumber.Many),
+            appHeld("Gmail", AppMode.Narrowed, AppKind.Accounts, GroupNoun.Accounts),
+        )
+        assertEquals(
+            HeldPhrase.of("Notifications matching your patterns", GrammaticalNumber.Many),
+            appHeld("Slack", AppMode.Narrowed, AppKind.Plain, GroupNoun.Groups),
         )
     }
 

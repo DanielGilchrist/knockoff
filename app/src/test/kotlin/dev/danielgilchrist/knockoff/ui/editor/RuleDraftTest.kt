@@ -228,7 +228,7 @@ class RuleDraftTest {
             DraftProblem.InvalidPattern(whatsapp, 2, "Unclosed group").describe(labelOf, pickOf),
         )
         assertEquals(
-            "Pick at least one chat for WhatsApp, or choose All notifications.",
+            "Pick a chat for WhatsApp, or choose All notifications.",
             DraftProblem.NothingChosen(whatsapp).describe(labelOf, pickOf),
         )
     }

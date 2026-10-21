@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
+import dev.danielgilchrist.knockoff.ui.GroupNoun
 import dev.danielgilchrist.knockoff.ui.counted
 
 internal object AppSummary {
@@ -13,6 +14,17 @@ internal object AppSummary {
         when (draft.mode) {
             AppMode.Everything -> "All notifications"
             AppMode.Narrowed -> narrowed(draft, accounts)
+        }
+
+    fun unpicked(
+        kind: AppKind,
+        noun: GroupNoun,
+    ): String =
+        when (kind) {
+            AppKind.Plain -> "No patterns added"
+            AppKind.Accounts -> "No ${noun.many} picked"
+            AppKind.Chats -> "No chats picked"
+            AppKind.AccountsAndChats -> "No ${noun.many} or chats picked"
         }
 
     private fun narrowed(

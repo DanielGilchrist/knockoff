@@ -16,7 +16,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.R
+import dev.danielgilchrist.knockoff.ask.AnswerLabels
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.NewChats
 import dev.danielgilchrist.knockoff.ui.NewChatsView
@@ -45,8 +47,9 @@ internal fun NewChatsScreen(
         item {
             Caption(
                 text =
-                    "These chats are from apps a rule that's on asks about, and aren't in a rule yet. " +
-                        "Letting one through can't be undone yet.",
+                    "New chats from apps your rules are watching. " +
+                        "${AnswerLabels.addOrLetThrough(GrammaticalNumber.Many)}. " +
+                        "Letting a chat through can't be undone yet.",
             )
         }
         saveProblem(saveStatus)
@@ -108,6 +111,6 @@ private fun AllCaughtUp(modifier: Modifier = Modifier) {
             modifier = Modifier.size(48.dp),
         )
         Text(text = "All caught up", style = MaterialTheme.typography.titleMedium)
-        Caption(text = "New chats from apps a rule that's on asks about show up here.")
+        Caption(text = "When a rule asks about new chats, they'll show up here.")
     }
 }

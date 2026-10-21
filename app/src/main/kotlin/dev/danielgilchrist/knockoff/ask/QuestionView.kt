@@ -3,6 +3,7 @@ package dev.danielgilchrist.knockoff.ask
 import dev.danielgilchrist.knockoff.domain.chat.ChatAnswer
 import dev.danielgilchrist.knockoff.domain.chat.ChatQuestion
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 
 data class QuestionView(
     val title: String,
@@ -29,7 +30,9 @@ data class QuestionView(
 
             return QuestionView(
                 title = chat.name.value,
-                text = "On ${labelOf(chat.packageName)}. Hold it or let it through.$waiting",
+                text = "From ${labelOf(
+                    chat.packageName,
+                )}. ${AnswerLabels.addOrLetThrough(GrammaticalNumber.One)}.$waiting",
                 holds = first.rules.take(HOLD_ACTIONS).map { ChatAnswer.Hold(it, chat) },
                 letThrough = ChatAnswer.LetThrough(chat.key),
                 dismiss = ChatAnswer.Dismiss((listOf(first) + rest).map { it.chat.key }.toSet()),

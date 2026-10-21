@@ -27,7 +27,7 @@ class QuestionViewTest {
         assertEquals(
             QuestionView(
                 title = "Colleague",
-                text = "On WhatsApp. Hold it or let it through.",
+                text = "From WhatsApp. Add it to a rule, or always let it through.",
                 holds = rules.take(2).map { ChatAnswer.Hold(it, COLLEAGUE_CHAT) },
                 letThrough = ChatAnswer.LetThrough(COLLEAGUE_CHAT.key),
                 dismiss = ChatAnswer.Dismiss(setOf(COLLEAGUE_CHAT.key)),
@@ -51,9 +51,9 @@ class QuestionViewTest {
                 "WhatsApp"
             }
 
-        assertEquals("On WhatsApp. Hold it or let it through. 1 more is waiting.", one.text)
+        assertEquals("From WhatsApp. Add it to a rule, or always let it through. 1 more is waiting.", one.text)
         assertEquals(
-            "On WhatsApp. Hold it or let it through. 2 more are waiting.",
+            "From WhatsApp. Add it to a rule, or always let it through. 2 more are waiting.",
             two.text,
         )
         assertEquals(ChatAnswer.Dismiss(setOf(COLLEAGUE_CHAT.key, friend.key, other.key)), two.dismiss)

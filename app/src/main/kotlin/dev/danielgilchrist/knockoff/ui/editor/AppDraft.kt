@@ -17,8 +17,6 @@ data class AppDraft(
     val asking: NewChatsAsking,
 ) {
     companion object {
-        private const val CHOICE = 2
-
         val EVERYTHING: AppDraft
             get() = AppDraft(AppMode.Everything, emptyMap(), emptyMap(), emptyList(), NewChatsAsking.DontAsk)
 
@@ -43,7 +41,9 @@ data class AppDraft(
     val picksSomething: Boolean
         get() = accounts.isNotEmpty() || chats.isNotEmpty() || patterns.isNotEmpty() || asking == NewChatsAsking.Ask
 
-    fun offersNarrowing(available: Int): Boolean = available >= CHOICE || mode == AppMode.Narrowed || picksSomething
+    fun leavesNothingChosen(app: PackageName): Boolean = ProblemSplit.of(parse(app)).unchosen.isNotEmpty()
+
+    fun offersNarrowing(available: Int): Boolean = available > 0 || mode == AppMode.Narrowed || picksSomething
 
     fun withLearnedNames(learned: Map<ChannelGroupId, GroupName>): AppDraft =
         copy(accounts = accounts.mapValues { (id, name) -> learned.getOrDefault(id, name) })

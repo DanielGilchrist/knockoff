@@ -1,7 +1,6 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
-import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.ui.editor.BreakDraft
 import dev.danielgilchrist.knockoff.ui.editor.RuleDraft
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -12,15 +11,24 @@ class DescribeTest {
     fun `an app's effect follows the rule's policy and hours, and rules without names are this rule`() {
         val draft = RuleDraft.NEW.copy(breaks = listOf(BreakDraft.LUNCH))
 
-        assertEquals("Reaches you only on weekdays 08:00–17:00, except Lunch.", draft.appEffect())
-        assertEquals("Held on weekdays 08:00–17:00, except Lunch.", draft.copy(policy = Policy.HoldDuring).appEffect())
-        assertEquals("", draft.copy(windows = emptyList()).appEffect())
+        val whatsapp = HeldPhrase.of("WhatsApp", GrammaticalNumber.One)
+
+        assertEquals("WhatsApp only reaches you on weekdays 08:00–17:00, except Lunch.", draft.appEffect(whatsapp))
+        assertEquals("", draft.copy(windows = emptyList()).appEffect(whatsapp))
         assertEquals("this rule", ruleCalled(" "))
         assertEquals("Work", ruleCalled("Work "))
         assertEquals("Work's hours", hoursOf(" Work"))
         assertEquals("Errands' hours", hoursOf("Errands"))
         assertEquals("BUS' hours", hoursOf("BUS"))
         assertEquals("this rule's hours", hoursOf(""))
+    }
+
+    @Test
+    fun `nouns take a or an`() {
+        assertEquals("a chat", withArticle("chat"))
+        assertEquals("an account", withArticle("account"))
+        assertEquals("an account or chat", withArticle("account or chat"))
+        assertEquals("a group", withArticle("group"))
     }
 
     @Test

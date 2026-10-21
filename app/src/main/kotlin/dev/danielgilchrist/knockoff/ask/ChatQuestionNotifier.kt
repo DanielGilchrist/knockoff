@@ -61,7 +61,7 @@ class ChatQuestionNotifier(
     private fun notification(view: QuestionView): Notification {
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_ID, "New chats", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Asks about new chats from apps a rule asks about"
+                description = "Asks whether new chats should join a rule"
             },
         )
         return Notification
@@ -77,8 +77,8 @@ class ChatQuestionNotifier(
             .setActions(
                 *(
                     view.holds.mapIndexed { index, hold ->
-                        action("Hold with ${hold.rule.value}", answering(HOLD_REQUEST + index, hold))
-                    } + action("Let through", answering(LET_THROUGH_REQUEST, view.letThrough))
+                        action(AnswerLabels.addTo(hold.rule), answering(HOLD_REQUEST + index, hold))
+                    } + action(AnswerLabels.LET_THROUGH, answering(LET_THROUGH_REQUEST, view.letThrough))
                 ).toTypedArray(),
             ).build()
     }

@@ -34,7 +34,7 @@ class RuleOverviewTest {
     fun `an empty rule says it holds nothing yet`() {
         val overview = RuleOverview.of(rule(RuleDraft.NEW.copy(name = "x")), labelOf)
 
-        assertEquals("Holds nothing yet. Add an app under Apps.", overview.sentence)
+        assertEquals("No apps yet. Add one under Apps.", overview.sentence)
         assertEquals("No apps yet", overview.apps)
         assertEquals("Weekdays 08:00–17:00", overview.hours)
     }
@@ -62,10 +62,11 @@ class RuleOverviewTest {
         val overview = RuleOverview.of(rule(draft), labelOf)
 
         assertEquals(
-            "Lets notifications from 1 app, 1 chat and 1 pattern through only on weekdays 08:00–17:00, except Lunch.",
+            "Slack and some WhatsApp chats only reach you on weekdays 08:00–17:00, except Lunch. " +
+                "You'll be asked about new WhatsApp chats.",
             overview.sentence,
         )
-        assertEquals("Slack, WhatsApp", overview.apps)
+        assertEquals("Slack and WhatsApp", overview.apps)
         assertEquals(overview.sentence, overview.effect)
         assertEquals("Weekdays 08:00–17:00 · except Lunch · Etc/UTC (UTC+00:00)", overview.hours)
     }
@@ -91,7 +92,7 @@ class RuleOverviewTest {
         val overview = RuleOverview.of(rule(draft), { if (it == slack) "Slack" else it.value })
 
         assertEquals(
-            "Holds notifications from 4 apps on weekends 08:00–17:00 and every day 08:00–17:00 and on " +
+            "Slack, b, c and 1 more go quiet on weekends 08:00–17:00 and every day 08:00–17:00 and on " +
                 "Mon, Wed 08:00–17:00.",
             overview.sentence,
         )
@@ -100,17 +101,62 @@ class RuleOverviewTest {
     }
 
     @Test
-    fun `an off rule says so and an asking-only rule says what it asks about`() {
+    fun `an asking-only rule says what it asks about only while it's on`() {
         val asking = AppDraft(AppMode.Narrowed, emptyMap(), emptyMap(), emptyList(), NewChatsAsking.Ask)
-        val draft = RuleDraft.NEW.copy(name = "x", state = RuleState.Disabled, apps = mapOf(slack to asking))
+        val draft = RuleDraft.NEW.copy(name = "x", apps = mapOf(slack to asking))
+        val off = draft.copy(state = RuleState.Disabled)
 
         assertEquals(
-            "Off. Holds nothing yet. Asks about new chats from 1 app.",
+            "Nothing picked yet. You'll be asked about new Slack chats.",
+            RuleOverview.of(rule(draft), labelOf).sentence,
+        )
+        assertEquals("Off. Nothing picked yet.", RuleOverview.of(rule(off), labelOf).sentence)
+        assertEquals("Nothing picked yet.", RuleOverview.of(rule(off), labelOf).effect)
+    }
+
+    @Test
+    fun `an off rule holding apps doesn't promise to ask`() {
+        val asking = AppDraft(AppMode.Narrowed, emptyMap(), emptyMap(), emptyList(), NewChatsAsking.Ask)
+        val draft =
+            RuleDraft.NEW.copy(
+                name = "x",
+                state = RuleState.Disabled,
+                apps = mapOf(slack to AppDraft.EVERYTHING, COLLEAGUE_CHAT.packageName to asking),
+            )
+
+        assertEquals(
+            "Off. Slack only reaches you on weekdays 08:00–17:00.",
+            RuleOverview.of(rule(draft), labelOf).sentence,
+        )
+    }
+
+    @Test
+    fun `a sentence led by a pattern-only app opens with a capital`() {
+        val patterned =
+            AppDraft(
+                AppMode.Narrowed,
+                emptyMap(),
+                emptyMap(),
+                listOf(PatternDraft(PatternField.ChatName, "^Work")),
+                NewChatsAsking.DontAsk,
+            )
+        val draft = RuleDraft.NEW.copy(name = "x", apps = mapOf(COLLEAGUE_CHAT.packageName to patterned))
+
+        assertEquals(
+            "Some WhatsApp chats only reach you on weekdays 08:00–17:00.",
             RuleOverview.of(rule(draft), labelOf).sentence,
         )
         assertEquals(
-            "Holds nothing yet. Asks about new chats from 1 app.",
-            RuleOverview.of(rule(draft), labelOf).effect,
+            "Some WhatsApp chats go quiet on weekdays 08:00–17:00.",
+            RuleOverview.of(rule(draft.copy(policy = Policy.HoldDuring)), labelOf).sentence,
+        )
+        assertEquals(
+            "Off. Some WhatsApp chats and Slack only reach you on weekdays 08:00–17:00.",
+            RuleOverview
+                .of(
+                    rule(draft.copy(state = RuleState.Disabled, apps = draft.apps + (slack to AppDraft.EVERYTHING))),
+                    labelOf,
+                ).sentence,
         )
     }
 
@@ -131,10 +177,110 @@ class RuleOverviewTest {
         val draft = RuleDraft.NEW.copy(name = "x", apps = mapOf(mail to accounts, slack to groups))
 
         assertEquals(
-            "Lets notifications from 1 account and 2 groups through only on weekdays 08:00–17:00.",
+            "dan@work.example in com.google.android.gm and 2 com.Slack groups only reach you on weekdays " +
+                "08:00–17:00.",
             RuleOverview.of(rule(draft), { it.value }).sentence,
         )
     }
+
+    @Test
+    fun `one held thing reads in the singular and a holding rule goes quiet`() {
+        val boss =
+            RuleDraft.NEW.copy(
+                name = "x",
+                apps =
+                    mapOf(COLLEAGUE_CHAT.packageName to chats(NewChatsAsking.DontAsk)),
+            )
+        val holding =
+            RuleDraft.NEW.copy(
+                name = "x",
+                policy = Policy.HoldDuring,
+                apps =
+                    mapOf(slack to AppDraft.EVERYTHING),
+            )
+
+        assertEquals(
+            "Colleague on WhatsApp only reaches you on weekdays 08:00–17:00.",
+            RuleOverview.of(rule(boss), labelOf).effect,
+        )
+        assertEquals("Slack goes quiet on weekdays 08:00–17:00.", RuleOverview.of(rule(holding), labelOf).effect)
+        assertEquals(
+            "Slack and Colleague on WhatsApp go quiet on weekdays 08:00–17:00.",
+            RuleOverview.of(rule(holding.copy(apps = holding.apps + boss.apps)), labelOf).effect,
+        )
+    }
+
+    @Test
+    fun `apps that only ask are still mentioned when others are held`() {
+        val asking = AppDraft(AppMode.Narrowed, emptyMap(), emptyMap(), emptyList(), NewChatsAsking.Ask)
+        val draft =
+            RuleDraft.NEW.copy(
+                name = "x",
+                apps =
+                    mapOf(
+                        slack to AppDraft.EVERYTHING,
+                        COLLEAGUE_CHAT.packageName to asking,
+                    ),
+            )
+
+        assertEquals(
+            "Slack only reaches you on weekdays 08:00–17:00. You'll be asked about new WhatsApp chats.",
+            RuleOverview.of(rule(draft), labelOf).effect,
+        )
+        assertEquals(
+            "Slack goes quiet on weekdays 08:00–17:00. You'll be asked about new WhatsApp chats.",
+            RuleOverview.of(rule(draft.copy(policy = Policy.HoldDuring)), labelOf).effect,
+        )
+    }
+
+    @Test
+    fun `asking about several apps lists them`() {
+        val asking = AppDraft(AppMode.Narrowed, emptyMap(), emptyMap(), emptyList(), NewChatsAsking.Ask)
+        val draft = RuleDraft.NEW.copy(name = "x", apps = mapOf(COLLEAGUE_CHAT.packageName to asking, slack to asking))
+
+        assertEquals(
+            "Nothing picked yet. You'll be asked about new WhatsApp and Slack chats.",
+            RuleOverview.of(rule(draft), labelOf).effect,
+        )
+    }
+
+    @Test
+    fun `a combined phrase mid-list keeps its app with it`() {
+        val mail = PackageName.GMAIL
+        val combined =
+            AppDraft(
+                AppMode.Narrowed,
+                mapOf(ChannelGroupId("a") to groupName("dan@work.example")),
+                mapOf(COLLEAGUE_CHAT.id to ChatPick.of(COLLEAGUE_CHAT.copy(packageName = mail))),
+                emptyList(),
+                NewChatsAsking.DontAsk,
+            )
+        val draft =
+            RuleDraft.NEW.copy(
+                name = "x",
+                apps =
+                    mapOf(
+                        slack to AppDraft.EVERYTHING,
+                        mail to combined,
+                        COLLEAGUE_CHAT.packageName to chats(NewChatsAsking.DontAsk),
+                    ),
+            )
+
+        assertEquals(
+            "Slack, 1 account plus 1 chat in Gmail and Colleague on WhatsApp only reach you on weekdays " +
+                "08:00–17:00.",
+            RuleOverview.of(rule(draft), labels.plus(mail to "Gmail")::getValue).effect,
+        )
+    }
+
+    private fun chats(asking: NewChatsAsking): AppDraft =
+        AppDraft(
+            AppMode.Narrowed,
+            emptyMap(),
+            mapOf(COLLEAGUE_CHAT.id to ChatPick.of(COLLEAGUE_CHAT)),
+            emptyList(),
+            asking,
+        )
 
     private fun rule(draft: RuleDraft): Rule =
         when (val checked = draft.parse()) {

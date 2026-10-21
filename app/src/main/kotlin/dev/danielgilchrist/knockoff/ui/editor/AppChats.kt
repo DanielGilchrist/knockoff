@@ -32,6 +32,7 @@ internal fun ChatRows(
     draft: AppDraft,
     seen: SeenChatsState,
     onDraftChange: (AppDraft) -> Unit,
+    beforeAsking: @Composable () -> Unit,
 ) {
     var picking by rememberSaveable { mutableStateOf(false) }
     val seenHere = AppKind.seenChatsOf(app, seen)
@@ -55,9 +56,12 @@ internal fun ChatRows(
                 modifier = Modifier.padding(start = 16.dp),
             )
         }
+        beforeAsking()
         SwitchListItem(
-            headline = "Ask about new chats",
-            supporting = "A quiet notification asks whether to add each new $label chat to ${ruleCalled(ruleName)}.",
+            headline = "Ask me about new chats",
+            supporting =
+                "Get a quiet notification when a new $label chat appears, so you can add it to " +
+                    "${ruleCalled(ruleName)}.",
             checked = draft.asking == NewChatsAsking.Ask,
             onToggle = { onDraftChange(draft.copy(asking = toggledAsking(draft.asking))) },
         )

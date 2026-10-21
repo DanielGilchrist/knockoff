@@ -123,6 +123,7 @@ private fun LazyListScope.section(
                     choices = choices,
                     onDraftChange = change,
                     onOpenApp = { actions.onFocus(AppFocus.App(it)) },
+                    use = AppsListUse.Editor,
                 )
             }
         }

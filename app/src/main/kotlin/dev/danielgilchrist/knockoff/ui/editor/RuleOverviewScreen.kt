@@ -141,7 +141,7 @@ private fun DeleteDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(painter = painterResource(R.drawable.ic_delete), contentDescription = null) },
         title = { Text(text = "Delete $name?") },
-        text = { Text(text = "Its notifications stop being held. This can't be undone.") },
+        text = { Text(text = "Notifications it holds are let through. This can't be undone.") },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,

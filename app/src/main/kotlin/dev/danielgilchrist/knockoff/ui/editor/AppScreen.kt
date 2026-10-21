@@ -20,9 +20,9 @@ import dev.danielgilchrist.knockoff.ui.GroupNoun
 import dev.danielgilchrist.knockoff.ui.LinkState
 import dev.danielgilchrist.knockoff.ui.TargetChoices
 import dev.danielgilchrist.knockoff.ui.appEffect
+import dev.danielgilchrist.knockoff.ui.components.AddButton
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.DestructiveMenuItem
-import dev.danielgilchrist.knockoff.ui.components.LinkButton
 import dev.danielgilchrist.knockoff.ui.components.ListScreen
 import dev.danielgilchrist.knockoff.ui.components.NoticeCard
 import dev.danielgilchrist.knockoff.ui.components.NoticeTone
@@ -44,7 +44,7 @@ internal fun AppScreen(
     val label = choices.apps.labelOf(app)
     val (kind, accounts) = AppKind.forApp(app, draft, stored, choices)
     val available = accounts.offered.size + AppKind.seenChatsOf(app, choices.chats).size
-    val effect = rule.appEffect()
+    val effect = rule.appEffect(appHeld(label, draft.mode, kind, accounts.noun))
     var patterning by rememberSaveable { mutableStateOf(false) }
 
     BackHandler(onBack = actions.onBack)
@@ -53,17 +53,7 @@ internal fun AppScreen(
         title = label,
         navigation = ScreenNavigation.Back(actions.onBack),
         bar = ScreenBar.Small,
-        actions = {
-            OverflowMenu { close ->
-                DestructiveMenuItem(
-                    text = "Remove from ${ruleCalled(rule.name)}",
-                    onClick = {
-                        close()
-                        actions.onRemove()
-                    },
-                )
-            }
-        },
+        actions = { RemoveMenu(ruleName = rule.name, onRemove = actions.onRemove) },
         modifier = modifier,
     ) {
         if (effect.isNotEmpty()) item { Caption(text = effect) }
@@ -99,6 +89,22 @@ internal fun AppScreen(
                 actions.onDraftChange(draft.copy(mode = AppMode.Narrowed))
             },
             onDraftChange = actions.onDraftChange,
+        )
+    }
+}
+
+@Composable
+private fun RemoveMenu(
+    ruleName: String,
+    onRemove: () -> Unit,
+) {
+    OverflowMenu { close ->
+        DestructiveMenuItem(
+            text = "Remove from ${ruleCalled(ruleName)}",
+            onClick = {
+                close()
+                onRemove()
+            },
         )
     }
 }
@@ -143,7 +149,7 @@ private fun LazyListScope.patternItems(
                 )
             }
             if (!editing && (narrowed || draft.patterns.isNotEmpty())) {
-                LinkButton(text = "Also match by pattern", onClick = onReveal)
+                AddButton(text = "Match by pattern", onClick = onReveal)
             }
         }
     }

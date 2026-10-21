@@ -1,6 +1,5 @@
 package dev.danielgilchrist.knockoff.ui
 
-import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.ui.editor.Checked
 import dev.danielgilchrist.knockoff.ui.editor.RuleDraft
@@ -15,6 +14,12 @@ internal fun counted(
         else -> "$count $many"
     }
 
+internal fun withArticle(noun: String): String =
+    when (noun.firstOrNull()?.lowercaseChar()) {
+        'a', 'e', 'i', 'o', 'u' -> "an $noun"
+        else -> "a $noun"
+    }
+
 internal fun ruleCalled(name: String): String = name.trim().ifEmpty { "this rule" }
 
 internal fun hoursOf(name: String): String {
@@ -26,18 +31,10 @@ internal fun hoursOf(name: String): String {
     }
 }
 
-internal fun RuleDraft.appEffect(): String =
+internal fun RuleDraft.appEffect(held: HeldPhrase): String =
     when (val checked = schedule()) {
-        is Checked.Problems -> {
-            ""
-        }
-
-        is Checked.Ok -> {
-            when (policy) {
-                Policy.DeliverOnlyDuring -> "Reaches you only ${checked.value.describeInSentence()}."
-                Policy.HoldDuring -> "Held ${checked.value.describeInSentence()}."
-            }
-        }
+        is Checked.Problems -> ""
+        is Checked.Ok -> HeldPhrases.effect(held, policy, checked.value.describeInSentence())
     }
 
 internal fun SeenChatsState.describe(loaded: (List<Target.Chat>) -> String): String =

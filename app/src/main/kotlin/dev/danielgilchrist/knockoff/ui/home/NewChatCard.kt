@@ -30,6 +30,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.R
+import dev.danielgilchrist.knockoff.ask.AnswerLabels
+import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
@@ -63,7 +65,7 @@ internal fun NewChatCard(
             modifier = Modifier.align(Alignment.End).padding(end = 16.dp, bottom = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            TextButton(onClick = onLetThrough) { Text(text = "Let through") }
+            TextButton(onClick = onLetThrough) { Text(text = AnswerLabels.LET_THROUGH) }
             when (rules.size) {
                 0 -> {}
 
@@ -71,12 +73,12 @@ internal fun NewChatCard(
                     val only = rules.single()
 
                     FilledTonalButton(onClick = { onAddTo(only.name) }) {
-                        Text(text = holdLabel(only), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(text = AnswerLabels.addTo(only), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
 
                 else -> {
-                    FilledTonalButton(onClick = { choosingRule = true }) { Text(text = "Hold with…") }
+                    FilledTonalButton(onClick = { choosingRule = true }) { Text(text = AnswerLabels.ADD_TO_ANY) }
                 }
             }
         }
@@ -84,7 +86,7 @@ internal fun NewChatCard(
 
     if (choosingRule) {
         RuleChooser(
-            chatName = chat.name.value,
+            chatName = chat.name,
             rules = rules,
             onChoose = { name ->
                 choosingRule = false
@@ -118,7 +120,7 @@ private fun Initial(name: String) {
 
 @Composable
 private fun RuleChooser(
-    chatName: String,
+    chatName: ConversationName,
     rules: List<Rule>,
     onChoose: (RuleName) -> Unit,
     onDismiss: () -> Unit,
@@ -127,7 +129,7 @@ private fun RuleChooser(
         onDismissRequest = onDismiss,
         confirmButton = {},
         dismissButton = { TextButton(onClick = onDismiss) { Text(text = "Cancel") } },
-        title = { Text(text = "Hold $chatName with…") },
+        title = { Text(text = AnswerLabels.choosing(chatName)) },
         text = {
             Column {
                 rules.forEach { rule ->
@@ -151,9 +153,3 @@ private fun RuleChooser(
         },
     )
 }
-
-private fun holdLabel(rule: Rule): String =
-    when (rule.state) {
-        RuleState.Enabled -> "Hold with ${rule.name.value}"
-        RuleState.Disabled -> "Hold with ${rule.name.value} (off)"
-    }

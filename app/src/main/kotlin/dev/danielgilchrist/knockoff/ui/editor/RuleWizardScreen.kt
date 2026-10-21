@@ -80,7 +80,8 @@ private fun WizardScaffold(
     modifier: Modifier = Modifier,
 ) {
     var discarding by rememberSaveable { mutableStateOf(false) }
-    val shown = guided.stepProblems()
+    val shown = ProblemSplit.of(guided.stepProblems())
+    val hints = wizardHints(guided, shown, choices.apps::labelOf) { pickOf(it, guided.draft, RuleApps.NONE, choices) }
     val close = { if (guided.draft == RuleDraft.NEW) actions.onCancel() else discarding = true }
 
     BackHandler { goBack(guided.step, actions, close) }
@@ -88,7 +89,7 @@ private fun WizardScaffold(
     Scaffold(
         modifier = modifier,
         topBar = { WizardTopBar(step = guided.step, onClose = close) },
-        bottomBar = { WizardButtons(guided = guided, actions = actions, onClose = close) },
+        bottomBar = { WizardButtons(guided = guided, hints = hints, actions = actions, onClose = close) },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.padding(padding),
@@ -102,10 +103,10 @@ private fun WizardScaffold(
                     modifier = Modifier.padding(top = 16.dp),
                 )
             }
-            if (shown.isNotEmpty()) {
+            if (shown.others.isNotEmpty()) {
                 item {
                     DraftProblems(
-                        problems = shown,
+                        problems = shown.others,
                         draft = guided.draft,
                         stored = RuleApps.NONE,
                         choices = choices,
@@ -159,6 +160,7 @@ private fun WizardStepContent(
                 choices = choices,
                 onDraftChange = actions.onDraftChange,
                 onOpenApp = { actions.onFocus(AppFocus.App(it)) },
+                use = AppsListUse.Wizard,
             )
         }
 
@@ -183,7 +185,7 @@ private fun title(
 
         WizardStep.Apps -> {
             when (policy) {
-                Policy.DeliverOnlyDuring -> "Which apps should keep to set hours?"
+                Policy.DeliverOnlyDuring -> "Which apps are for work?"
                 Policy.HoldDuring -> "Which apps should go quiet?"
             }
         }
@@ -287,7 +289,11 @@ private fun ReviewStep(
             is Checked.Ok -> {
                 val overview = RuleOverview.of(checked.value, apps::labelOf)
 
-                Text(text = overview.sentence, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    text = overview.sentence,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 ListGroup {
                     NavigationListItem(
                         icon = R.drawable.ic_apps,
@@ -310,6 +316,7 @@ private fun ReviewStep(
 @Composable
 private fun WizardButtons(
     guided: Editing.Guided,
+    hints: List<String>,
     actions: WizardActions,
     onClose: () -> Unit,
 ) {
@@ -322,18 +329,7 @@ private fun WizardButtons(
                     .windowInsetsPadding(WindowInsets.navigationBars.union(WindowInsets.ime))
                     .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
-            when (step) {
-                WizardStep.Apps -> {
-                    if (!guided.picksSomething()) {
-                        Caption(
-                            text = "Add at least one app.",
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                    }
-                }
-
-                WizardStep.Goal, WizardStep.Hours, WizardStep.Review -> {}
-            }
+            hints.forEach { Caption(text = it, modifier = Modifier.padding(bottom = 8.dp)) }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

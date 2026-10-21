@@ -22,9 +22,9 @@ internal fun DraftProblems(
         NoticeCard(
             title = title,
             body =
-                problems.joinToString("\n") {
-                    "• ${it.describe(choices.apps::labelOf) { app -> pickOf(app, draft, stored, choices) }}"
-                },
+                problemsBody(
+                    problems.map { it.describe(choices.apps::labelOf) { app -> pickOf(app, draft, stored, choices) } },
+                ),
             tone = NoticeTone.Problem,
             modifier = modifier,
         )
@@ -42,3 +42,9 @@ internal fun pickOf(
 
     return kind.pick(accounts.noun)
 }
+
+internal fun problemsBody(described: List<String>): String =
+    when (described.size) {
+        1 -> described.single()
+        else -> described.joinToString("\n") { "• $it" }
+    }

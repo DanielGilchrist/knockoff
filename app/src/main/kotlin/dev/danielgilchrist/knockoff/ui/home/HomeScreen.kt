@@ -21,6 +21,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.R
+import dev.danielgilchrist.knockoff.ask.AnswerLabels
+import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.NewChats
 import dev.danielgilchrist.knockoff.ui.RuleChange
@@ -40,6 +42,7 @@ import dev.danielgilchrist.knockoff.ui.components.NoticeTone
 import dev.danielgilchrist.knockoff.ui.components.ScreenFab
 import dev.danielgilchrist.knockoff.ui.components.ScreenNavigation
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
+import dev.danielgilchrist.knockoff.ui.counted
 import dev.danielgilchrist.knockoff.ui.saveProblem
 
 @Composable
@@ -121,14 +124,15 @@ private fun LazyListScope.newChatsCard(
 
         is NewChats.Ready -> {
             val count = newChats.chats.size
-            val (title, detail) =
-                when (count) {
-                    1 -> "1 new chat" to "Hold it with a rule or let it through"
-                    else -> "$count new chats" to "Hold them with a rule or let them through"
-                }
 
             if (count > 0) {
-                item { NewChatsCard(title = title, detail = detail, onOpen = onOpen) }
+                item {
+                    NewChatsCard(
+                        title = counted(count, "new chat", "new chats"),
+                        detail = AnswerLabels.addOrLetThrough(GrammaticalNumber.of(count)),
+                        onOpen = onOpen,
+                    )
+                }
             }
         }
     }

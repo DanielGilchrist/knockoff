@@ -11,14 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
-import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.ui.TargetChoices
 import dev.danielgilchrist.knockoff.ui.components.AddButton
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
 import dev.danielgilchrist.knockoff.ui.components.NavigationListItem
-import dev.danielgilchrist.knockoff.ui.hoursOf
 
 @Composable
 internal fun AppsList(
@@ -27,21 +25,16 @@ internal fun AppsList(
     choices: TargetChoices,
     onDraftChange: (RuleDraft) -> Unit,
     onOpenApp: (PackageName) -> Unit,
+    use: AppsListUse,
     modifier: Modifier = Modifier,
 ) {
     var picking by rememberSaveable(stateSaver = AppPicking.SAVER) { mutableStateOf<AppPicking>(AppPicking.Closed) }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Caption(
-            text =
-                when (draft.policy) {
-                    Policy.DeliverOnlyDuring -> "These apps reach you only during ${hoursOf(draft.name)}."
-                    Policy.HoldDuring -> "These apps are held during ${hoursOf(draft.name)}."
-                },
-        )
+        Caption(text = use.caption(draft))
         when {
             draft.apps.isEmpty() -> {
-                Caption(text = "No apps yet.")
+                if (use.saysWhenEmpty) Caption(text = "No apps yet.")
             }
 
             else -> {
@@ -80,14 +73,13 @@ private fun AppRow(
     choices: TargetChoices,
     onOpenApp: (PackageName) -> Unit,
 ) {
+    val support = AppRowSupport.of(app, choices.apps.isMissing(app), draft, AppKind.forApp(app, draft, stored, choices))
+
     NavigationListItem(
         icon = R.drawable.ic_apps,
         headline = choices.apps.labelOf(app),
-        supporting =
-            when {
-                choices.apps.isMissing(app) -> "Not installed"
-                else -> AppSummary.of(draft, AppKind.forApp(app, draft, stored, choices).accounts)
-            },
+        supporting = support.text,
         onClick = { onOpenApp(app) },
+        tone = support.tone,
     )
 }

@@ -10,9 +10,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
-import dev.danielgilchrist.knockoff.domain.rule.Policy
+import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 import dev.danielgilchrist.knockoff.ui.GroupNoun
+import dev.danielgilchrist.knockoff.ui.HeldPhrase
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
+import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
 import dev.danielgilchrist.knockoff.ui.components.RadioListItem
 
@@ -42,7 +44,7 @@ internal fun IncludeChoice(
         if (draft.offersNarrowing(available)) {
             RadioListItem(
                 headline = kind.narrowed(accounts.noun),
-                supporting = narrowedSupporting(kind, accounts, rule.policy, narrowed),
+                supporting = narrowedSupporting(kind, accounts, narrowed),
                 selected = narrowed,
                 onClick = { onDraftChange(draft.copy(mode = AppMode.Narrowed)) },
             )
@@ -53,16 +55,32 @@ internal fun IncludeChoice(
             exit = shrinkVertically(),
         ) {
             Column(modifier = Modifier.padding(start = NESTED_INDENT)) {
+                val hint: @Composable () -> Unit = {
+                    if (draft.leavesNothingChosen(app)) {
+                        Caption(
+                            text = unchosenCaption(kind, accounts.noun),
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                    }
+                }
+
                 if (kind.hasAccounts) AccountRows(accounts = accounts, draft = draft, onDraftChange = onDraftChange)
-                if (kind.hasChats) {
-                    ChatRows(
-                        app = app,
-                        label = label,
-                        ruleName = rule.name,
-                        draft = draft,
-                        seen = seen,
-                        onDraftChange = onDraftChange,
-                    )
+                when {
+                    kind.hasChats -> {
+                        ChatRows(
+                            app = app,
+                            label = label,
+                            ruleName = rule.name,
+                            draft = draft,
+                            seen = seen,
+                            onDraftChange = onDraftChange,
+                            beforeAsking = hint,
+                        )
+                    }
+
+                    else -> {
+                        hint()
+                    }
                 }
             }
         }
@@ -72,7 +90,6 @@ internal fun IncludeChoice(
 internal fun narrowedSupporting(
     kind: AppKind,
     accounts: AccountChoices,
-    policy: Policy,
     selected: Boolean,
 ): String {
     val choose =
@@ -85,14 +102,47 @@ internal fun narrowedSupporting(
                 ""
             }
         }
-    val others =
-        when (policy) {
-            Policy.DeliverOnlyDuring -> "Others always reach you."
-            Policy.HoldDuring -> "Others are never held."
+
+    return "${choose}This rule leaves other ${kind.more(accounts.noun)} alone."
+}
+
+internal fun unchosenCaption(
+    kind: AppKind,
+    noun: GroupNoun,
+): String =
+    when (kind) {
+        AppKind.Plain -> "Add at least one pattern."
+
+        AppKind.Accounts -> "Tick at least one ${kind.pick(noun)}."
+
+        AppKind.Chats, AppKind.AccountsAndChats -> "Tick at least one ${kind.pick(
+            noun,
+        )}, or turn on Ask me about new chats."
+    }
+
+internal fun appHeld(
+    label: String,
+    mode: AppMode,
+    kind: AppKind,
+    noun: GroupNoun,
+): HeldPhrase =
+    when (mode) {
+        AppMode.Everything -> {
+            HeldPhrase.of(label, GrammaticalNumber.One)
         }
 
-    return choose + others
-}
+        AppMode.Narrowed -> {
+            when (kind) {
+                AppKind.Plain -> {
+                    HeldPhrase.of("Notifications matching your patterns", GrammaticalNumber.Many)
+                }
+
+                AppKind.Accounts, AppKind.Chats, AppKind.AccountsAndChats -> {
+                    HeldPhrase.of("The ${kind.more(noun)} you pick", GrammaticalNumber.Many)
+                }
+            }
+        }
+    }
 
 internal fun moreCaption(
     label: String,

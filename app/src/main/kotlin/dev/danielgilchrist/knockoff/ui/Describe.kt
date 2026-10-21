@@ -94,7 +94,7 @@ internal fun DraftProblem.describe(
         }
 
         is DraftProblem.NothingChosen -> {
-            "Pick at least one ${pickOf(app)} for ${labelOf(app)}, or choose All notifications."
+            "Pick ${withArticle(pickOf(app))} for ${labelOf(app)}, or choose All notifications."
         }
 
         is DraftProblem.NotSaved -> {
