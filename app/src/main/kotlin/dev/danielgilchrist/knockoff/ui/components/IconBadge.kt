@@ -12,18 +12,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+
+internal val BADGE_SIZE = 40.dp
+private const val GLYPH_SHARE = 0.6f
 
 @Composable
 internal fun IconBadge(
     @DrawableRes icon: Int,
     modifier: Modifier = Modifier,
+    size: Dp = BADGE_SIZE,
     container: Color = MaterialTheme.colorScheme.secondaryContainer,
     content: Color = MaterialTheme.colorScheme.onSecondaryContainer,
 ) {
-    Surface(modifier = modifier.size(40.dp), shape = CircleShape, color = container, contentColor = content) {
+    Surface(modifier = modifier.size(size), shape = CircleShape, color = container, contentColor = content) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(painter = painterResource(icon), contentDescription = null, modifier = Modifier.size(24.dp))
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                modifier = Modifier.size(size * GLYPH_SHARE),
+            )
         }
     }
 }

@@ -25,8 +25,12 @@ knockoff:
       - CharacterCodingException
       # Opening notification access settings on a device without that screen.
       - ActivityNotFoundException
+      # PackageIconSource: an app uninstalled since it was listed; converted to AppIcon.Missing.
+      - NameNotFoundException
   UnapprovedThrow:
     active: true
-    allowedDeclarations: []
+    allowedDeclarations:
+      # Reading LocalAppIcons outside MainActivity's provider is a wiring bug that must crash loudly.
+      - dev.danielgilchrist.knockoff.ui.appicon.LocalAppIcons
   UntypedResult:
     active: true

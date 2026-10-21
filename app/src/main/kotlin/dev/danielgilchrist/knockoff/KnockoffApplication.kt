@@ -10,6 +10,9 @@ import dev.danielgilchrist.knockoff.chat.SeenChatsStore
 import dev.danielgilchrist.knockoff.group.KnownGroupsStore
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import dev.danielgilchrist.knockoff.ui.NotificationPermission
+import dev.danielgilchrist.knockoff.ui.appicon.AppIcons
+import dev.danielgilchrist.knockoff.ui.appicon.PackageChanges
+import dev.danielgilchrist.knockoff.ui.appicon.PackageIconSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -48,6 +51,8 @@ class KnockoffApplication : Application() {
 
     val chatAnswers: ChatAnswers by lazy { ChatAnswers(settingsStore, chatDecisionsStore) }
 
+    val appIcons: AppIcons by lazy { AppIcons(scope, PackageIconSource(packageManager)) }
+
     private val notificationPermission: MutableStateFlow<NotificationPermission> by lazy {
         MutableStateFlow(NotificationPermission.of(this))
     }
@@ -65,6 +70,8 @@ class KnockoffApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         val notifier = ChatQuestionNotifier(this)
+
+        PackageChanges.register(this) { app -> appIcons.forget(app) }
 
         scope.launch {
             combine(

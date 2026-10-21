@@ -9,10 +9,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.ui.TargetChoices
+import dev.danielgilchrist.knockoff.ui.appicon.AppIconBadge
 import dev.danielgilchrist.knockoff.ui.components.AddButton
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
@@ -76,10 +76,11 @@ private fun AppRow(
     val support = AppRowSupport.of(app, choices.apps.isMissing(app), draft, AppKind.forApp(app, draft, stored, choices))
 
     NavigationListItem(
-        icon = R.drawable.ic_apps,
         headline = choices.apps.labelOf(app),
         supporting = support.text,
         onClick = { onOpenApp(app) },
         tone = support.tone,
-    )
+    ) {
+        AppIconBadge(app = app)
+    }
 }

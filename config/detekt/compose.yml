@@ -2,3 +2,10 @@ naming:
   FunctionNaming:
     ignoreAnnotated:
       - Composable
+Compose:
+  CompositionLocalAllowlist:
+    active: true
+    # An app-wide service provided once at the root, like LocalContext; threading it through every screen
+    # that shows an app would only add plumbing.
+    allowedCompositionLocals:
+      - LocalAppIcons

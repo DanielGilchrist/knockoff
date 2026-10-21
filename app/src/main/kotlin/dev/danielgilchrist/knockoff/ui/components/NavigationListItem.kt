@@ -22,6 +22,25 @@ internal fun NavigationListItem(
     modifier: Modifier = Modifier,
     tone: SupportingTone = SupportingTone.Plain,
 ) {
+    NavigationListItem(
+        headline = headline,
+        supporting = supporting,
+        onClick = onClick,
+        modifier = modifier,
+        tone = tone,
+        leading = { IconBadge(icon = icon) },
+    )
+}
+
+@Composable
+internal fun NavigationListItem(
+    headline: String,
+    supporting: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tone: SupportingTone = SupportingTone.Plain,
+    leading: @Composable () -> Unit,
+) {
     ListItem(
         headlineContent = { Text(text = headline) },
         supportingContent = {
@@ -36,7 +55,7 @@ internal fun NavigationListItem(
                 overflow = TextOverflow.Ellipsis,
             )
         },
-        leadingContent = { IconBadge(icon = icon) },
+        leadingContent = leading,
         trailingContent = { Icon(painter = painterResource(R.drawable.ic_chevron), contentDescription = null) },
         colors = groupedItemColors(),
         modifier = modifier.clickable(onClick = onClick),

@@ -33,7 +33,7 @@ internal fun PickerScreen(
     searchHint: String,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
-    done: String = "Done",
+    done: PickerDone = PickerDone.Ready("Done"),
     close: PickerClose = PickerClose.None,
     content: LazyListScope.() -> Unit,
 ) {
@@ -61,7 +61,16 @@ internal fun PickerScreen(
                             }
                         }
                     },
-                    actions = { TextButton(onClick = onDone) { Text(text = done) } },
+                    actions = {
+                        TextButton(
+                            onClick = onDone,
+                            enabled =
+                                when (done) {
+                                    is PickerDone.Ready -> true
+                                    is PickerDone.Unavailable -> false
+                                },
+                        ) { Text(text = done.label) }
+                    },
                 )
             },
         ) { padding ->

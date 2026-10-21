@@ -32,13 +32,20 @@ import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.ask.AnswerLabels
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.ui.appicon.AppIconBadge
+import dev.danielgilchrist.knockoff.ui.components.BADGE_SIZE
 import dev.danielgilchrist.knockoff.ui.components.IconBadge
 import dev.danielgilchrist.knockoff.ui.components.groupedItemColors
 import dev.danielgilchrist.knockoff.ui.icon
+
+private val APP_BADGE_SIZE = 20.dp
+private val APP_BADGE_RING = 2.dp
+private val APP_BADGE_OVERHANG = 8.dp
 
 @Composable
 internal fun NewChatCard(
@@ -58,7 +65,7 @@ internal fun NewChatCard(
         ListItem(
             headlineContent = { Text(text = chat.name.value) },
             supportingContent = { Text(text = appLabel) },
-            leadingContent = { Initial(name = chat.name.value) },
+            leadingContent = { Initial(name = chat.name.value, app = chat.packageName) },
             colors = groupedItemColors(),
         )
         Row(
@@ -98,8 +105,32 @@ internal fun NewChatCard(
 }
 
 @Composable
-private fun Initial(name: String) {
-    Surface(modifier = Modifier.size(40.dp), shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer) {
+private fun Initial(
+    name: String,
+    app: PackageName,
+) {
+    Box(modifier = Modifier.size(BADGE_SIZE + APP_BADGE_OVERHANG)) {
+        ChatAvatar(name = name, modifier = Modifier.align(Alignment.TopStart))
+        Surface(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.surfaceContainer,
+        ) {
+            AppIconBadge(app = app, size = APP_BADGE_SIZE, modifier = Modifier.padding(APP_BADGE_RING))
+        }
+    }
+}
+
+@Composable
+private fun ChatAvatar(
+    name: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.size(BADGE_SIZE),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.primaryContainer,
+    ) {
         Box(contentAlignment = Alignment.Center) {
             when (val initial = ChatInitial.of(name)) {
                 ChatInitial.None -> {

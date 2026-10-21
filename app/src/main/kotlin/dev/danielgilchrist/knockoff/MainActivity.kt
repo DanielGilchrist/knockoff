@@ -26,6 +26,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
@@ -37,6 +38,7 @@ import dev.danielgilchrist.knockoff.ui.MainViewModel
 import dev.danielgilchrist.knockoff.ui.NearbyAsk
 import dev.danielgilchrist.knockoff.ui.PairedDevice
 import dev.danielgilchrist.knockoff.ui.SystemActions
+import dev.danielgilchrist.knockoff.ui.appicon.LocalAppIcons
 import dev.danielgilchrist.knockoff.ui.theme.KnockoffTheme
 import dev.danielgilchrist.knockoff.ui.theme.isDark
 
@@ -76,30 +78,32 @@ class MainActivity : ComponentActivity() {
                         enableEdgeToEdge(statusBarStyle = bars, navigationBarStyle = bars)
                     }
                     KnockoffTheme(dark = dark) {
-                        KnockoffScreen(
-                            viewModel = viewModel,
-                            system =
-                                SystemActions(
-                                    onOpenAccessSettings = ::openAccessSettings,
-                                    onAllowNotifications = ::openNotificationSettings,
-                                    onAllowNearbyDevices = {
-                                        nearbyDevices.launch(Manifest.permission.BLUETOOTH_CONNECT)
-                                    },
-                                    onOpenBluetoothSettings = {
-                                        startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
-                                    },
-                                    onOpenAppSettings = {
-                                        startActivity(
-                                            Intent(
-                                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                                Uri.fromParts("package", packageName, null),
-                                            ),
-                                        )
-                                    },
-                                    onLinkPaired = { device -> link(pairedRequest(device)) },
-                                    onLinkNearby = { link(AssociationRequest.Builder().build()) },
-                                ),
-                        )
+                        CompositionLocalProvider(LocalAppIcons provides (application as KnockoffApplication).appIcons) {
+                            KnockoffScreen(
+                                viewModel = viewModel,
+                                system =
+                                    SystemActions(
+                                        onOpenAccessSettings = ::openAccessSettings,
+                                        onAllowNotifications = ::openNotificationSettings,
+                                        onAllowNearbyDevices = {
+                                            nearbyDevices.launch(Manifest.permission.BLUETOOTH_CONNECT)
+                                        },
+                                        onOpenBluetoothSettings = {
+                                            startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+                                        },
+                                        onOpenAppSettings = {
+                                            startActivity(
+                                                Intent(
+                                                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                                    Uri.fromParts("package", packageName, null),
+                                                ),
+                                            )
+                                        },
+                                        onLinkPaired = { device -> link(pairedRequest(device)) },
+                                        onLinkNearby = { link(AssociationRequest.Builder().build()) },
+                                    ),
+                            )
+                        }
                     }
                 }
             }

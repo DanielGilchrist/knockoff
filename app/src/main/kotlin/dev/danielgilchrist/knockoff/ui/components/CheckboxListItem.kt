@@ -16,10 +16,52 @@ internal fun CheckboxListItem(
     modifier: Modifier = Modifier,
     supporting: String = "",
 ) {
+    CheckboxRow(
+        headline = headline,
+        supporting = supporting,
+        checked = checked,
+        onToggle = onToggle,
+        modifier = modifier,
+        leading = { Checkbox(checked = checked, onCheckedChange = null) },
+        trailing = null,
+    )
+}
+
+@Composable
+internal fun CheckboxListItem(
+    headline: String,
+    checked: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+    supporting: String = "",
+    leading: @Composable () -> Unit,
+) {
+    CheckboxRow(
+        headline = headline,
+        supporting = supporting,
+        checked = checked,
+        onToggle = onToggle,
+        modifier = modifier,
+        leading = leading,
+        trailing = { Checkbox(checked = checked, onCheckedChange = null) },
+    )
+}
+
+@Composable
+private fun CheckboxRow(
+    headline: String,
+    supporting: String,
+    checked: Boolean,
+    onToggle: () -> Unit,
+    leading: @Composable () -> Unit,
+    trailing: (@Composable () -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
     ListItem(
         headlineContent = { Text(text = headline) },
         supportingContent = supportingText(supporting),
-        leadingContent = { Checkbox(checked = checked, onCheckedChange = null) },
+        leadingContent = leading,
+        trailingContent = trailing,
         colors = groupedItemColors(),
         modifier = modifier.toggleable(value = checked, onValueChange = { onToggle() }, role = Role.Checkbox),
     )
