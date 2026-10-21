@@ -4,12 +4,15 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.ui.AppDiscovery
 import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 import dev.danielgilchrist.knockoff.ui.GroupNoun
 import dev.danielgilchrist.knockoff.ui.HeldPhrase
@@ -17,6 +20,7 @@ import dev.danielgilchrist.knockoff.ui.SeenChatsState
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
 import dev.danielgilchrist.knockoff.ui.components.RadioListItem
+import dev.danielgilchrist.knockoff.ui.components.SubHeading
 
 private val NESTED_INDENT = 40.dp
 
@@ -30,6 +34,7 @@ internal fun IncludeChoice(
     accounts: AccountChoices,
     seen: SeenChatsState,
     available: Int,
+    discovery: AppDiscovery,
     onDraftChange: (AppDraft) -> Unit,
 ) {
     val narrowed = draft.mode == AppMode.Narrowed
@@ -64,9 +69,10 @@ internal fun IncludeChoice(
                     }
                 }
 
-                if (kind.hasAccounts) AccountRows(accounts = accounts, draft = draft, onDraftChange = onDraftChange)
+                AccountSection(label, kind, accounts, draft, discovery, onDraftChange)
                 when {
                     kind.hasChats -> {
+                        if (kind.hasAccounts) ChatsHeading()
                         ChatRows(
                             app = app,
                             label = label,
@@ -87,6 +93,47 @@ internal fun IncludeChoice(
     }
 }
 
+@Composable
+private fun AccountSection(
+    label: String,
+    kind: AppKind,
+    accounts: AccountChoices,
+    draft: AppDraft,
+    discovery: AppDiscovery,
+    onDraftChange: (AppDraft) -> Unit,
+) {
+    if (kind.hasAccounts) {
+        if (kind.hasChats) AccountsHeading(label = label, noun = accounts.noun)
+        AccountRows(accounts = accounts, draft = draft, discovery = discovery, onDraftChange = onDraftChange)
+    }
+}
+
+@Composable
+private fun ChatsHeading() {
+    Spacer(modifier = Modifier.height(8.dp))
+    SubHeading(text = "Chats")
+}
+
+@Composable
+private fun AccountsHeading(
+    label: String,
+    noun: GroupNoun,
+) {
+    when (noun) {
+        GroupNoun.Accounts -> {
+            SubHeading(text = "Accounts")
+        }
+
+        GroupNoun.Categories -> {
+            SubHeading(text = "Categories")
+            Caption(
+                text = "How $label sorts its own notifications.",
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
+    }
+}
+
 internal fun narrowedSupporting(
     kind: AppKind,
     accounts: AccountChoices,
@@ -103,7 +150,7 @@ internal fun narrowedSupporting(
             }
         }
 
-    return "${choose}This rule leaves other ${kind.more(accounts.noun)} alone."
+    return "${choose}This rule leaves the rest alone."
 }
 
 internal fun unchosenCaption(

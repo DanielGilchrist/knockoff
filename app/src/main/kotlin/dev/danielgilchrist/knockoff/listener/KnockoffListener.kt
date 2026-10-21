@@ -10,6 +10,7 @@ import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.channel.BoundaryAlarm
 import dev.danielgilchrist.knockoff.channel.ChannelAccess
 import dev.danielgilchrist.knockoff.channel.ChannelSilencer
+import dev.danielgilchrist.knockoff.channel.GroupDiscoverer
 import dev.danielgilchrist.knockoff.channel.GroupLearning
 import dev.danielgilchrist.knockoff.channel.GroupNames
 import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
@@ -49,16 +50,20 @@ class KnockoffListener : NotificationListenerService() {
     private val settingsStore
         get() = knockoff.settingsStore
 
-    private val silencer by lazy {
-        val access = ChannelAccess(this)
+    private val access by lazy { ChannelAccess(this) }
 
+    private val learning by lazy { GroupLearning(GroupNames(this), knockoff.knownGroupsStore) }
+
+    private val discoverer by lazy { GroupDiscoverer(access, learning) }
+
+    private val silencer by lazy {
         ChannelSilencer(
             access,
             BoundaryAlarm(this),
             settingsStore,
             knockoff.silencedChannelsStore,
             knockoff.seenChatsStore,
-            GroupLearning(GroupNames(this), knockoff.knownGroupsStore),
+            learning,
         )
     }
 
@@ -71,6 +76,7 @@ class KnockoffListener : NotificationListenerService() {
 
     override fun onListenerConnected() {
         Log.i(LOG_TAG, "listener connected")
+        knockoff.groupReach.bind(discoverer)
         val previous = connection
         connection =
             Connection.Connected(
@@ -119,6 +125,7 @@ class KnockoffListener : NotificationListenerService() {
     }
 
     override fun onListenerDisconnected() {
+        knockoff.groupReach.unbind(discoverer)
         connection = connection.disconnected()
         Log.w(LOG_TAG, "listener disconnected")
     }
@@ -209,6 +216,7 @@ class KnockoffListener : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        knockoff.groupReach.unbind(discoverer)
         scope.cancel()
         super.onDestroy()
     }

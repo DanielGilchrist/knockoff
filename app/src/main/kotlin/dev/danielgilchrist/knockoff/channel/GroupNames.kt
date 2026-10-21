@@ -10,8 +10,8 @@ import dev.danielgilchrist.knockoff.domain.notification.PackageName
 
 internal class GroupNames(
     private val listener: NotificationListenerService,
-) {
-    fun of(packageName: PackageName): GroupNamesFetch =
+) : GroupNameSource {
+    override fun of(packageName: PackageName): GroupNamesFetch =
         try {
             when (val groups = listener.getNotificationChannelGroups(packageName.value, Process.myUserHandle())) {
                 null -> GroupNamesFetch.Unbound

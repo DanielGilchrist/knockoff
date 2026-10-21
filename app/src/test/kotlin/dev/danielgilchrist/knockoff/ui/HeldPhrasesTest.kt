@@ -42,7 +42,7 @@ class HeldPhrasesTest {
         val calls = account(slack, "d", "Calls")
 
         assertEquals(listOf(one("Chats in Slack")), phrases(chats))
-        assertEquals(listOf(many("2 Slack groups")), phrases(chats, calls))
+        assertEquals(listOf(many("2 Slack categories")), phrases(chats, calls))
     }
 
     @Test
@@ -56,11 +56,11 @@ class HeldPhrasesTest {
             phrases(work, home, chat, boss.copy(packageName = gmail)),
         )
         assertEquals(
-            listOf(many("1 group plus 1 chat in Slack")),
+            listOf(many("1 category plus 1 chat in Slack")),
             phrases(account(slack, "c", "Chats"), slackChat),
         )
         assertEquals(
-            listOf(many("2 groups plus 2 chats in Slack")),
+            listOf(many("2 categories plus 2 chats in Slack")),
             phrases(
                 account(slack, "c", "Chats"),
                 account(slack, "d", "Calls"),
@@ -107,7 +107,7 @@ class HeldPhrasesTest {
     @Test
     fun `a listed phrase is one only when it stands alone`() {
         assertEquals(one("Slack"), HeldPhrases.listed(one("Slack"), emptyList()))
-        assertEquals(many("2 Slack groups"), HeldPhrases.listed(many("2 Slack groups"), emptyList()))
+        assertEquals(many("2 Slack categories"), HeldPhrases.listed(many("2 Slack categories"), emptyList()))
         assertEquals(many("Slack and Boss"), HeldPhrases.listed(one("Slack"), listOf(one("Boss"))))
     }
 
@@ -125,16 +125,16 @@ class HeldPhrasesTest {
             HeldPhrases.effect(one("Slack"), Policy.DeliverOnlyDuring, hours),
         )
         assertEquals(
-            "2 Slack groups only reach you on weekdays 08:00–17:00.",
-            HeldPhrases.effect(many("2 Slack groups"), Policy.DeliverOnlyDuring, hours),
+            "2 Slack categories only reach you on weekdays 08:00–17:00.",
+            HeldPhrases.effect(many("2 Slack categories"), Policy.DeliverOnlyDuring, hours),
         )
         assertEquals(
             "Slack goes quiet on weekdays 08:00–17:00.",
             HeldPhrases.effect(one("Slack"), Policy.HoldDuring, hours),
         )
         assertEquals(
-            "2 Slack groups go quiet on weekdays 08:00–17:00.",
-            HeldPhrases.effect(many("2 Slack groups"), Policy.HoldDuring, hours),
+            "2 Slack categories go quiet on weekdays 08:00–17:00.",
+            HeldPhrases.effect(many("2 Slack categories"), Policy.HoldDuring, hours),
         )
     }
 

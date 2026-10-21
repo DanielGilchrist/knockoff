@@ -22,14 +22,13 @@ internal fun withArticle(noun: String): String =
 
 internal fun ruleCalled(name: String): String = name.trim().ifEmpty { "this rule" }
 
-internal fun hoursOf(name: String): String {
-    val owner = ruleCalled(name)
+internal fun hoursOf(name: String): String = "${possessive(ruleCalled(name))} hours"
 
-    return when {
-        owner.endsWith('s', ignoreCase = true) -> "$owner' hours"
-        else -> "$owner's hours"
+internal fun possessive(owner: String): String =
+    when {
+        owner.endsWith('s', ignoreCase = true) -> "$owner'"
+        else -> "$owner's"
     }
-}
 
 internal fun RuleDraft.appEffect(held: HeldPhrase): String =
     when (val checked = schedule()) {

@@ -9,7 +9,8 @@ import org.junit.jupiter.api.Test
 
 class AppRowSupportTest {
     private val whatsapp = COLLEAGUE_CHAT.packageName
-    private val chats = AppChoices(AppKind.Chats, AccountChoices(GroupNoun.Groups, emptyMap()))
+    private val chats =
+        AppChoices(AppKind.Chats, AccountChoices(GroupNoun.Categories, emptyMap(), emptySet(), GroupNaming.AllNamed))
     private val narrowed = AppDraft.EVERYTHING.copy(mode = AppMode.Narrowed)
     private val picked = narrowed.copy(chats = mapOf(COLLEAGUE_CHAT.id to ChatPick.of(COLLEAGUE_CHAT)))
 

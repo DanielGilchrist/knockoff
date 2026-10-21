@@ -21,6 +21,9 @@ class DescribeTest {
         assertEquals("Errands' hours", hoursOf("Errands"))
         assertEquals("BUS' hours", hoursOf("BUS"))
         assertEquals("this rule's hours", hoursOf(""))
+        assertEquals("Gmail's", possessive("Gmail"))
+        assertEquals("Messages'", possessive("Messages"))
+        assertEquals("WHATSAPPS'", possessive("WHATSAPPS"))
     }
 
     @Test

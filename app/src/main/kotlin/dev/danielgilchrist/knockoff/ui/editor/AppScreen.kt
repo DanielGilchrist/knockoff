@@ -12,12 +12,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import dev.danielgilchrist.knockoff.domain.group.GroupLabel
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.RuleApps
-import dev.danielgilchrist.knockoff.ui.DeviceLink
-import dev.danielgilchrist.knockoff.ui.GroupNoun
-import dev.danielgilchrist.knockoff.ui.LinkState
 import dev.danielgilchrist.knockoff.ui.TargetChoices
 import dev.danielgilchrist.knockoff.ui.appEffect
 import dev.danielgilchrist.knockoff.ui.components.AddButton
@@ -44,6 +40,7 @@ internal fun AppScreen(
     val label = choices.apps.labelOf(app)
     val (kind, accounts) = AppKind.forApp(app, draft, stored, choices)
     val available = accounts.offered.size + AppKind.seenChatsOf(app, choices.chats).size
+    val discovery = choices.discoveries.of(app)
     val effect = rule.appEffect(appHeld(label, draft.mode, kind, accounts.noun))
     var patterning by rememberSaveable { mutableStateOf(false) }
 
@@ -67,17 +64,21 @@ internal fun AppScreen(
                 accounts = accounts,
                 seen = choices.chats,
                 available = available,
+                discovery = discovery,
                 onDraftChange = actions.onDraftChange,
             )
         }
-        learningItems(
-            label = label,
-            kind = kind,
-            offersNarrowing = draft.offersNarrowing(available),
-            unnamed = choices.groups.groupsOf(app).any { it.label == GroupLabel.Unnamed },
-            noun = accounts.noun,
-            link = choices.link,
-        )
+        val note =
+            DiscoveryNote.of(
+                DiscoveryFacts(label, kind, accounts),
+                discovery,
+                choices.link,
+            )
+
+        noteItem(note)
+        if (note == DiscoveryNote.None && (kind == AppKind.Plain || !draft.offersNarrowing(available))) {
+            item { Caption(text = moreCaption(label, kind, accounts.noun)) }
+        }
         patternItems(
             app = app,
             draft = draft,
@@ -109,19 +110,17 @@ private fun RemoveMenu(
     }
 }
 
-private fun LazyListScope.learningItems(
-    label: String,
-    kind: AppKind,
-    offersNarrowing: Boolean,
-    unnamed: Boolean,
-    noun: GroupNoun,
-    link: LinkState,
-) {
-    if (kind == AppKind.Plain || !offersNarrowing) {
-        item { Caption(text = moreCaption(label, kind, noun)) }
-    }
-    if (unnamed && needsLink(link)) {
-        item { LinkNotice(label, noun) }
+private fun LazyListScope.noteItem(note: DiscoveryNote) {
+    when (note) {
+        DiscoveryNote.None -> {}
+
+        is DiscoveryNote.Text -> {
+            item { Caption(text = note.text) }
+        }
+
+        is DiscoveryNote.LinkNeeded -> {
+            item { NoticeCard(title = note.title, body = note.body, tone = NoticeTone.Nudge) }
+        }
     }
 }
 
@@ -153,32 +152,4 @@ private fun LazyListScope.patternItems(
             }
         }
     }
-}
-
-private fun needsLink(link: LinkState): Boolean =
-    when (link) {
-        LinkState.Loading -> {
-            false
-        }
-
-        is LinkState.Known -> {
-            when (link.link) {
-                is DeviceLink.Linked -> false
-                DeviceLink.NotLinked -> true
-            }
-        }
-    }
-
-@Composable
-private fun LinkNotice(
-    label: String,
-    noun: GroupNoun,
-) {
-    NoticeCard(
-        title = "Link a device to see ${noun.one} names",
-        body =
-            "Knockoff knows some of $label's ${noun.many} only by ID, because reading their names needs the " +
-                "device link. Set it up in Settings, under Silent holds.",
-        tone = NoticeTone.Nudge,
-    )
 }

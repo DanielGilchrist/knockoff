@@ -7,6 +7,7 @@ import dev.danielgilchrist.knockoff.ask.ChatQuestionNotifier
 import dev.danielgilchrist.knockoff.channel.SilencedChannelsStore
 import dev.danielgilchrist.knockoff.chat.ChatDecisionsStore
 import dev.danielgilchrist.knockoff.chat.SeenChatsStore
+import dev.danielgilchrist.knockoff.group.GroupReach
 import dev.danielgilchrist.knockoff.group.KnownGroupsStore
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import dev.danielgilchrist.knockoff.ui.NotificationPermission
@@ -48,6 +49,8 @@ class KnockoffApplication : Application() {
     val chatDecisionsStore: ChatDecisionsStore by lazy {
         ChatDecisionsStore(File(filesDir, "chat-decisions.json"))
     }
+
+    val groupReach: GroupReach = GroupReach()
 
     val chatAnswers: ChatAnswers by lazy { ChatAnswers(settingsStore, chatDecisionsStore) }
 

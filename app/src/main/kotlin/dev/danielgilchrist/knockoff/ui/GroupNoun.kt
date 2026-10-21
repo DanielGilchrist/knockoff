@@ -7,7 +7,7 @@ enum class GroupNoun(
     val many: String,
 ) {
     Accounts("account", "accounts"),
-    Groups("group", "groups"),
+    Categories("category", "categories"),
     ;
 
     fun counted(count: Int): String = counted(count, one, many)
@@ -15,14 +15,14 @@ enum class GroupNoun(
     fun names(name: GroupName): Boolean =
         when (this) {
             Accounts -> '@' in name.value
-            Groups -> true
+            Categories -> true
         }
 
     companion object {
         fun of(names: Collection<GroupName>): GroupNoun =
             when {
                 names.any { Accounts.names(it) } -> Accounts
-                else -> Groups
+                else -> Categories
             }
     }
 }

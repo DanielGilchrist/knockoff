@@ -177,7 +177,7 @@ class RuleOverviewTest {
         val draft = RuleDraft.NEW.copy(name = "x", apps = mapOf(mail to accounts, slack to groups))
 
         assertEquals(
-            "dan@work.example in com.google.android.gm and 2 com.Slack groups only reach you on weekdays " +
+            "dan@work.example in com.google.android.gm and 2 com.Slack categories only reach you on weekdays " +
                 "08:00–17:00.",
             RuleOverview.of(rule(draft), { it.value }).sentence,
         )

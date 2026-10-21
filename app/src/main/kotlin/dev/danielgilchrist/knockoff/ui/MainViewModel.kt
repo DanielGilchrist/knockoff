@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import dev.danielgilchrist.knockoff.KnockoffApplication
 import dev.danielgilchrist.knockoff.chat.ChatDecisionSave
 import dev.danielgilchrist.knockoff.domain.group.KnownGroups
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesEditor
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,10 +14,12 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MainViewModel(
@@ -33,6 +36,8 @@ class MainViewModel(
     val preferences = PreferencesEditor(store, viewModelScope)
     val setup: StateFlow<Setup> = mutableSetup.asStateFlow()
     val paired: StateFlow<PairedDevices> = mutablePaired.asStateFlow()
+    private val discoveries = MutableStateFlow(GroupDiscoveries.NONE)
+
     val choices: StateFlow<TargetChoices> =
         combine(
             flow<InstalledApps> {
@@ -45,11 +50,18 @@ class MainViewModel(
                 .onStart { emit(SeenChatsState.Loading) },
             knockoff.knownGroupsStore.loads.map { it.known },
             mutableSetup.map { LinkState.Known(it.link) },
+            discoveries,
             ::TargetChoices,
         ).stateIn(
             viewModelScope,
             SharingStarted.Eagerly,
-            TargetChoices(InstalledApps.Loading, SeenChatsState.Loading, KnownGroups.NONE, LinkState.Loading),
+            TargetChoices(
+                InstalledApps.Loading,
+                SeenChatsState.Loading,
+                KnownGroups.NONE,
+                LinkState.Loading,
+                GroupDiscoveries.NONE,
+            ),
         )
 
     private val chatSaveStatus = MutableStateFlow<SaveStatus>(SaveStatus.Idle)
@@ -74,6 +86,53 @@ class MainViewModel(
                     ChatDecisionSave.Saved -> SaveStatus.Idle
                     is ChatDecisionSave.Failed -> SaveStatus.Failed(save.detail)
                 }
+        }
+    }
+
+    init {
+        val focus = editor.editing.map(AppFocus::of).distinctUntilChanged()
+
+        viewModelScope.launch {
+            focus.collect { focused -> whenAppFocused(focused) { app -> discover(app) { it.requested(app) } } }
+        }
+        viewModelScope.launch {
+            val links = mutableSetup.map { it.link }
+
+            combine(focus, knockoff.groupReach.state, links, ::Triple).collect { (focused, reach, link) ->
+                whenAppFocused(focused) { app -> discover(app) { it.retried(app, reach, link) } }
+            }
+        }
+    }
+
+    private inline fun whenAppFocused(
+        focus: AppFocus,
+        act: (PackageName) -> Unit,
+    ) {
+        when (focus) {
+            AppFocus.List -> {}
+
+            is AppFocus.App -> {
+                act(focus.app)
+            }
+        }
+    }
+
+    private fun discover(
+        app: PackageName,
+        request: (GroupDiscoveries) -> DiscoveryRequest,
+    ) {
+        var start = DiscoveryStart.Skip
+        discoveries.update { current -> request(current).also { start = it.start }.discoveries }
+
+        when (start) {
+            DiscoveryStart.Skip -> {}
+
+            DiscoveryStart.Start -> {
+                viewModelScope.launch {
+                    val discovery = knockoff.groupReach.discover(app)
+                    discoveries.update { it.finished(app, discovery) }
+                }
+            }
         }
     }
 

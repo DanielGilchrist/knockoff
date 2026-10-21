@@ -17,8 +17,10 @@ import dev.danielgilchrist.knockoff.domain.rule.ChatPick
 import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
 import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.group.GroupDiscovery
 import dev.danielgilchrist.knockoff.groupName
 import dev.danielgilchrist.knockoff.ruleApps
+import dev.danielgilchrist.knockoff.ui.AppDiscovery
 import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 import dev.danielgilchrist.knockoff.ui.GroupNoun
 import dev.danielgilchrist.knockoff.ui.HeldPhrase
@@ -50,7 +52,7 @@ class AppDraftTest {
     @Test
     fun `a summary names what an app holds`() {
         assertEquals("All notifications", AppSummary.of(AppDraft.EVERYTHING, none(GroupNoun.Accounts)))
-        assertEquals("Nothing chosen", AppSummary.of(narrowed, none(GroupNoun.Groups)))
+        assertEquals("Nothing chosen", AppSummary.of(narrowed, none(GroupNoun.Categories)))
         assertEquals(
             "dan@work.example",
             AppSummary.of(
@@ -69,10 +71,10 @@ class AppDraftTest {
             ),
         )
         assertEquals(
-            "2 groups",
+            "2 categories",
             AppSummary.of(
                 narrowed.copy(accounts = mapOf(work to groupName("a"), ChannelGroupId("b") to groupName("b"))),
-                none(GroupNoun.Groups),
+                none(GroupNoun.Categories),
             ),
         )
         assertEquals(
@@ -83,25 +85,25 @@ class AppDraftTest {
                     patterns = listOf(PatternDraft.BLANK, PatternDraft.BLANK),
                     asking = NewChatsAsking.Ask,
                 ),
-                none(GroupNoun.Groups),
+                none(GroupNoun.Categories),
             ),
         )
         assertEquals(
             "3 chats",
             AppSummary.of(
                 narrowed.copy(chats = listOf(boss, team, colleague).associateBy { it.id }),
-                none(GroupNoun.Groups),
+                none(GroupNoun.Categories),
             ),
         )
         assertEquals(
             "no chats yet · asks about new ones",
-            AppSummary.of(narrowed.copy(asking = NewChatsAsking.Ask), none(GroupNoun.Groups)),
+            AppSummary.of(narrowed.copy(asking = NewChatsAsking.Ask), none(GroupNoun.Categories)),
         )
         assertEquals(
             "dan@work.example",
             AppSummary.of(
                 narrowed.copy(accounts = mapOf(work to GroupName.of(work))),
-                AccountChoices(GroupNoun.Accounts, mapOf(work to groupName("dan@work.example"))),
+                offering(GroupNoun.Accounts, mapOf(work to groupName("dan@work.example"))),
             ),
         )
     }
@@ -142,22 +144,49 @@ class AppDraftTest {
     }
 
     @Test
+    fun `a picked account the phone hasn't shown is flagged as unseen, or missing once the app is read`() {
+        val home = ChannelGroupId("^ncg_1_account_dan@home.example")
+        val stored =
+            ruleApps(setOf(Target.Account(gmail, work, groupName("dan@work.example"))), emptySet())
+        val homeKnown = KnownGroups.NONE.sighted(ChannelKey(gmail, ChannelId("home")), ChannelGrouping.Grouped(home))
+        val bothKnown = homeKnown.sighted(ChannelKey(gmail, ChannelId("work")), ChannelGrouping.Grouped(work))
+        val unseen = AccountChoices.forApp(gmail, homeKnown, stored, narrowed)
+        val seen = AccountChoices.forApp(gmail, bothKnown, stored, narrowed)
+
+        val read = AppDiscovery.Finished(GroupDiscovery.Read)
+
+        assertEquals(AccountSighting.NotChecked, unseen.sightingOf(work, AppDiscovery.NotAsked))
+        assertEquals(AccountSighting.NotChecked, unseen.sightingOf(work, AppDiscovery.Reading))
+        assertEquals(
+            listOf(AccountSighting.CouldNotCheck, AccountSighting.CouldNotCheck, AccountSighting.CouldNotCheck),
+            listOf(
+                GroupDiscovery.NotLinked("no association"),
+                GroupDiscovery.Unbound,
+                GroupDiscovery.Unrecorded("disk"),
+            ).map { unseen.sightingOf(work, AppDiscovery.Finished(it)) },
+        )
+        assertEquals(AccountSighting.NotOnPhone, unseen.sightingOf(work, read))
+        assertEquals(AccountSighting.Seen, unseen.sightingOf(home, read))
+        assertEquals(AccountSighting.Seen, seen.sightingOf(work, read))
+    }
+
+    @Test
     fun `an app with nothing picked says what to tick and is flagged in the list`() {
-        assertEquals("Add at least one pattern.", unchosenCaption(AppKind.Plain, GroupNoun.Groups))
+        assertEquals("Add at least one pattern.", unchosenCaption(AppKind.Plain, GroupNoun.Categories))
         assertEquals("Tick at least one account.", unchosenCaption(AppKind.Accounts, GroupNoun.Accounts))
         assertEquals(
             "Tick at least one chat, or turn on Ask me about new chats.",
-            unchosenCaption(AppKind.Chats, GroupNoun.Groups),
+            unchosenCaption(AppKind.Chats, GroupNoun.Categories),
         )
         assertEquals(
-            "Tick at least one group or chat, or turn on Ask me about new chats.",
-            unchosenCaption(AppKind.AccountsAndChats, GroupNoun.Groups),
+            "Tick at least one category or chat, or turn on Ask me about new chats.",
+            unchosenCaption(AppKind.AccountsAndChats, GroupNoun.Categories),
         )
         assertEquals(
             listOf("No patterns added", "No accounts picked", "No chats picked", "No accounts or chats picked"),
             AppKind.entries.map { AppSummary.unpicked(it, GroupNoun.Accounts) },
         )
-        assertEquals("No groups picked", AppSummary.unpicked(AppKind.Accounts, GroupNoun.Groups))
+        assertEquals("No categories picked", AppSummary.unpicked(AppKind.Accounts, GroupNoun.Categories))
     }
 
     @Test
@@ -191,19 +220,19 @@ class AppDraftTest {
             moreCaption("Gmail", AppKind.Accounts, GroupNoun.Accounts),
         )
         assertEquals(
-            "If Slack has more groups and chats, they'll show here once each has notified you.",
-            moreCaption("Slack", AppKind.AccountsAndChats, GroupNoun.Groups),
+            "If Slack has more categories and chats, they'll show here once each has notified you.",
+            moreCaption("Slack", AppKind.AccountsAndChats, GroupNoun.Categories),
         )
         assertEquals(
             "If WhatsApp has more chats, they'll show here once each has notified you.",
-            moreCaption("WhatsApp", AppKind.Chats, GroupNoun.Groups),
+            moreCaption("WhatsApp", AppKind.Chats, GroupNoun.Categories),
         )
         assertEquals(
             "Knockoff learns an app's accounts and chats from its notifications. If Maps has them, they'll show " +
                 "here once it has notified you.",
-            moreCaption("Maps", AppKind.Plain, GroupNoun.Groups),
+            moreCaption("Maps", AppKind.Plain, GroupNoun.Categories),
         )
-        assertEquals("notifications", AppKind.Plain.more(GroupNoun.Groups))
+        assertEquals("notifications", AppKind.Plain.more(GroupNoun.Categories))
     }
 
     @Test
@@ -217,41 +246,42 @@ class AppDraftTest {
             ),
             AppKind.entries.map { it.narrowed(GroupNoun.Accounts) },
         )
-        assertEquals("Only some groups", AppKind.Accounts.narrowed(GroupNoun.Groups))
+        assertEquals("Only some categories", AppKind.Accounts.narrowed(GroupNoun.Categories))
         assertEquals(
-            listOf("pattern", "group", "chat", "group or chat"),
-            AppKind.entries.map { it.pick(GroupNoun.Groups) },
+            listOf("pattern", "category", "chat", "category or chat"),
+            AppKind.entries.map { it.pick(GroupNoun.Categories) },
         )
         assertEquals("account", AppKind.Accounts.pick(GroupNoun.Accounts))
     }
 
     @Test
     fun `the narrowed choice says how many there are and that the rule leaves the rest alone`() {
-        val accounts = AccountChoices(GroupNoun.Accounts, mapOf(work to groupName("dan@work.example")))
-        val none = AccountChoices(GroupNoun.Groups, emptyMap())
+        val accounts =
+            offering(GroupNoun.Accounts, mapOf(work to groupName("dan@work.example")))
+        val none = offering(GroupNoun.Categories, emptyMap())
 
         assertEquals(
-            "Choose from 1 account. This rule leaves other accounts alone.",
+            "Choose from 1 account. This rule leaves the rest alone.",
             narrowedSupporting(AppKind.Accounts, accounts, false),
         )
-        assertEquals("This rule leaves other chats alone.", narrowedSupporting(AppKind.Chats, accounts, false))
-        assertEquals("This rule leaves other groups alone.", narrowedSupporting(AppKind.Accounts, none, false))
+        assertEquals("This rule leaves the rest alone.", narrowedSupporting(AppKind.Chats, accounts, false))
+        assertEquals("This rule leaves the rest alone.", narrowedSupporting(AppKind.Accounts, none, false))
         assertEquals(
-            "This rule leaves other accounts and chats alone.",
+            "This rule leaves the rest alone.",
             narrowedSupporting(AppKind.AccountsAndChats, accounts, true),
         )
-        assertEquals("This rule leaves other notifications alone.", narrowedSupporting(AppKind.Plain, none, false))
+        assertEquals("This rule leaves the rest alone.", narrowedSupporting(AppKind.Plain, none, false))
     }
 
     @Test
     fun `an app's caption names the app when whole and what's picked when narrowed`() {
         assertEquals(
             HeldPhrase.of("WhatsApp", GrammaticalNumber.One),
-            appHeld("WhatsApp", AppMode.Everything, AppKind.Chats, GroupNoun.Groups),
+            appHeld("WhatsApp", AppMode.Everything, AppKind.Chats, GroupNoun.Categories),
         )
         assertEquals(
             HeldPhrase.of("The chats you pick", GrammaticalNumber.Many),
-            appHeld("WhatsApp", AppMode.Narrowed, AppKind.Chats, GroupNoun.Groups),
+            appHeld("WhatsApp", AppMode.Narrowed, AppKind.Chats, GroupNoun.Categories),
         )
         assertEquals(
             HeldPhrase.of("The accounts you pick", GrammaticalNumber.Many),
@@ -259,7 +289,7 @@ class AppDraftTest {
         )
         assertEquals(
             HeldPhrase.of("Notifications matching your patterns", GrammaticalNumber.Many),
-            appHeld("Slack", AppMode.Narrowed, AppKind.Plain, GroupNoun.Groups),
+            appHeld("Slack", AppMode.Narrowed, AppKind.Plain, GroupNoun.Categories),
         )
     }
 
@@ -272,13 +302,15 @@ class AppDraftTest {
 
         assertEquals(
             AccountChoices(
-                GroupNoun.Groups,
+                GroupNoun.Categories,
                 mapOf(
                     ChannelGroupId("chats") to groupName("Chats"),
                     ChannelGroupId("misc") to groupName("misc"),
                     ChannelGroupId("gone") to groupName("Gone"),
                     ChannelGroupId("old") to groupName("Old"),
                 ),
+                setOf(ChannelGroupId("gone"), ChannelGroupId("old")),
+                GroupNaming.SomeUnnamed,
             ),
             AccountChoices.of(listOf(named, unnamed), stored, picked),
         )
@@ -298,6 +330,8 @@ class AppDraftTest {
             AccountChoices(
                 GroupNoun.Accounts,
                 mapOf(work to groupName("dan@work.example"), ChannelGroupId("other") to groupName("Other")),
+                emptySet(),
+                GroupNaming.SomeUnnamed,
             ),
             AccountChoices.of(listOf(account, misc, other), emptyMap(), picked),
         )
@@ -310,12 +344,17 @@ class AppDraftTest {
     @Test
     fun `nouns read accounts only when a name is an address`() {
         assertEquals(GroupNoun.Accounts, GroupNoun.of(listOf(groupName("Chats"), groupName("dan@work.example"))))
-        assertEquals(GroupNoun.Groups, GroupNoun.of(listOf(groupName("Chats"))))
-        assertEquals("1 group", GroupNoun.Groups.counted(1))
+        assertEquals(GroupNoun.Categories, GroupNoun.of(listOf(groupName("Chats"))))
+        assertEquals("1 category", GroupNoun.Categories.counted(1))
         assertEquals("2 accounts", GroupNoun.Accounts.counted(2))
     }
 
-    private fun none(noun: GroupNoun): AccountChoices = AccountChoices(noun, emptyMap())
+    private fun offering(
+        noun: GroupNoun,
+        offered: Map<ChannelGroupId, GroupName>,
+    ): AccountChoices = AccountChoices(noun, offered, emptySet(), GroupNaming.AllNamed)
+
+    private fun none(noun: GroupNoun): AccountChoices = offering(noun, emptyMap())
 
     private fun kindOf(
         app: PackageName,

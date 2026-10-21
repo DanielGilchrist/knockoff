@@ -7,4 +7,5 @@ data class TargetChoices(
     val chats: SeenChatsState,
     val groups: KnownGroups,
     val link: LinkState,
+    val discoveries: GroupDiscoveries,
 )
