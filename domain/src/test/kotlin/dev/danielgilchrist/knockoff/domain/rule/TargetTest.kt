@@ -12,10 +12,14 @@ import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
+import dev.danielgilchrist.knockoff.domain.gmailGroup
+import dev.danielgilchrist.knockoff.domain.group.GroupName
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.notification.Channel
+import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
@@ -48,13 +52,22 @@ class TargetTest {
     }
 
     @Test
-    fun `gmail inbox target matches only that account's gmail channels`() {
-        val inbox = Target.GmailInbox(WORK_ADDRESS)
+    fun `an account target matches only notifications in its group in its app`() {
+        val account = WORK_ADDRESS.gmailAccount()
+        val lookalike =
+            Origin(
+                SLACK,
+                Channel.Named(ChannelId("^nc_1_mail_dan@work.example")),
+                Conversation.None,
+                OriginGroup.Known(gmailGroup("dan@work.example")),
+            )
 
-        inbox.matches(WORK_GMAIL_ORIGIN) shouldBe true
-        inbox.matches(PERSONAL_GMAIL_ORIGIN) shouldBe false
-        inbox.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe false
-        inbox.matches(SLACK_ORIGIN) shouldBe false
+        account.matches(WORK_GMAIL_ORIGIN) shouldBe true
+        account.matches(PERSONAL_GMAIL_ORIGIN) shouldBe false
+        account.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe
+            false
+        account.matches(WORK_GMAIL_ORIGIN.copy(group = OriginGroup.Known(ChannelGrouping.Ungrouped))) shouldBe false
+        account.matches(lookalike) shouldBe false
     }
 
     @Test
@@ -87,52 +100,70 @@ class TargetTest {
         val app = Target.App(WHATSAPP)
         val shared = ChannelKey(WHATSAPP, WHATSAPP_CHATS)
 
-        app.covers(shared, ChannelKind.Shared) shouldBe true
-        app.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND) shouldBe true
-        app.covers(ChannelKey(SLACK, WHATSAPP_CHATS), ChannelKind.Shared) shouldBe false
+        app.covers(shared, ChannelKind.Shared, ChannelGrouping.Ungrouped) shouldBe true
+        app.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND, ChannelGrouping.Ungrouped) shouldBe true
+        app.covers(ChannelKey(SLACK, WHATSAPP_CHATS), ChannelKind.Shared, ChannelGrouping.Ungrouped) shouldBe false
     }
 
     @Test
-    fun `a gmail inbox target covers only that account's channels`() {
-        val inbox = Target.GmailInbox(WORK_ADDRESS)
+    fun `an account target covers every channel in its group in its app`() {
+        val account = WORK_ADDRESS.gmailAccount()
+        val anyMail = ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@work.example"))
+        val labels = ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_label_x"))
 
-        inbox.covers(
-            ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@work.example")),
+        account.covers(anyMail, ChannelKind.Shared, gmailGroup("dan@work.example")) shouldBe true
+        account.covers(labels, ChannelKind.Shared, gmailGroup("dan@work.example")) shouldBe true
+        account.covers(anyMail, COLLEAGUE_KIND, gmailGroup("dan@work.example")) shouldBe true
+        account.covers(anyMail, ChannelKind.Shared, gmailGroup("dan@home.example")) shouldBe false
+        account.covers(anyMail, ChannelKind.Shared, ChannelGrouping.Ungrouped) shouldBe false
+        account.covers(
+            ChannelKey(SLACK, ChannelId("^nc_1_mail_dan@work.example")),
             ChannelKind.Shared,
-        ) shouldBe
-            true
-        inbox.covers(
-            ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@home.example")),
-            ChannelKind.Shared,
+            gmailGroup("dan@work.example"),
         ) shouldBe
             false
-        inbox.covers(ChannelKey(SLACK, ChannelId("^nc_1_mail_dan@work.example")), ChannelKind.Shared) shouldBe false
+    }
+
+    @Test
+    fun `an account never claims a seen chat, even one in its group`() {
+        val account = Target.Account(WHATSAPP, ChannelGroupId("channel_group_chats"), GroupName.of(WORK_ADDRESS))
+
+        account.holds(COLLEAGUE_CHAT) shouldBe false
+    }
+
+    @Test
+    fun `a gmail account is named and grouped after its address`() {
+        val account = WORK_ADDRESS.gmailAccount()
+
+        account.packageName shouldBe PackageName.GMAIL
+        account.group shouldBe ChannelGroupId("^ncg_1_account_dan@work.example")
+        account.label.value shouldBe "dan@work.example"
+        account.gmailAddress() shouldBe "dan@work.example"
     }
 
     @Test
     fun `a chat target covers only its own conversation's channel under its parent`() {
-        COLLEAGUE_CHAT.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND) shouldBe true
-        COLLEAGUE_CHAT.covers(ChannelKey(WHATSAPP, WHATSAPP_CHATS), ChannelKind.Shared) shouldBe false
-        COLLEAGUE_CHAT.covers(COLLEAGUE_CHANNEL, ChannelKind.ConversationOf(WHATSAPP_CHATS, FRIEND)) shouldBe false
+        COLLEAGUE_CHAT.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND, ChannelGrouping.Ungrouped) shouldBe true
+        COLLEAGUE_CHAT.covers(
+            ChannelKey(WHATSAPP, WHATSAPP_CHATS),
+            ChannelKind.Shared,
+            ChannelGrouping.Ungrouped,
+        ) shouldBe
+            false
+        COLLEAGUE_CHAT.covers(
+            COLLEAGUE_CHANNEL,
+            ChannelKind.ConversationOf(WHATSAPP_CHATS, FRIEND),
+            ChannelGrouping.Ungrouped,
+        ) shouldBe
+            false
         COLLEAGUE_CHAT.covers(
             COLLEAGUE_CHANNEL,
             ChannelKind.ConversationOf(ChannelId("individual_chat_defaults_3"), COLLEAGUE),
+            ChannelGrouping.Ungrouped,
         ) shouldBe
             false
-        COLLEAGUE_CHAT.covers(ChannelKey(SLACK, ChannelId("c1")), COLLEAGUE_KIND) shouldBe false
-    }
-
-    @Test
-    fun `gmail inbox target ignores other apps with a matching channel`() {
-        val lookalike =
-            Origin(
-                SLACK,
-                Channel.Named(ChannelId("^nc_1_mail_dan@work.example")),
-                Conversation.None,
-                OriginGroup.Unknown,
-            )
-
-        Target.GmailInbox(WORK_ADDRESS).matches(lookalike) shouldBe false
+        COLLEAGUE_CHAT.covers(ChannelKey(SLACK, ChannelId("c1")), COLLEAGUE_KIND, ChannelGrouping.Ungrouped) shouldBe
+            false
     }
 
     @Test
@@ -155,24 +186,32 @@ class TargetTest {
         accounts.covers(
             ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@work.example")),
             ChannelKind.Shared,
+            ChannelGrouping.Ungrouped,
         ) shouldBe
             true
         accounts.covers(
             ChannelKey(PackageName.GMAIL, ChannelId("^nc_1_mail_dan@home.example")),
             ChannelKind.Shared,
+            ChannelGrouping.Ungrouped,
         ) shouldBe
             false
-        accounts.covers(ChannelKey(SLACK, ChannelId("^nc_1_mail_dan@work.example")), ChannelKind.Shared) shouldBe false
+        accounts.covers(
+            ChannelKey(SLACK, ChannelId("^nc_1_mail_dan@work.example")),
+            ChannelKind.Shared,
+            ChannelGrouping.Ungrouped,
+        ) shouldBe
+            false
     }
 
     @Test
     fun `a channel pattern covers conversation channels by their parent's id`() {
         val chats = Target.ChannelPattern(WHATSAPP, textPattern("^individual_chat"))
 
-        chats.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND) shouldBe true
+        chats.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND, ChannelGrouping.Ungrouped) shouldBe true
         chats.covers(
             ChannelKey(WHATSAPP, ChannelId("individual_chat_x")),
             ChannelKind.ConversationOf(ChannelId("group_chat"), COLLEAGUE),
+            ChannelGrouping.Ungrouped,
         ) shouldBe
             false
     }
@@ -196,8 +235,8 @@ class TargetTest {
     fun `a chat name pattern covers no channel by itself`() {
         val work = Target.ChatNamePattern(WHATSAPP, textPattern("^Work"))
 
-        work.covers(ChannelKey(WHATSAPP, WHATSAPP_CHATS), ChannelKind.Shared) shouldBe false
-        work.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND) shouldBe false
+        work.covers(ChannelKey(WHATSAPP, WHATSAPP_CHATS), ChannelKind.Shared, ChannelGrouping.Ungrouped) shouldBe false
+        work.covers(COLLEAGUE_CHANNEL, COLLEAGUE_KIND, ChannelGrouping.Ungrouped) shouldBe false
     }
 
     @Test

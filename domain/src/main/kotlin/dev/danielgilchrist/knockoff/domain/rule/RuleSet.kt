@@ -74,7 +74,7 @@ data class RuleSet private constructor(
     ): Set<ChatChannelNeed> =
         enabled()
             .flatMap { it.chats }
-            .filter { chat -> read.none { (key, channel) -> chat.covers(key, channel.kind) } }
+            .filter { chat -> read.none { (key, channel) -> chat.covers(key, channel.kind, channel.grouping) } }
             .map { chat ->
                 val parent = ChannelKey(chat.packageName, chat.channel)
 
@@ -116,7 +116,16 @@ data class RuleSet private constructor(
 
         return silenced.plan(read) { key, channel ->
             when {
-                holds { it.verdictFor(key, channel.kind, now, zones) }.isEmpty() -> ChannelState.Permitted
+                holds {
+                    it.verdictFor(
+                        key,
+                        channel.kind,
+                        channel.grouping,
+                        now,
+                        zones,
+                    )
+                }.isEmpty() -> ChannelState.Permitted
+
                 else -> ChannelState.Held
             }
         }

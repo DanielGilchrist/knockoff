@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
@@ -25,7 +26,7 @@ data class Rule(
             targets.flatMap { target ->
                 when (target) {
                     is Target.Chat -> listOf(target)
-                    is Target.App, is Target.GmailInbox, is Target.Pattern -> emptyList()
+                    is Target.App, is Target.Account, is Target.Pattern -> emptyList()
                 }
             }
 
@@ -65,9 +66,10 @@ data class Rule(
     fun verdictFor(
         channel: ChannelKey,
         kind: ChannelKind,
+        grouping: ChannelGrouping,
         at: ZonedDateTime,
         zones: ZoneContext,
-    ): RuleVerdict = verdictWhere(at, zones) { it.covers(channel, kind) }
+    ): RuleVerdict = verdictWhere(at, zones) { it.covers(channel, kind, grouping) }
 
     private fun verdictWhere(
         at: ZonedDateTime,

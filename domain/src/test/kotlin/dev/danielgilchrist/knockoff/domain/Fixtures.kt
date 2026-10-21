@@ -8,6 +8,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
 import dev.danielgilchrist.knockoff.domain.notification.Channel
+import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
@@ -130,7 +131,14 @@ fun ruleSet(vararg rules: Rule): RuleSet =
     }
 
 fun gmailOrigin(channelId: String): Origin =
-    Origin(PackageName.GMAIL, Channel.Named(ChannelId(channelId)), Conversation.None, OriginGroup.Unknown)
+    Origin(
+        PackageName.GMAIL,
+        Channel.Named(ChannelId(channelId)),
+        Conversation.None,
+        OriginGroup.Known(gmailGroup(channelId.removePrefix("^nc_1_mail_"))),
+    )
+
+fun gmailGroup(address: String): ChannelGrouping = ChannelGrouping.Grouped(ChannelGroupId("^ncg_1_account_$address"))
 
 val SLACK = PackageName("com.Slack")
 

@@ -99,7 +99,7 @@ class ChatChannelNeedsTest {
                     WORK_HOURS,
                     setOf(
                         Target.App(WHATSAPP),
-                        Target.GmailInbox(WORK_ADDRESS),
+                        WORK_ADDRESS.gmailAccount(),
                         Target.ChatNamePattern(WHATSAPP, textPattern(".")),
                         Target.ChannelPattern(WHATSAPP, textPattern(".")),
                     ),

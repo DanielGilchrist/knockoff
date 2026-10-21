@@ -10,6 +10,8 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.rule.gmailAccount
+import dev.danielgilchrist.knockoff.domain.rule.gmailAddress
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
 import dev.danielgilchrist.knockoff.domain.schedule.Window
@@ -59,22 +61,30 @@ data class RuleDraft(
                         .flatMap { target ->
                             when (target) {
                                 is Target.App -> listOf(target.packageName)
-                                is Target.GmailInbox, is Target.Chat, is Target.Pattern -> emptyList()
+                                is Target.Account, is Target.Chat, is Target.Pattern -> emptyList()
                             }
                         }.toSet(),
                 gmailAccounts =
                     rule.targets
                         .flatMap { target ->
                             when (target) {
-                                is Target.App, is Target.Chat, is Target.Pattern -> emptyList()
-                                is Target.GmailInbox -> listOf(target.address)
+                                is Target.App, is Target.Chat, is Target.Pattern -> {
+                                    emptyList()
+                                }
+
+                                is Target.Account -> {
+                                    when (val parse = AccountAddress.parse(target.gmailAddress())) {
+                                        is AccountAddressParse.Valid -> listOf(parse.address)
+                                        is AccountAddressParse.Invalid -> emptyList()
+                                    }
+                                }
                             }
                         }.toSet(),
                 chats =
                     rule.targets
                         .flatMap { target ->
                             when (target) {
-                                is Target.App, is Target.GmailInbox, is Target.Pattern -> emptyList()
+                                is Target.App, is Target.Account, is Target.Pattern -> emptyList()
                                 is Target.Chat -> listOf(target)
                             }
                         }.associateBy { it.key },
@@ -82,7 +92,7 @@ data class RuleDraft(
                     rule.targets
                         .flatMap { target ->
                             when (target) {
-                                is Target.App, is Target.GmailInbox, is Target.Chat -> emptyList()
+                                is Target.App, is Target.Account, is Target.Chat -> emptyList()
                                 is Target.Pattern -> listOf(PatternDraft.from(target))
                             }
                         },
@@ -162,7 +172,7 @@ data class RuleDraft(
 
     private fun targets(): Checked<Set<Target>> =
         allGmailAccounts().and(parsedPatterns()) { accounts, parsed ->
-            apps.map(Target::App).toSet() + accounts.map(Target::GmailInbox) + chats.values + parsed
+            apps.map(Target::App).toSet() + accounts.map { it.gmailAccount() } + chats.values + parsed
         }
 
     private fun parsedPatterns(): Checked<List<Target.Pattern>> =

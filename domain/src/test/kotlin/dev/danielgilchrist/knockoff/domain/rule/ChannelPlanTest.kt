@@ -18,6 +18,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelPlan
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.gmailGroup
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
@@ -41,7 +42,7 @@ class ChannelPlanTest {
     private val slackTarget = setOf(Target.App(SLACK))
     private val work =
         ruleSet(
-            rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, slackTarget + Target.GmailInbox(WORK_ADDRESS)),
+            rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, slackTarget + WORK_ADDRESS.gmailAccount()),
         )
 
     @Test
@@ -190,8 +191,12 @@ class ChannelPlanTest {
     }
 
     @Test
-    fun `only the targeted account's Gmail channel is silenced`() {
-        val gmail = sharedChannels(workMail to Importance.Default, personalMail to Importance.Default)
+    fun `only the targeted account's Gmail channels are silenced`() {
+        val gmail =
+            mapOf(
+                workMail to ReadChannel(Importance.Default, ChannelKind.Shared, gmailGroup("dan@work.example")),
+                personalMail to ReadChannel(Importance.Default, ChannelKind.Shared, gmailGroup("dan@home.example")),
+            )
 
         work.planChannels(gmail, SilencedChannels.NONE, evening) shouldBe
             ChannelPlan(

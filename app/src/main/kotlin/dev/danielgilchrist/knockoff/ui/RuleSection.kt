@@ -26,6 +26,6 @@ enum class RuleSection {
     private fun Target.isPattern(): Boolean =
         when (this) {
             is Target.Pattern -> true
-            is Target.App, is Target.GmailInbox, is Target.Chat -> false
+            is Target.App, is Target.Account, is Target.Chat -> false
         }
 }

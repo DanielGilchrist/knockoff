@@ -9,6 +9,8 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.rule.gmailAccount
+import dev.danielgilchrist.knockoff.domain.rule.gmailAddress
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
 import dev.danielgilchrist.knockoff.domain.zone.RuleZone
@@ -41,27 +43,27 @@ internal data class StoredRule(
                     rule.targets.flatMap { target ->
                         when (target) {
                             is Target.App -> listOf(target.packageName.value)
-                            is Target.GmailInbox, is Target.Chat, is Target.Pattern -> emptyList()
+                            is Target.Account, is Target.Chat, is Target.Pattern -> emptyList()
                         }
                     },
                 gmailAccounts =
                     rule.targets.flatMap { target ->
                         when (target) {
                             is Target.App, is Target.Chat, is Target.Pattern -> emptyList()
-                            is Target.GmailInbox -> listOf(target.address.value)
+                            is Target.Account -> listOf(target.gmailAddress())
                         }
                     },
                 chats =
                     rule.targets.flatMap { target ->
                         when (target) {
-                            is Target.App, is Target.GmailInbox, is Target.Pattern -> emptyList()
+                            is Target.App, is Target.Account, is Target.Pattern -> emptyList()
                             is Target.Chat -> listOf(StoredChat.from(target))
                         }
                     },
                 patterns =
                     rule.targets.flatMap { target ->
                         when (target) {
-                            is Target.App, is Target.GmailInbox, is Target.Chat -> emptyList()
+                            is Target.App, is Target.Account, is Target.Chat -> emptyList()
                             is Target.Pattern -> listOf(StoredPattern.from(target))
                         }
                     },
@@ -135,7 +137,7 @@ internal data class StoredRule(
         gmailAccounts
             .parseEach("Gmail account") { raw ->
                 when (val parse = AccountAddress.parse(raw)) {
-                    is AccountAddressParse.Valid -> Parsed.Ok(Target.GmailInbox(parse.address))
+                    is AccountAddressParse.Valid -> Parsed.Ok(parse.address.gmailAccount())
                     is AccountAddressParse.Invalid -> Parsed.Failed(parse.detail)
                 }
             }.then { inboxes ->

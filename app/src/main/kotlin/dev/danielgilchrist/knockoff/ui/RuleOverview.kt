@@ -75,7 +75,7 @@ data class RuleOverview(
 
             return listOf(
                 targets.count { it is Target.App } to "app",
-                targets.count { it is Target.GmailInbox } to "Gmail account",
+                targets.count { it is Target.Account } to "Gmail account",
                 targets.count { it is Target.Chat } to "chat",
                 patterns(rule) to "pattern",
             ).filter { (count, _) -> count > 0 }.map { (count, noun) -> counted(count, noun) }
@@ -90,7 +90,7 @@ data class RuleOverview(
                     .flatMap { target ->
                         when (target) {
                             is Target.App -> listOf(labelOf(target.packageName))
-                            is Target.GmailInbox -> listOf("Gmail (${target.address.value})")
+                            is Target.Account -> listOf("Gmail (${target.label.value})")
                             is Target.Chat, is Target.Pattern -> emptyList()
                         }
                     }.sorted() +

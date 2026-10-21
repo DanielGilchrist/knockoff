@@ -13,6 +13,7 @@ import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.rule.gmailAccount
 import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.shouldBe
@@ -86,7 +87,7 @@ class SettingsTest {
                         WORK_HOURS,
                         setOf(
                             Target.App(SLACK),
-                            Target.GmailInbox(WORK_ADDRESS),
+                            WORK_ADDRESS.gmailAccount(),
                             COLLEAGUE_CHAT,
                             Target.ChannelPattern(PackageName.GMAIL, textPattern("_dan@work\\.example$")),
                             Target.ChatNamePattern(WHATSAPP, textPattern("^Work")),
@@ -192,7 +193,7 @@ class SettingsTest {
                             "Work",
                             Policy.DeliverOnlyDuring,
                             schedule(window(days(DayOfWeek.MONDAY), "08:00", "17:00")),
-                            setOf(Target.App(SLACK), Target.GmailInbox(WORK_ADDRESS)),
+                            setOf(Target.App(SLACK), WORK_ADDRESS.gmailAccount()),
                         ),
                     ),
                     Theme.System,
@@ -310,7 +311,7 @@ class SettingsTest {
                             "Work",
                             Policy.DeliverOnlyDuring,
                             schedule(window(days(DayOfWeek.MONDAY), "08:00", "17:00")),
-                            setOf(Target.App(SLACK), Target.GmailInbox(WORK_ADDRESS)),
+                            setOf(Target.App(SLACK), WORK_ADDRESS.gmailAccount()),
                             zone = RuleZone.Chosen(ZoneChoice.Device),
                         ),
                     ),

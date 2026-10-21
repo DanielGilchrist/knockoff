@@ -40,7 +40,7 @@ import java.time.Duration
 class RuleSetTest {
     private val key = NotificationKey("0|com.Slack|1|null|10001")
     private val evening = london("2026-10-14T20:00")
-    private val work = setOf(Target.App(SLACK), Target.GmailInbox(WORK_ADDRESS))
+    private val work = setOf(Target.App(SLACK), WORK_ADDRESS.gmailAccount())
     private val workOnly = rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, work)
     private val lunch = schedule(window(EVERY_DAY, "12:00", "13:00"))
     private val untilMorning =
