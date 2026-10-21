@@ -1,5 +1,7 @@
 package dev.danielgilchrist.knockoff.ui
 
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.Window
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
 import java.time.DayOfWeek
@@ -30,6 +32,13 @@ internal fun Window.describeInSentence(): String {
     }
 }
 
+internal fun Schedule.describeInSentence(): String {
+    val names = breaks.map { it.name.value }
+
+    return windows.joinToString(" and ") { it.describeInSentence() } +
+        names.joinToString(prefix = ", except ").takeIf { names.isNotEmpty() }.orEmpty()
+}
+
 private fun Window.describeDays(): String {
     val chosen = DayOfWeek.entries.filter { it in days }.toSet()
 
@@ -43,19 +52,54 @@ private fun Window.describeDays(): String {
 
 internal fun DayOfWeek.shortName(): String = getDisplayName(TextStyle.SHORT, Locale.UK)
 
-internal fun DraftProblem.describe(): String =
+internal fun DraftProblem.describe(
+    labelOf: (PackageName) -> String,
+    pickOf: (PackageName) -> String,
+): String =
     when (this) {
-        DraftProblem.BlankName -> "Give the rule a name."
-        DraftProblem.DuplicateName -> "Another rule already has this name."
-        DraftProblem.NoHours -> "Add at least one set of hours."
-        DraftProblem.BreaksCoverAllHours -> "The breaks cover all of the hours, so the rule would never apply."
-        is DraftProblem.HoursWithoutDays -> "Hours $number need at least one day."
-        is DraftProblem.BlankBreakName -> "Give break $number a name."
-        is DraftProblem.BreakWithoutDays -> "Break $number needs at least one day."
-        is DraftProblem.BlankPattern -> "Pattern $number is empty."
-        is DraftProblem.InvalidPattern -> "Pattern $number isn't a valid regular expression: $detail"
-        is DraftProblem.UnaddedAccount -> "The Gmail account being typed isn't valid: $detail"
-        is DraftProblem.NotSaved -> "Couldn't save: $detail"
+        DraftProblem.BlankName -> {
+            "Give the rule a name."
+        }
+
+        DraftProblem.DuplicateName -> {
+            "Another rule already has this name."
+        }
+
+        DraftProblem.NoHours -> {
+            "Add at least one set of hours."
+        }
+
+        DraftProblem.BreaksCoverAllHours -> {
+            "The breaks cover all of the hours, so the rule would never apply."
+        }
+
+        is DraftProblem.HoursWithoutDays -> {
+            "Hours $number need at least one day."
+        }
+
+        is DraftProblem.BlankBreakName -> {
+            "Give break $number a name."
+        }
+
+        is DraftProblem.BreakWithoutDays -> {
+            "Break $number needs at least one day."
+        }
+
+        is DraftProblem.BlankPattern -> {
+            "${labelOf(app)} pattern $number is empty."
+        }
+
+        is DraftProblem.InvalidPattern -> {
+            "${labelOf(app)} pattern $number isn't a valid regular expression: $detail"
+        }
+
+        is DraftProblem.NothingChosen -> {
+            "Pick at least one ${pickOf(app)} for ${labelOf(app)}, or choose All notifications."
+        }
+
+        is DraftProblem.NotSaved -> {
+            "Couldn't save: $detail"
+        }
     }
 
 private const val COVERAGE_LIMIT = 5

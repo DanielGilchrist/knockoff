@@ -40,7 +40,10 @@ internal fun RenameDialog(
                 label = { Text(text = "Name") },
                 singleLine = true,
                 isError = problems.isNotEmpty(),
-                supportingText = supportingText(problems.joinToString(" ") { it.describe() }),
+                supportingText =
+                    supportingText(
+                        problems.joinToString(" ") { problem -> problem.describe({ it.value }, { it.value }) },
+                    ),
                 keyboardOptions =
                     KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { actions.onSave() }),

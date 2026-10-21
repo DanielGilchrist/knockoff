@@ -7,79 +7,66 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
-import dev.danielgilchrist.knockoff.ui.TargetChoices
 import dev.danielgilchrist.knockoff.ui.components.AddButton
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.CardRemoval
 import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
 import dev.danielgilchrist.knockoff.ui.components.EditCard
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
+import dev.danielgilchrist.knockoff.ui.describe
 import dev.danielgilchrist.knockoff.ui.describeCoverage
 import dev.danielgilchrist.knockoff.ui.removedAt
 import dev.danielgilchrist.knockoff.ui.replacedAt
 
 @Composable
 internal fun PatternsEditor(
-    choices: TargetChoices,
+    app: PackageName,
+    seen: SeenChatsState,
     patterns: List<PatternDraft>,
+    matchesChats: Boolean,
     onPatternsChange: (List<PatternDraft>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var picking by rememberSaveable(stateSaver = AppPicking.SAVER) { mutableStateOf<AppPicking>(AppPicking.Closed) }
-
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SectionHeader(text = "Patterns")
         Caption(
             text =
-                "Match chat names or channel IDs with a regular expression. Case-sensitive; matches anywhere " +
-                    "unless anchored.",
+                when {
+                    matchesChats -> "Match chat names with a regular expression."
+                    else -> "Match notification channel IDs with a regular expression."
+                },
         )
         patterns.forEachIndexed { index, pattern ->
             PatternCard(
+                number = index + 1,
                 pattern = pattern,
-                choices = choices,
+                app = app,
+                seen = seen,
                 onPatternChange = { onPatternsChange(patterns.replacedAt(index, it)) },
                 onRemove = { onPatternsChange(patterns.removedAt(index)) },
             )
         }
-        AddButton(text = "Add pattern", onClick = { picking = AppPicking.Open(emptySet()) })
-    }
-
-    when (val current = picking) {
-        AppPicking.Closed -> {}
-
-        is AppPicking.Open -> {
-            AppPickerDialog(
-                apps = choices.apps,
-                selected = current.chosen,
-                onSelectedChange = { picking = AppPicking.Open(it) },
-                onDismiss = {
-                    onPatternsChange(patterns + current.chosen.map { PatternDraft(it, PatternField.ChatName, "") })
-                    picking = AppPicking.Closed
-                },
-            )
-        }
+        AddButton(text = "Add a pattern", onClick = { onPatternsChange(patterns + PatternDraft.BLANK) })
     }
 }
 
 @Composable
 private fun PatternCard(
+    number: Int,
     pattern: PatternDraft,
-    choices: TargetChoices,
+    app: PackageName,
+    seen: SeenChatsState,
     onPatternChange: (PatternDraft) -> Unit,
     onRemove: () -> Unit,
 ) {
     EditCard(
-        title = choices.apps.labelOf(pattern.app),
+        title = "Pattern $number",
         removal = CardRemoval.Remove("Remove this pattern", onRemove),
     ) {
         ChoiceSegments(
@@ -101,7 +88,7 @@ private fun PatternCard(
             singleLine = true,
             isError = preview is PatternPreview.Invalid,
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
-            supportingText = { Text(text = describe(preview, choices.chats)) },
+            supportingText = { Text(text = describe(preview, app, seen)) },
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -109,12 +96,13 @@ private fun PatternCard(
 
 private fun describe(
     preview: PatternPreview,
+    app: PackageName,
     seen: SeenChatsState,
 ): String =
     when (preview) {
-        PatternPreview.Empty -> "Type a regular expression."
+        PatternPreview.Empty -> "Case-sensitive. Matches anywhere unless you use ^ or $."
         is PatternPreview.Invalid -> "Not a valid regular expression: ${preview.detail}"
-        is PatternPreview.Valid -> describeValid(preview.target, seen)
+        is PatternPreview.Valid -> describeValid(preview.pick.inApp(app), seen)
     }
 
 private fun describeValid(
@@ -127,10 +115,6 @@ private fun describeValid(
         }
 
         is Target.ChatNamePattern -> {
-            when (seen) {
-                SeenChatsState.Loading -> "Loading chats…"
-                is SeenChatsState.Failed -> "Couldn't read the chats seen so far: ${seen.detail}"
-                is SeenChatsState.Loaded -> describeCoverage(seen.chats.filter(target::expandsTo).map { it.name.value })
-            }
+            seen.describe { chats -> describeCoverage(chats.filter(target::expandsTo).map { it.name.value }) }
         }
     }

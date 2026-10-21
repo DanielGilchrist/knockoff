@@ -14,25 +14,34 @@ import dev.danielgilchrist.knockoff.ui.InstalledApp
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.CheckboxListItem
+import dev.danielgilchrist.knockoff.ui.components.PickerClose
 import dev.danielgilchrist.knockoff.ui.components.PickerScreen
 import dev.danielgilchrist.knockoff.ui.toggled
 
 @Composable
 internal fun AppPickerDialog(
     apps: InstalledApps,
+    added: Set<PackageName>,
     selected: Set<PackageName>,
     onSelectedChange: (Set<PackageName>) -> Unit,
-    onDismiss: () -> Unit,
+    onAdd: () -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
 
     PickerScreen(
-        title = "Choose apps",
+        title = "Add apps",
         query = query,
         onQueryChange = { query = it },
         searchHint = "Search apps",
-        onDone = onDismiss,
+        onDone = onAdd,
+        done =
+            when {
+                selected.isEmpty() -> "Add"
+                else -> "Add (${selected.size})"
+            },
+        close = PickerClose.Discard(onClose),
         modifier = modifier,
     ) {
         when (apps) {
@@ -41,10 +50,24 @@ internal fun AppPickerDialog(
             }
 
             is InstalledApps.Loaded -> {
-                val matching = apps.apps.filter { it.matches(query) }
+                val addable = apps.apps.filter { it.packageName !in added }
+                val matching = addable.filter { it.matches(query) }
 
-                if (matching.isEmpty()) {
-                    item { Caption(text = "No apps match \"$query\".", modifier = Modifier.padding(16.dp)) }
+                when {
+                    addable.isEmpty() -> {
+                        item {
+                            Caption(
+                                text = "Every app is already in this rule.",
+                                modifier = Modifier.padding(16.dp),
+                            )
+                        }
+                    }
+
+                    matching.isEmpty() -> {
+                        item { Caption(text = "No apps match \"$query\".", modifier = Modifier.padding(16.dp)) }
+                    }
+
+                    else -> {}
                 }
                 items(matching, key = { it.packageName.value }) { app ->
                     CheckboxListItem(

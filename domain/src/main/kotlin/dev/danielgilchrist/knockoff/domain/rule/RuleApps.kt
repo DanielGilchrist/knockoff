@@ -14,60 +14,6 @@ data class RuleApps private constructor(
         val NONE: RuleApps get() = RuleApps(emptyMap())
 
         fun of(scopes: Map<PackageName, AppScope>): RuleApps = RuleApps(scopes)
-
-        fun fromTargets(
-            targets: Set<Target>,
-            asking: Set<PackageName>,
-        ): RuleApps =
-            RuleApps(
-                (targets.map { it.packageName } + asking)
-                    .distinct()
-                    .flatMap { packageName ->
-                        val own = targets.filter { it.packageName == packageName }
-
-                        when {
-                            own.any { it == Target.App(packageName) } -> listOf(packageName to AppScope.Everything)
-                            else -> narrowed(packageName, own, packageName in asking)
-                        }
-                    }.toMap(),
-            )
-
-        private fun narrowed(
-            packageName: PackageName,
-            targets: List<Target>,
-            asks: Boolean,
-        ): List<Pair<PackageName, AppScope>> =
-            listOf(
-                packageName to
-                    AppScope.Narrowed.chosen(
-                        accounts = targets.flatMap(::accountOf).toMap(),
-                        chats = targets.flatMap(::chatOf),
-                        patterns = targets.flatMap(::patternOf).toSet(),
-                        asking =
-                            when {
-                                asks -> NewChatsAsking.Ask
-                                else -> NewChatsAsking.DontAsk
-                            },
-                    ),
-            )
-
-        private fun accountOf(target: Target): List<Pair<ChannelGroupId, GroupName>> =
-            when (target) {
-                is Target.Account -> listOf(target.group to target.label)
-                is Target.App, is Target.Chat, is Target.Pattern -> emptyList()
-            }
-
-        private fun chatOf(target: Target): List<ChatPick> =
-            when (target) {
-                is Target.Chat -> listOf(ChatPick.of(target))
-                is Target.App, is Target.Account, is Target.Pattern -> emptyList()
-            }
-
-        private fun patternOf(target: Target): List<PatternPick> =
-            when (target) {
-                is Target.Pattern -> listOf(PatternPick.of(target))
-                is Target.App, is Target.Account, is Target.Chat -> emptyList()
-            }
     }
 
     val targets: Set<Target>
@@ -96,6 +42,18 @@ data class RuleApps private constructor(
             is AppScope.Narrowed -> scope.asking == NewChatsAsking.Ask
         }
 
+    fun accountsOf(packageName: PackageName): Map<ChannelGroupId, GroupName> =
+        when (val scope = scopes[packageName]) {
+            null, AppScope.Everything -> emptyMap()
+            is AppScope.Narrowed -> scope.accounts
+        }
+
+    fun chatsOf(packageName: PackageName): Map<ConversationId, ChatPick> =
+        when (val scope = scopes[packageName]) {
+            null, AppScope.Everything -> emptyMap()
+            is AppScope.Narrowed -> scope.chats
+        }
+
     fun withChat(chat: Target.Chat): RuleApps =
         when (val scope = scopes[chat.packageName]) {
             AppScope.Everything -> {
@@ -110,6 +68,29 @@ data class RuleApps private constructor(
                 RuleApps(scopes + (chat.packageName to AppScope.Narrowed.of(ChatPick.of(chat))))
             }
         }
+
+    fun rebased(
+        opened: RuleApps,
+        current: RuleApps,
+    ): RuleApps {
+        val gained = current.scopes.filterKeys { it !in opened.scopes && it !in scopes }
+
+        return RuleApps(
+            scopes.mapValues { (packageName, scope) ->
+                when (scope) {
+                    AppScope.Everything -> {
+                        scope
+                    }
+
+                    is AppScope.Narrowed -> {
+                        scope.withChats(
+                            current.chatsOf(packageName) - opened.chatsOf(packageName).keys,
+                        )
+                    }
+                }
+            } + gained,
+        )
+    }
 
     internal fun expanded(seen: SeenChats): RuleApps =
         RuleApps(

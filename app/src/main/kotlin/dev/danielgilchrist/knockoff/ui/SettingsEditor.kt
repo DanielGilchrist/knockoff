@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.ui
 
+import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.settings.Settings
@@ -52,6 +53,16 @@ class SettingsEditor(
         }
     }
 
+    fun focus(focus: AppFocus) {
+        mutableEditing.update { editing ->
+            when (editing) {
+                Editing.Closed, is Editing.Viewing, is Editing.Renaming -> editing
+                is Editing.Section -> editing.focusing(focus)
+                is Editing.Guided -> editing.focusing(focus)
+            }
+        }
+    }
+
     fun updateDraft(draft: RuleDraft) {
         mutableEditing.update { editing ->
             when (editing) {
@@ -61,12 +72,12 @@ class SettingsEditor(
         }
     }
 
-    fun saveDraft() {
+    fun saveDraft(groups: KnownGroups) {
         when (val editing = mutableEditing.value) {
             Editing.Closed, is Editing.Viewing -> {}
 
             is Editing.Active -> {
-                when (val checked = editing.draft.parse()) {
+                when (val checked = editing.draft.withLearnedNames(groups).parse()) {
                     is Checked.Problems -> {
                         mutableEditing.value = editing.with(editing.draft, checked.problems)
                     }

@@ -12,6 +12,7 @@ import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.days
+import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.Channel

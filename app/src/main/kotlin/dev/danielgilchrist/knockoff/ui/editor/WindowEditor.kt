@@ -15,7 +15,7 @@ internal fun WindowEditor(
 ) {
     val (title, removal) =
         when (position) {
-            WindowPosition.Only -> "Hours" to CardRemoval.None
+            WindowPosition.Only -> "" to CardRemoval.None
             is WindowPosition.OneOf -> "Hours ${position.number}" to CardRemoval.Remove("Remove these hours", onRemove)
         }
 

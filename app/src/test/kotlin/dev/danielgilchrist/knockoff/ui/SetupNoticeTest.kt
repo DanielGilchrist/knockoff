@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.settings.Settings
+import dev.danielgilchrist.knockoff.ruleApps
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
@@ -40,7 +41,7 @@ class SetupNoticeTest {
                 listOf(
                     work.copy(
                         state = state,
-                        apps = RuleApps.fromTargets(work.targets, setOf(COLLEAGUE_CHAT.packageName)),
+                        apps = ruleApps(work.targets, setOf(COLLEAGUE_CHAT.packageName)),
                     ),
                 ),
             ),

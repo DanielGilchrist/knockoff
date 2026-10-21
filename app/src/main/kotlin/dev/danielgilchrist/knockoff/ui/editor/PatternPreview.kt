@@ -1,6 +1,6 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
-import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.rule.PatternPick
 
 sealed interface PatternPreview {
     data object Empty : PatternPreview
@@ -10,6 +10,6 @@ sealed interface PatternPreview {
     ) : PatternPreview
 
     data class Valid(
-        val target: Target.Pattern,
+        val pick: PatternPick,
     ) : PatternPreview
 }

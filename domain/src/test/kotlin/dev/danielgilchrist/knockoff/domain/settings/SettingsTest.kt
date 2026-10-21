@@ -8,6 +8,7 @@ import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.breakNamed
 import dev.danielgilchrist.knockoff.domain.days
+import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.group.GroupName
 import dev.danielgilchrist.knockoff.domain.group.GroupNameParse
 import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
@@ -19,7 +20,6 @@ import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
-import dev.danielgilchrist.knockoff.domain.rule.gmailAccount
 import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.schedule
 import dev.danielgilchrist.knockoff.domain.shouldBe

@@ -5,10 +5,12 @@ import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.ruleApps
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
 import dev.danielgilchrist.knockoff.domain.textPattern
@@ -21,7 +23,7 @@ class RuleAppsTest {
 
     @Test
     fun `an app target holds the whole app and absorbs its narrower picks`() {
-        val apps = RuleApps.fromTargets(setOf(Target.App(WHATSAPP), COLLEAGUE_CHAT, pattern), setOf(WHATSAPP))
+        val apps = ruleApps(setOf(Target.App(WHATSAPP), COLLEAGUE_CHAT, pattern), setOf(WHATSAPP))
 
         apps.scopes shouldBe mapOf(WHATSAPP to AppScope.Everything)
         apps.targets shouldBe setOf(Target.App(WHATSAPP))
@@ -30,7 +32,7 @@ class RuleAppsTest {
 
     @Test
     fun `narrower picks are grouped under their own app`() {
-        val apps = RuleApps.fromTargets(setOf(account, COLLEAGUE_CHAT, pattern), setOf(WHATSAPP, SLACK))
+        val apps = ruleApps(setOf(account, COLLEAGUE_CHAT, pattern), setOf(WHATSAPP, SLACK))
 
         apps.scopes.keys shouldBe setOf(account.packageName, WHATSAPP, SLACK)
         apps.targets shouldBe setOf(account, COLLEAGUE_CHAT, pattern)
@@ -44,10 +46,54 @@ class RuleAppsTest {
         val other = COLLEAGUE_CHAT.copy(packageName = SLACK)
 
         RuleApps.NONE.withChat(COLLEAGUE_CHAT).targets shouldBe setOf(COLLEAGUE_CHAT)
-        RuleApps.fromTargets(setOf(pattern), emptySet()).withChat(COLLEAGUE_CHAT).targets shouldBe
+        ruleApps(setOf(pattern), emptySet()).withChat(COLLEAGUE_CHAT).targets shouldBe
             setOf(pattern, COLLEAGUE_CHAT)
-        RuleApps.fromTargets(setOf(Target.App(SLACK)), emptySet()).withChat(other).targets shouldBe
+        ruleApps(setOf(Target.App(SLACK)), emptySet()).withChat(other).targets shouldBe
             setOf(Target.App(SLACK))
+    }
+
+    @Test
+    fun `an app's picks are empty when it's held whole or missing`() {
+        val apps = ruleApps(setOf(COLLEAGUE_CHAT, account, Target.App(SLACK)), setOf(WHATSAPP))
+
+        apps.chatsOf(WHATSAPP).keys shouldBe setOf(COLLEAGUE_CHAT.id)
+        apps.accountsOf(account.packageName) shouldBe mapOf(account.group to account.label)
+        apps.chatsOf(SLACK) shouldBe emptyMap()
+        apps.accountsOf(SLACK) shouldBe emptyMap()
+        apps.chatsOf(PackageName("org.signal")) shouldBe emptyMap()
+        apps.accountsOf(PackageName("org.signal")) shouldBe emptyMap()
+    }
+
+    @Test
+    fun `rebasing keeps the edit, chats added since it opened and apps gained since`() {
+        val opened = ruleApps(setOf(COLLEAGUE_CHAT, account), emptySet())
+        val current =
+            opened
+                .withChat(friend)
+                .withChat(COLLEAGUE_CHAT.copy(packageName = SLACK))
+        val edited = ruleApps(setOf(pattern), emptySet())
+
+        edited.rebased(opened, current).targets shouldBe
+            setOf(pattern, friend, COLLEAGUE_CHAT.copy(packageName = SLACK))
+    }
+
+    @Test
+    fun `rebasing leaves a whole app whole and an app the edit kept wins over the stored one`() {
+        val opened = ruleApps(setOf(COLLEAGUE_CHAT), emptySet())
+        val current = opened.withChat(friend)
+        val whole = ruleApps(setOf(Target.App(WHATSAPP)), emptySet())
+
+        whole.rebased(opened, current).targets shouldBe setOf(Target.App(WHATSAPP))
+        whole.rebased(RuleApps.NONE, current).targets shouldBe setOf(Target.App(WHATSAPP))
+    }
+
+    @Test
+    fun `rebasing takes no chats from an app that was missing or whole`() {
+        val edited = ruleApps(setOf(pattern), emptySet())
+        val whole = ruleApps(setOf(Target.App(WHATSAPP)), emptySet())
+
+        edited.rebased(RuleApps.NONE, whole) shouldBe edited
+        edited.rebased(whole, RuleApps.NONE) shouldBe edited
     }
 
     @Test
@@ -58,7 +104,7 @@ class RuleAppsTest {
                 .seen(moved)
                 .seen(friend)
                 .seen(friend.copy(packageName = SLACK))
-        val apps = RuleApps.fromTargets(setOf(COLLEAGUE_CHAT, pattern, Target.App(SLACK)), emptySet())
+        val apps = ruleApps(setOf(COLLEAGUE_CHAT, pattern, Target.App(SLACK)), emptySet())
 
         apps.expanded(seen).targets shouldBe setOf(moved, friend, pattern, Target.App(SLACK))
     }
@@ -67,7 +113,7 @@ class RuleAppsTest {
     fun `expanding only takes seen chats from the same app`() {
         val elsewhere = friend.copy(packageName = SLACK)
         val samePicked = COLLEAGUE_CHAT.copy(packageName = SLACK, channel = ChannelId("elsewhere"))
-        val apps = RuleApps.fromTargets(setOf(COLLEAGUE_CHAT, pattern), emptySet())
+        val apps = ruleApps(setOf(COLLEAGUE_CHAT, pattern), emptySet())
 
         apps.expanded(SeenChats.NONE.seen(elsewhere).seen(samePicked)).targets shouldBe setOf(COLLEAGUE_CHAT, pattern)
     }

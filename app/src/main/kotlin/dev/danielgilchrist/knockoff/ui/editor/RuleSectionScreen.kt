@@ -15,6 +15,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.domain.rule.Policy
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
+import dev.danielgilchrist.knockoff.ui.AppFocus
 import dev.danielgilchrist.knockoff.ui.Editing
 import dev.danielgilchrist.knockoff.ui.RuleSection
 import dev.danielgilchrist.knockoff.ui.TargetChoices
@@ -22,24 +24,66 @@ import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
 import dev.danielgilchrist.knockoff.ui.components.EditorScreen
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
+import dev.danielgilchrist.knockoff.ui.zone.DefaultZone
 
 @Composable
 internal fun RuleSectionScreen(
     editing: Editing.Section,
     choices: TargetChoices,
+    defaultZone: DefaultZone,
+    actions: RuleSectionActions,
+    modifier: Modifier = Modifier,
+) {
+    when (val focus = editing.focus) {
+        AppFocus.List -> {
+            SectionEditor(
+                editing = editing,
+                choices = choices,
+                defaultZone = defaultZone,
+                actions = actions,
+                modifier = modifier,
+            )
+        }
+
+        is AppFocus.App -> {
+            FocusedApp(
+                app = focus.app,
+                draft = editing.draft,
+                stored = editing.rule.apps,
+                choices = choices,
+                onDraftChange = actions.onDraftChange,
+                onFocus = actions.onFocus,
+                modifier = modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionEditor(
+    editing: Editing.Section,
+    choices: TargetChoices,
+    defaultZone: DefaultZone,
     actions: RuleSectionActions,
     modifier: Modifier = Modifier,
 ) {
     var discarding by rememberSaveable { mutableStateOf(false) }
-    val back = { if (editing.draft == RuleDraft.from(editing.rule)) actions.onCancel() else discarding = true }
+    val back = { if (editing.changed) discarding = true else actions.onCancel() }
 
     BackHandler(onBack = back)
 
     EditorScreen(title = title(editing.section), onClose = back, onSave = actions.onSave, modifier = modifier) {
         if (editing.problems.isNotEmpty()) {
-            item { DraftProblems(problems = editing.problems) }
+            item {
+                DraftProblems(
+                    problems = editing.problems,
+                    draft = editing.draft,
+                    stored = editing.rule.apps,
+                    choices = choices,
+                )
+            }
         }
-        section(editing.section, editing.draft, choices, actions.onDraftChange)
+        section(editing.section, editing.draft, editing.rule.apps, choices, defaultZone, actions)
     }
 
     if (discarding) {
@@ -63,36 +107,32 @@ internal fun RuleSectionScreen(
 private fun LazyListScope.section(
     section: RuleSection,
     draft: RuleDraft,
+    stored: RuleApps,
     choices: TargetChoices,
-    change: (RuleDraft) -> Unit,
+    defaultZone: DefaultZone,
+    actions: RuleSectionActions,
 ) {
+    val change = actions.onDraftChange
+
     when (section) {
-        RuleSection.What -> {
+        RuleSection.Apps -> {
             item {
-                AppsEditor(
-                    apps = choices.apps,
-                    selected = draft.apps,
-                    onSelectedChange = { change(draft.copy(apps = it)) },
+                AppsList(
+                    draft = draft,
+                    stored = stored,
+                    choices = choices,
+                    onDraftChange = change,
+                    onOpenApp = { actions.onFocus(AppFocus.App(it)) },
                 )
             }
-            item { ChatsEditor(seen = choices.chats, apps = choices.apps, draft = draft, onDraftChange = change) }
-            item { GmailAccountsEditor(draft = draft, onDraftChange = change) }
         }
 
-        RuleSection.When -> {
+        RuleSection.Hours -> {
             item { PolicyChoice(policy = draft.policy, onPolicyChange = { change(draft.copy(policy = it)) }) }
             hoursItems(draft = draft, onDraftChange = change)
             breakItems(draft = draft, onDraftChange = change)
-        }
-
-        RuleSection.Advanced -> {
-            item { ZoneEditor(zone = draft.zone, onZoneChange = { change(draft.copy(zone = it)) }) }
             item {
-                PatternsEditor(
-                    choices = choices,
-                    patterns = draft.patterns,
-                    onPatternsChange = { change(draft.copy(patterns = it)) },
-                )
+                ZoneEditor(zone = draft.zone, default = defaultZone, onZoneChange = { change(draft.copy(zone = it)) })
             }
         }
     }
@@ -128,7 +168,6 @@ private fun PolicyChoice(
 
 private fun title(section: RuleSection): String =
     when (section) {
-        RuleSection.What -> "What it holds"
-        RuleSection.When -> "When"
-        RuleSection.Advanced -> "Advanced"
+        RuleSection.Apps -> "Apps"
+        RuleSection.Hours -> "Hours"
     }

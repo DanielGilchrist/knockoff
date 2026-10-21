@@ -1,6 +1,8 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.group.KnownGroups
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
@@ -42,12 +44,33 @@ class SettingsEditorTest {
             editor.guide { it.toStep(WizardStep.Review) }
             assertEquals(Editing.Closed, editor.editing.value)
 
-            editor.show(Editing.Section.of(work, RuleSection.When))
+            editor.show(Editing.Section.of(work, RuleSection.Hours))
             editor.guide { it.toStep(WizardStep.Review) }
             assertEquals(
-                Editing.Section.of(work, RuleSection.When),
+                Editing.Section.of(work, RuleSection.Hours),
                 editor.editing.value,
             )
+        }
+
+    @Test
+    fun `focus moves within sections and the wizard and nowhere else`() =
+        runTest {
+            val editor = editor()
+            val slack = AppFocus.App(PackageName("com.Slack"))
+
+            editor.focus(slack)
+            assertEquals(Editing.Closed, editor.editing.value)
+            editor.show(Editing.Renaming.of(work))
+            editor.focus(slack)
+            assertEquals(Editing.Renaming.of(work), editor.editing.value)
+            editor.show(Editing.Section.of(work, RuleSection.Apps))
+            editor.focus(slack)
+            assertEquals(Editing.Section.of(work, RuleSection.Apps).focusing(slack), editor.editing.value)
+            editor.show(Editing.Guided.START)
+            editor.focus(slack)
+            assertEquals(Editing.Guided.START.focusing(slack), editor.editing.value)
+            editor.updateDraft(RuleDraft.NEW.copy(name = "x"))
+            assertEquals(slack, assertInstanceOf(Editing.Guided::class.java, editor.editing.value).focus)
         }
 
     @Test
@@ -57,7 +80,7 @@ class SettingsEditorTest {
             editor.show(Editing.Guided.START)
             editor.guide { it.toStep(WizardStep.Review) }
 
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             val guided = assertInstanceOf(Editing.Guided::class.java, editor.editing.value)
             assertEquals(WizardStep.Review, guided.step)
@@ -72,7 +95,7 @@ class SettingsEditorTest {
             editor.show(Editing.Guided.START)
             editor.guide { it.choosing(WizardGoal.WorkHours).toStep(WizardStep.Review) }
 
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             val guided = editor.editing.first { it is Editing.Guided && it.problems.isNotEmpty() }
             assertEquals(
@@ -86,10 +109,10 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
 
-            editor.show(Editing.Section.of(work, RuleSection.What))
+            editor.show(Editing.Section.of(work, RuleSection.Apps))
 
             assertEquals(
-                Editing.Section(work, RuleSection.What, RuleDraft.from(work), emptyList()),
+                Editing.Section(work, RuleSection.Apps, RuleDraft.from(work), emptyList(), AppFocus.List),
                 editor.editing.value,
             )
         }
@@ -102,7 +125,7 @@ class SettingsEditorTest {
             editor.show(Editing.Renaming.of(work))
             editor.updateDraft(RuleDraft.from(work).copy(name = "Office"))
 
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             val office = assertValid(RuleDraft.from(work).copy(name = "Office"))
             assertEquals(Editing.Viewing(work.copy(name = office.name)), editor.editing.first { it is Editing.Viewing })
@@ -116,7 +139,7 @@ class SettingsEditorTest {
 
             editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             editor.editing.first { it == Editing.Viewing(assertValid(RuleDraft.NEW.copy(name = "Evenings"))) }
             val saved = editor.settings.first { it is SettingsState.Ready && it.origin == SettingsOrigin.Saved }
@@ -134,7 +157,7 @@ class SettingsEditorTest {
             val editor = editor()
 
             editor.show(Editing.Guided.START)
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             assertEquals(listOf(DraftProblem.BlankName), openEditing(editor).problems)
         }
@@ -144,7 +167,7 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
             editor.show(Editing.Guided.START)
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             editor.updateDraft(RuleDraft.NEW.copy(name = "x"))
 
@@ -159,7 +182,7 @@ class SettingsEditorTest {
 
             editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Work"))
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             val problems = editor.editing.first { it is Editing.Active && it.problems.isNotEmpty() }
             assertEquals(
@@ -176,7 +199,7 @@ class SettingsEditorTest {
 
             editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             val open =
                 assertInstanceOf(
@@ -230,7 +253,7 @@ class SettingsEditorTest {
             editor.readySettings()
             editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
             editor.editing.first { it is Editing.Viewing }
 
             editor.changeRule(work.name, RuleChange.SetState(RuleState.Disabled))
@@ -275,7 +298,7 @@ class SettingsEditorTest {
         runTest {
             val editor = editor()
             editor.readySettings()
-            editor.show(Editing.Section.of(work, RuleSection.When))
+            editor.show(Editing.Section.of(work, RuleSection.Hours))
             editor.updateDraft(RuleDraft.from(work).copy(policy = Policy.HoldDuring))
             editor.changeRule(work.name, RuleChange.AddChat(COLLEAGUE_CHAT))
             editor.settings.first {
@@ -286,7 +309,7 @@ class SettingsEditorTest {
                         .isNotEmpty()
             }
 
-            editor.saveDraft()
+            editor.saveDraft(KnownGroups.NONE)
 
             editor.settings.first {
                 it is SettingsState.Ready &&
@@ -335,12 +358,12 @@ class SettingsEditorTest {
             editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Evenings"))
 
-            editor.saveDraft()
-            editor.show(Editing.Section.of(work, RuleSection.When))
+            editor.saveDraft(KnownGroups.NONE)
+            editor.show(Editing.Section.of(work, RuleSection.Hours))
             editor.settings.first { it is SettingsState.Ready && it.settings.rules.rules.size == 2 }
 
             assertEquals(
-                Editing.Section.of(work, RuleSection.When),
+                Editing.Section.of(work, RuleSection.Hours),
                 editor.editing.value,
             )
         }
@@ -353,8 +376,8 @@ class SettingsEditorTest {
             editor.show(Editing.Guided.START)
             editor.updateDraft(RuleDraft.NEW.copy(name = "Work"))
 
-            editor.saveDraft()
-            editor.show(Editing.Section.of(work, RuleSection.When))
+            editor.saveDraft(KnownGroups.NONE)
+            editor.show(Editing.Section.of(work, RuleSection.Hours))
             editor.changeRule(work.name, RuleChange.SetState(RuleState.Disabled))
             editor.settings.first {
                 it is SettingsState.Ready &&
@@ -365,7 +388,7 @@ class SettingsEditorTest {
             testScheduler.advanceUntilIdle()
 
             assertEquals(
-                Editing.Section.of(work, RuleSection.When),
+                Editing.Section.of(work, RuleSection.Hours),
                 editor.editing.value,
             )
         }

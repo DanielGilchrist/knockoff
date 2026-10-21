@@ -1,7 +1,5 @@
 package dev.danielgilchrist.knockoff.ui
 
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.ui.editor.Checked
 import dev.danielgilchrist.knockoff.ui.editor.DraftProblem
@@ -36,17 +34,27 @@ sealed interface Editing {
         val section: RuleSection,
         override val draft: RuleDraft,
         override val problems: List<DraftProblem>,
+        val focus: AppFocus,
     ) : Active {
         companion object {
             fun of(
                 rule: Rule,
                 section: RuleSection,
-            ): Section = Section(rule, section, RuleDraft.from(rule), emptyList())
+            ): Section = Section(rule, section, RuleDraft.from(rule), emptyList(), AppFocus.List)
         }
 
         override val target: EditTarget get() = EditTarget.Existing(rule)
 
-        override fun saving(edited: Rule): Rule = section.merge(rule, edited)
+        override fun saving(edited: Rule): Rule = section.merge(rule, rule, edited)
+
+        val changed: Boolean
+            get() =
+                when (val checked = draft.parse()) {
+                    is Checked.Ok -> section.merge(rule, rule, checked.value) != rule
+                    is Checked.Problems -> draft != RuleDraft.from(rule)
+                }
+
+        fun focusing(focus: AppFocus): Section = copy(focus = focus)
 
         override fun with(
             draft: RuleDraft,
@@ -78,9 +86,11 @@ sealed interface Editing {
         override val problems: List<DraftProblem>,
         val step: WizardStep,
         val goal: GoalChoice,
+        val focus: AppFocus,
     ) : Active {
         companion object {
-            val START: Guided get() = Guided(RuleDraft.NEW, emptyList(), WizardStep.Goal, GoalChoice.Unchosen)
+            val START: Guided
+                get() = Guided(RuleDraft.NEW, emptyList(), WizardStep.Goal, GoalChoice.Unchosen, AppFocus.List)
         }
 
         override val target: EditTarget get() = EditTarget.New
@@ -92,7 +102,9 @@ sealed interface Editing {
             problems: List<DraftProblem>,
         ): Active = copy(draft = draft, problems = problems)
 
-        fun toStep(step: WizardStep): Guided = copy(step = step)
+        fun focusing(focus: AppFocus): Guided = copy(focus = focus)
+
+        fun toStep(step: WizardStep): Guided = copy(step = step, focus = AppFocus.List)
 
         fun choosing(chosen: WizardGoal): Guided =
             when (val current = goal) {
@@ -116,13 +128,11 @@ sealed interface Editing {
         fun canContinue(): Boolean =
             when (step) {
                 WizardStep.Goal -> goal != GoalChoice.Unchosen
-                WizardStep.What -> picksSomething() && stepProblems().isEmpty()
-                WizardStep.When, WizardStep.Review -> stepProblems().isEmpty()
+                WizardStep.Apps -> picksSomething() && stepProblems().isEmpty()
+                WizardStep.Hours, WizardStep.Review -> stepProblems().isEmpty()
             }
 
-        fun picksSomething(): Boolean =
-            listOf(draft.apps, draft.chats.keys, draft.gmailAccounts, draft.asking).any { it.isNotEmpty() } ||
-                typesAnAccount()
+        fun picksSomething(): Boolean = draft.apps.isNotEmpty()
 
         fun stepProblems(): List<DraftProblem> {
             val live =
@@ -134,15 +144,7 @@ sealed interface Editing {
             return (live + problems).distinct().filter { WizardStep.of(it) == step }
         }
 
-        fun shownProblems(): List<DraftProblem> = stepProblems().filterNot { it is DraftProblem.UnaddedAccount }
-
         private fun replacingWith(chosen: WizardGoal): Guided =
             copy(draft = chosen.replacing(goal, draft), problems = emptyList(), goal = GoalChoice.Chosen(chosen))
-
-        private fun typesAnAccount(): Boolean =
-            when (AccountAddress.parse(draft.pendingGmail)) {
-                is AccountAddressParse.Valid -> true
-                is AccountAddressParse.Invalid -> false
-            }
     }
 }

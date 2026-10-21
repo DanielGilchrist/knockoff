@@ -13,6 +13,7 @@ import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.settings.Settings
+import dev.danielgilchrist.knockoff.ruleApps
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -85,7 +86,7 @@ class SilencedChannelsStoreTest {
                     Settings.DEFAULT.rules.rules.map {
                         it.copy(
                             policy = Policy.HoldDuring,
-                            apps = RuleApps.fromTargets(setOf(Target.App(slack)), emptySet()),
+                            apps = ruleApps(setOf(Target.App(slack)), emptySet()),
                         )
                     },
                 ),

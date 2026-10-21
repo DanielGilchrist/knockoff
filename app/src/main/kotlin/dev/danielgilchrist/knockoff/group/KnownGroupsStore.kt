@@ -23,11 +23,7 @@ class KnownGroupsStore(
 
     val loads: Flow<KnownGroupsLoad> = writes.map { read() }.distinctUntilChanged()
 
-    suspend fun current(): KnownGroups =
-        when (val load = read()) {
-            is KnownGroupsLoad.Loaded -> load.groups
-            is KnownGroupsLoad.Corrupt, is KnownGroupsLoad.ReadFailed -> KnownGroups.NONE
-        }
+    suspend fun current(): KnownGroups = read().known
 
     suspend fun update(change: (KnownGroups) -> KnownGroups): GroupRecord =
         mutex.withLock {

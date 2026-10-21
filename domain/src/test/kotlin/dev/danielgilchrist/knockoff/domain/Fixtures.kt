@@ -5,8 +5,8 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
+import dev.danielgilchrist.knockoff.domain.group.GroupName
+import dev.danielgilchrist.knockoff.domain.group.GroupNameParse
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
@@ -103,10 +103,10 @@ val ALL_BUT_SUNDAY: WeekDays = days(*DayOfWeek.entries.filter { it != DayOfWeek.
 
 val WORK_HOURS: Schedule = schedule(window(days(MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY), "08:00", "17:00"))
 
-fun address(raw: String): AccountAddress =
-    when (val parse = AccountAddress.parse(raw)) {
-        is AccountAddressParse.Valid -> parse.address
-        is AccountAddressParse.Invalid -> error(parse.detail)
+fun groupName(raw: String): GroupName =
+    when (val parse = GroupName.parse(raw)) {
+        is GroupNameParse.Valid -> parse.name
+        GroupNameParse.Blank -> error("Fixture group name is blank")
     }
 
 fun rule(
@@ -117,7 +117,7 @@ fun rule(
     state: RuleState = RuleState.Enabled,
     zone: RuleZone = RuleZone.Default,
     asking: Set<PackageName> = emptySet(),
-): Rule = Rule(ruleName(name), state, policy, schedule, RuleApps.fromTargets(targets, asking), zone)
+): Rule = Rule(ruleName(name), state, policy, schedule, ruleApps(targets, asking), zone)
 
 fun ruleName(raw: String): RuleName =
     when (val parse = RuleName.parse(raw)) {
@@ -143,7 +143,7 @@ fun gmailGroup(address: String): ChannelGrouping = ChannelGrouping.Grouped(Chann
 
 val SLACK = PackageName("com.Slack")
 
-val WORK_ADDRESS = address("dan@work.example")
+val WORK_ADDRESS = groupName("dan@work.example")
 
 val SLACK_ORIGIN = Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None, OriginGroup.Unknown)
 
@@ -199,3 +199,6 @@ fun textPattern(source: String): TextPattern =
         is TextPatternParse.Valid -> parse.pattern
         TextPatternParse.Blank, is TextPatternParse.Invalid -> error("Fixture pattern is invalid: $source")
     }
+
+fun GroupName.gmailAccount(): Target.Account =
+    Target.Account(PackageName.GMAIL, ChannelGroupId("^ncg_1_account_$value"), this)

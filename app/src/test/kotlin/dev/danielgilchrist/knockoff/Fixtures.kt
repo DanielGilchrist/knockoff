@@ -1,5 +1,7 @@
 package dev.danielgilchrist.knockoff
 
+import dev.danielgilchrist.knockoff.domain.group.GroupName
+import dev.danielgilchrist.knockoff.domain.group.GroupNameParse
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
@@ -13,3 +15,9 @@ val COLLEAGUE_CHAT =
         ConversationId("1000000000001@lid"),
         ConversationName("Colleague"),
     )
+
+fun groupName(raw: String): GroupName =
+    when (val parse = GroupName.parse(raw)) {
+        is GroupNameParse.Valid -> parse.name
+        GroupNameParse.Blank -> error("Fixture group name is blank")
+    }

@@ -9,6 +9,12 @@ sealed interface Checked<out T> {
         val problems: List<DraftProblem>,
     ) : Checked<Nothing>
 
+    fun <R> map(transform: (T) -> R): Checked<R> =
+        when (this) {
+            is Ok -> Ok(transform(value))
+            is Problems -> this
+        }
+
     fun <U, R> and(
         other: Checked<U>,
         combine: (T, U) -> R,

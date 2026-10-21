@@ -40,12 +40,14 @@ internal fun EditCard(
             modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = top, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                when (removal) {
-                    CardRemoval.None -> {}
+            when (removal) {
+                CardRemoval.None -> {
+                    if (title.isNotEmpty()) Text(text = title, style = MaterialTheme.typography.titleMedium)
+                }
 
-                    is CardRemoval.Remove -> {
+                is CardRemoval.Remove -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                         IconButton(onClick = removal.onRemove) {
                             Icon(painter = painterResource(R.drawable.ic_delete), contentDescription = removal.label)
                         }

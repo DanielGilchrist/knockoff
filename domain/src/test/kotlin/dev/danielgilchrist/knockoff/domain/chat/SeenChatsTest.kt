@@ -9,6 +9,7 @@ import dev.danielgilchrist.knockoff.domain.LONDON
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
+import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.channel.AlertingImportance
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
@@ -17,8 +18,11 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.group.GroupName
+import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.london
+import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
@@ -35,6 +39,7 @@ import dev.danielgilchrist.knockoff.domain.rule.Recheck
 import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.ruleApps
 import dev.danielgilchrist.knockoff.domain.ruleName
 import dev.danielgilchrist.knockoff.domain.ruleSet
 import dev.danielgilchrist.knockoff.domain.sharedChannels
@@ -326,8 +331,8 @@ class SeenChatsTest {
                 .seen(dad)
         val decisions = ChatDecisions.NONE.lettingThrough(other.key)
 
-        seen.undecided(rules, decisions) shouldBe listOf(dad)
-        seen.undecided(rules, ChatDecisions.NONE) shouldBe listOf(dad, other)
+        seen.undecided(rules, decisions, KnownGroups.NONE) shouldBe listOf(dad)
+        seen.undecided(rules, ChatDecisions.NONE, KnownGroups.NONE) shouldBe listOf(dad, other)
     }
 
     @Test
@@ -340,6 +345,7 @@ class SeenChatsTest {
                     rule("Ask", Policy.DeliverOnlyDuring, WORK_HOURS, emptySet(), asking = setOf(WHATSAPP)),
                 ),
                 ChatDecisions.NONE,
+                KnownGroups.NONE,
             )
         }
 
@@ -357,6 +363,7 @@ class SeenChatsTest {
             seen.undecided(
                 ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, emptySet(), state, asking = apps)),
                 ChatDecisions.NONE,
+                KnownGroups.NONE,
             )
         }
 
@@ -367,8 +374,32 @@ class SeenChatsTest {
     }
 
     @Test
+    fun `a chat in a group an account rule holds is not undecided`() {
+        val group = ChannelGroupId("channel_group_chats")
+        val seen = SeenChats.NONE.seen(COLLEAGUE_CHAT)
+        val rules =
+            ruleSet(
+                rule(
+                    "Work",
+                    Policy.DeliverOnlyDuring,
+                    WORK_HOURS,
+                    setOf(Target.Account(WHATSAPP, group, WORK_ADDRESS)),
+                    asking = setOf(WHATSAPP),
+                ),
+            )
+        val known =
+            KnownGroups.NONE.sighted(
+                ChannelKey(COLLEAGUE_CHAT.packageName, COLLEAGUE_CHAT.channel),
+                ChannelGrouping.Grouped(group),
+            )
+
+        seen.undecided(rules, ChatDecisions.NONE, KnownGroups.NONE) shouldBe listOf(COLLEAGUE_CHAT)
+        seen.undecided(rules, ChatDecisions.NONE, known) shouldBe emptyList()
+    }
+
+    @Test
     fun `nothing seen means nothing undecided`() {
-        SeenChats.NONE.undecided(ruleSet(), ChatDecisions.NONE) shouldBe emptyList()
+        SeenChats.NONE.undecided(ruleSet(), ChatDecisions.NONE, KnownGroups.NONE) shouldBe emptyList()
     }
 
     @Test
@@ -390,13 +421,19 @@ class SeenChatsTest {
             )
         val decisions = ChatDecisions.NONE.askedAbout(setOf(COLLEAGUE_CHAT.key))
 
-        seen.questions(rules, decisions) shouldBe
+        seen.questions(rules, decisions, KnownGroups.NONE) shouldBe
             listOf(
                 ChatQuestion(slack, ruleName("Clients")),
                 ChatQuestion(friend, ruleName("Work"), listOf(ruleName("Clients"))),
             )
-        seen.questions(ruleSet(asking("Work", RuleState.Enabled, emptySet())), ChatDecisions.NONE) shouldBe emptyList()
-        seen.questions(rules, decisions.lettingThrough(friend.key).lettingThrough(slack.key)) shouldBe emptyList()
+        seen.questions(
+            ruleSet(asking("Work", RuleState.Enabled, emptySet())),
+            ChatDecisions.NONE,
+            KnownGroups.NONE,
+        ) shouldBe
+            emptyList()
+        seen.questions(rules, decisions.lettingThrough(friend.key).lettingThrough(slack.key), KnownGroups.NONE) shouldBe
+            emptyList()
     }
 
     @Test
@@ -407,17 +444,19 @@ class SeenChatsTest {
             seen.questions(
                 ruleSet(asker, rule("Hold", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(target))),
                 ChatDecisions.NONE,
+                KnownGroups.NONE,
             )
         }
 
-        seen.questions(ruleSet(asker), ChatDecisions.NONE) shouldBe
+        seen.questions(ruleSet(asker), ChatDecisions.NONE, KnownGroups.NONE) shouldBe
             listOf(ChatQuestion(COLLEAGUE_CHAT, asker.name))
         holding(COLLEAGUE_CHAT) shouldBe emptyList()
         holding(Target.ChatNamePattern(WHATSAPP, textPattern("^Coll"))) shouldBe emptyList()
         holding(Target.App(WHATSAPP)) shouldBe emptyList()
         seen.questions(
-            ruleSet(asker.copy(apps = RuleApps.fromTargets(setOf(COLLEAGUE_CHAT), asker.asking))),
+            ruleSet(asker.copy(apps = ruleApps(setOf(COLLEAGUE_CHAT), asker.asking))),
             ChatDecisions.NONE,
+            KnownGroups.NONE,
         ) shouldBe
             emptyList()
     }

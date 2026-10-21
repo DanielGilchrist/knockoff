@@ -33,14 +33,16 @@ internal fun LazyListScope.breakItems(
     draft: RuleDraft,
     onDraftChange: (RuleDraft) -> Unit,
 ) {
-    item {
-        Column {
-            SectionHeader(text = "Breaks")
-            Caption(text = "Time taken out of the hours, such as lunch.")
-            if (draft.windows.any { it.runsPastMidnight() }) {
-                Caption(
-                    text = "A break counts on the day it starts. For Fri 22:00 to 06:00, pick Sat for a 02:00 break.",
-                )
+    if (draft.breaks.isNotEmpty()) {
+        item {
+            Column {
+                SectionHeader(text = "Breaks")
+                if (draft.windows.any { it.runsPastMidnight() }) {
+                    Caption(
+                        text =
+                            "A break counts on the day it starts. For Fri 22:00 to 06:00, pick Sat for a 02:00 break.",
+                    )
+                }
             }
         }
     }
@@ -53,6 +55,10 @@ internal fun LazyListScope.breakItems(
         )
     }
     item {
-        AddButton(text = "Add break", onClick = { onDraftChange(draft.withBreakAdded()) })
+        AddButton(
+            text = "Add a break",
+            supporting = "Such as lunch",
+            onClick = { onDraftChange(draft.withBreakAdded()) },
+        )
     }
 }

@@ -3,9 +3,10 @@ package dev.danielgilchrist.knockoff.ui.zone
 import dev.danielgilchrist.knockoff.domain.zone.RuleZone
 import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import dev.danielgilchrist.knockoff.ui.describe
+import java.time.ZoneId
 
-private const val DEVICE = "Device time zone"
-private const val APP_DEFAULT = "App default"
+private const val DEVICE = "Same as your phone"
+private const val APP_DEFAULT = "Default"
 
 internal val DEVICE_ZONE: LeadingZone<ZoneChoice> =
     LeadingZone(ZoneChoice.Device, DEVICE, "Follows the phone when you travel")
@@ -22,8 +23,25 @@ internal fun ZoneChoice.label(): String =
         is ZoneChoice.Fixed -> zone.describe()
     }
 
-internal fun RuleZone.label(): String =
+internal fun RuleZone.label(
+    default: DefaultZone,
+    device: ZoneId,
+): String =
     when (this) {
-        RuleZone.Default -> APP_DEFAULT
+        RuleZone.Default -> default.label(device)
         is RuleZone.Chosen -> choice.label()
+    }
+
+internal fun DefaultZone.label(device: ZoneId): String =
+    when (this) {
+        DefaultZone.Unknown -> {
+            APP_DEFAULT
+        }
+
+        is DefaultZone.Known -> {
+            when (zone) {
+                ZoneChoice.Device -> "$DEVICE (${device.id})"
+                is ZoneChoice.Fixed -> "$APP_DEFAULT (${zone.label()})"
+            }
+        }
     }

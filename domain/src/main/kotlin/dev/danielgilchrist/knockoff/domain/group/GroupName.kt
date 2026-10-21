@@ -1,13 +1,13 @@
 package dev.danielgilchrist.knockoff.domain.group
 
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
+import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 
 @JvmInline
 value class GroupName private constructor(
     val value: String,
 ) {
     companion object {
-        fun of(address: AccountAddress): GroupName = GroupName(address.value)
+        fun of(id: ChannelGroupId): GroupName = GroupName(id.value)
 
         fun parse(raw: String): GroupNameParse =
             when {

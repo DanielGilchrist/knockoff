@@ -27,7 +27,7 @@ internal fun Settings.withSaved(
         }
 
         is Editing.Section -> {
-            replacing(editing.rule) { editing.section.merge(it, edited) }
+            replacing(editing.rule) { editing.section.merge(editing.rule, it, edited) }
         }
 
         is Editing.Renaming -> {

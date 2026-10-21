@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -32,10 +33,16 @@ internal fun PickerScreen(
     searchHint: String,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
+    done: String = "Done",
+    close: PickerClose = PickerClose.None,
     content: LazyListScope.() -> Unit,
 ) {
     Dialog(
-        onDismissRequest = onDone,
+        onDismissRequest =
+            when (close) {
+                PickerClose.None -> onDone
+                is PickerClose.Discard -> close.onClose
+            },
         properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
     ) {
         Scaffold(
@@ -43,7 +50,18 @@ internal fun PickerScreen(
             topBar = {
                 TopAppBar(
                     title = { Text(text = title) },
-                    actions = { TextButton(onClick = onDone) { Text(text = "Done") } },
+                    navigationIcon = {
+                        when (close) {
+                            PickerClose.None -> {}
+
+                            is PickerClose.Discard -> {
+                                IconButton(onClick = close.onClose) {
+                                    Icon(painter = painterResource(R.drawable.ic_close), contentDescription = "Close")
+                                }
+                            }
+                        }
+                    },
+                    actions = { TextButton(onClick = onDone) { Text(text = done) } },
                 )
             },
         ) { padding ->

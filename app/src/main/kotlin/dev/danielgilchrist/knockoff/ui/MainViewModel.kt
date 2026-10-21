@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.danielgilchrist.knockoff.KnockoffApplication
 import dev.danielgilchrist.knockoff.chat.ChatDecisionSave
+import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesEditor
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,14 +43,26 @@ class MainViewModel(
             knockoff.seenChatsStore.loads
                 .map(SeenChatsState::of)
                 .onStart { emit(SeenChatsState.Loading) },
+            knockoff.knownGroupsStore.loads.map { it.known },
+            mutableSetup.map { LinkState.Known(it.link) },
             ::TargetChoices,
-        ).stateIn(viewModelScope, SharingStarted.Eagerly, TargetChoices(InstalledApps.Loading, SeenChatsState.Loading))
+        ).stateIn(
+            viewModelScope,
+            SharingStarted.Eagerly,
+            TargetChoices(InstalledApps.Loading, SeenChatsState.Loading, KnownGroups.NONE, LinkState.Loading),
+        )
 
     private val chatSaveStatus = MutableStateFlow<SaveStatus>(SaveStatus.Idle)
 
     val newChats: StateFlow<NewChatsView> =
         combine(
-            combine(editor.settings, knockoff.seenChatsStore.loads, knockoff.chatDecisionsStore.loads, NewChats::of),
+            combine(
+                editor.settings,
+                knockoff.seenChatsStore.loads,
+                knockoff.chatDecisionsStore.loads,
+                knockoff.knownGroupsStore.loads,
+                NewChats::of,
+            ),
             chatSaveStatus,
             ::NewChatsView,
         ).stateIn(viewModelScope, SharingStarted.Eagerly, NewChatsView(NewChats.Loading, SaveStatus.Idle))

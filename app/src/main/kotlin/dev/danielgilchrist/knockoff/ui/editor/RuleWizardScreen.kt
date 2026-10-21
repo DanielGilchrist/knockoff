@@ -17,16 +17,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,12 +29,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.rule.Policy
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
+import dev.danielgilchrist.knockoff.ui.AppFocus
 import dev.danielgilchrist.knockoff.ui.Editing
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.RuleOverview
@@ -52,7 +46,6 @@ import dev.danielgilchrist.knockoff.ui.components.NavigationListItem
 import dev.danielgilchrist.knockoff.ui.components.SwitchListItem
 import dev.danielgilchrist.knockoff.ui.icon
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun RuleWizardScreen(
     guided: Editing.Guided,
@@ -60,36 +53,41 @@ internal fun RuleWizardScreen(
     actions: WizardActions,
     modifier: Modifier = Modifier,
 ) {
+    when (val focus = guided.focus) {
+        AppFocus.List -> {
+            WizardScaffold(guided = guided, choices = choices, actions = actions, modifier = modifier)
+        }
+
+        is AppFocus.App -> {
+            FocusedApp(
+                app = focus.app,
+                draft = guided.draft,
+                stored = RuleApps.NONE,
+                choices = choices,
+                onDraftChange = actions.onDraftChange,
+                onFocus = actions.onFocus,
+                modifier = modifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun WizardScaffold(
+    guided: Editing.Guided,
+    choices: TargetChoices,
+    actions: WizardActions,
+    modifier: Modifier = Modifier,
+) {
     var discarding by rememberSaveable { mutableStateOf(false) }
-    val shown = guided.shownProblems()
+    val shown = guided.stepProblems()
     val close = { if (guided.draft == RuleDraft.NEW) actions.onCancel() else discarding = true }
 
     BackHandler { goBack(guided.step, actions, close) }
 
     Scaffold(
         modifier = modifier,
-        topBar = {
-            Column {
-                TopAppBar(
-                    title = { Text(text = "New rule") },
-                    navigationIcon = {
-                        IconButton(onClick = close) {
-                            Icon(painter = painterResource(R.drawable.ic_close), contentDescription = "Discard")
-                        }
-                    },
-                )
-                LinearProgressIndicator(
-                    progress = { guided.step.position / WizardStep.entries.size.toFloat() },
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .semantics {
-                                stateDescription = "Step ${guided.step.position} of ${WizardStep.entries.size}"
-                            },
-                )
-            }
-        },
+        topBar = { WizardTopBar(step = guided.step, onClose = close) },
         bottomBar = { WizardButtons(guided = guided, actions = actions, onClose = close) },
     ) { padding ->
         LazyColumn(
@@ -99,13 +97,21 @@ internal fun RuleWizardScreen(
         ) {
             item {
                 Text(
-                    text = title(guided.step),
+                    text = title(guided.step, guided.draft.policy),
                     style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.padding(top = 16.dp),
                 )
             }
             if (shown.isNotEmpty()) {
-                item { DraftProblems(problems = shown, title = "Fix before carrying on") }
+                item {
+                    DraftProblems(
+                        problems = shown,
+                        draft = guided.draft,
+                        stored = RuleApps.NONE,
+                        choices = choices,
+                        title = "Fix before carrying on",
+                    )
+                }
             }
             item { WizardStepContent(guided = guided, choices = choices, actions = actions) }
         }
@@ -142,19 +148,56 @@ private fun WizardStepContent(
     actions: WizardActions,
 ) {
     when (guided.step) {
-        WizardStep.Goal -> GoalStep(goal = guided.goal, actions = actions)
-        WizardStep.What -> WhatStep(guided = guided, choices = choices, onDraftChange = actions.onDraftChange)
-        WizardStep.When -> WhenStep(guided = guided, actions = actions)
-        WizardStep.Review -> ReviewStep(draft = guided.draft, apps = choices.apps, actions = actions)
+        WizardStep.Goal -> {
+            GoalStep(goal = guided.goal, actions = actions)
+        }
+
+        WizardStep.Apps -> {
+            AppsList(
+                draft = guided.draft,
+                stored = RuleApps.NONE,
+                choices = choices,
+                onDraftChange = actions.onDraftChange,
+                onOpenApp = { actions.onFocus(AppFocus.App(it)) },
+            )
+        }
+
+        WizardStep.Hours -> {
+            HoursStep(guided = guided, actions = actions)
+        }
+
+        WizardStep.Review -> {
+            ReviewStep(draft = guided.draft, apps = choices.apps, actions = actions)
+        }
     }
 }
 
-private fun title(step: WizardStep): String =
+private fun title(
+    step: WizardStep,
+    policy: Policy,
+): String =
     when (step) {
-        WizardStep.Goal -> "What should this rule do?"
-        WizardStep.What -> "Which notifications?"
-        WizardStep.When -> "Which hours?"
-        WizardStep.Review -> "Check it over"
+        WizardStep.Goal -> {
+            "What should this rule do?"
+        }
+
+        WizardStep.Apps -> {
+            when (policy) {
+                Policy.DeliverOnlyDuring -> "Which apps should keep to set hours?"
+                Policy.HoldDuring -> "Which apps should go quiet?"
+            }
+        }
+
+        WizardStep.Hours -> {
+            when (policy) {
+                Policy.DeliverOnlyDuring -> "When can they reach you?"
+                Policy.HoldDuring -> "When should they go quiet?"
+            }
+        }
+
+        WizardStep.Review -> {
+            "Check it over"
+        }
     }
 
 @Composable
@@ -181,26 +224,7 @@ private fun GoalStep(
 }
 
 @Composable
-private fun WhatStep(
-    guided: Editing.Guided,
-    choices: TargetChoices,
-    onDraftChange: (RuleDraft) -> Unit,
-) {
-    val draft = guided.draft
-
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        AppsEditor(
-            apps = choices.apps,
-            selected = draft.apps,
-            onSelectedChange = { onDraftChange(draft.copy(apps = it)) },
-        )
-        ChatsEditor(seen = choices.chats, apps = choices.apps, draft = draft, onDraftChange = onDraftChange)
-        GmailAccountsEditor(draft = draft, onDraftChange = onDraftChange)
-    }
-}
-
-@Composable
-private fun WhenStep(
+private fun HoursStep(
     guided: Editing.Guided,
     actions: WizardActions,
 ) {
@@ -213,7 +237,7 @@ private fun WhenStep(
                 },
         )
         guided.draft.windows.take(1).forEach { window ->
-            EditCard(title = "Hours", removal = CardRemoval.None) {
+            EditCard(title = "", removal = CardRemoval.None) {
                 WindowFields(window = window, onWindowChange = { hours -> actions.onGuide { it.withHours(hours) } })
             }
         }
@@ -267,15 +291,15 @@ private fun ReviewStep(
                 ListGroup {
                     NavigationListItem(
                         icon = R.drawable.ic_apps,
-                        headline = "What",
-                        supporting = overview.what,
-                        onClick = { actions.onGuide { it.toStep(WizardStep.What) } },
+                        headline = "Apps",
+                        supporting = overview.apps,
+                        onClick = { actions.onGuide { it.toStep(WizardStep.Apps) } },
                     )
                     NavigationListItem(
                         icon = R.drawable.ic_schedule,
-                        headline = "When",
+                        headline = "Hours",
                         supporting = overview.hours,
-                        onClick = { actions.onGuide { it.toStep(WizardStep.When) } },
+                        onClick = { actions.onGuide { it.toStep(WizardStep.Hours) } },
                     )
                 }
             }
@@ -299,16 +323,16 @@ private fun WizardButtons(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
         ) {
             when (step) {
-                WizardStep.What -> {
+                WizardStep.Apps -> {
                     if (!guided.picksSomething()) {
                         Caption(
-                            text = "Pick at least one app, chat or Gmail account.",
+                            text = "Add at least one app.",
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                     }
                 }
 
-                WizardStep.Goal, WizardStep.When, WizardStep.Review -> {}
+                WizardStep.Goal, WizardStep.Hours, WizardStep.Review -> {}
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -320,12 +344,12 @@ private fun WizardButtons(
                         Spacer(modifier = Modifier)
                     }
 
-                    WizardStep.What, WizardStep.When, WizardStep.Review -> {
+                    WizardStep.Apps, WizardStep.Hours, WizardStep.Review -> {
                         TextButton(onClick = { goBack(step, actions, onClose) }) { Text(text = "Back") }
                     }
                 }
                 when (step) {
-                    WizardStep.Goal, WizardStep.What, WizardStep.When -> {
+                    WizardStep.Goal, WizardStep.Apps, WizardStep.Hours -> {
                         Button(
                             onClick = { actions.onGuide { it.toStep(step.next()) } },
                             enabled = guided.canContinue(),
@@ -353,6 +377,6 @@ private fun goBack(
 ) {
     when (step) {
         WizardStep.Goal -> onClose()
-        WizardStep.What, WizardStep.When, WizardStep.Review -> actions.onGuide { it.toStep(step.previous()) }
+        WizardStep.Apps, WizardStep.Hours, WizardStep.Review -> actions.onGuide { it.toStep(step.previous()) }
     }
 }

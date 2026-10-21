@@ -1,5 +1,7 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
+import dev.danielgilchrist.knockoff.domain.notification.PackageName
+
 sealed interface DraftProblem {
     data object BlankName : DraftProblem
 
@@ -24,16 +26,18 @@ sealed interface DraftProblem {
     ) : MissingDays
 
     data class BlankPattern(
+        val app: PackageName,
         val number: Int,
     ) : DraftProblem
 
     data class InvalidPattern(
+        val app: PackageName,
         val number: Int,
         val detail: String,
     ) : DraftProblem
 
-    data class UnaddedAccount(
-        val detail: String,
+    data class NothingChosen(
+        val app: PackageName,
     ) : DraftProblem
 
     data class NotSaved(

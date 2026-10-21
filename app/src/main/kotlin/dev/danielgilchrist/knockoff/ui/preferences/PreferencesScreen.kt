@@ -48,7 +48,7 @@ internal fun PreferencesScreen(
         }
         item {
             Caption(
-                text = "Rules set to App default follow this.",
+                text = "Rules set to Default follow this.",
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
         }

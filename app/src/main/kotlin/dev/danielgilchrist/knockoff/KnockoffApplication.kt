@@ -68,7 +68,13 @@ class KnockoffApplication : Application() {
 
         scope.launch {
             combine(
-                combine(settingsStore.loads, seenChatsStore.loads, chatDecisionsStore.loads, ChatPrompt::of),
+                combine(
+                    settingsStore.loads,
+                    seenChatsStore.loads,
+                    chatDecisionsStore.loads,
+                    knownGroupsStore.loads,
+                    ChatPrompt::of,
+                ),
                 notificationPermission,
                 ::Pair,
             ).distinctUntilChanged()

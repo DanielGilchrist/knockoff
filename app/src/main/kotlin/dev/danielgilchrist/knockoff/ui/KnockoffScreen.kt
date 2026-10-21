@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.ui.editor.RenameDialog
 import dev.danielgilchrist.knockoff.ui.editor.RuleOverviewActions
@@ -26,6 +27,7 @@ import dev.danielgilchrist.knockoff.ui.preferences.LinkActions
 import dev.danielgilchrist.knockoff.ui.preferences.LinkScreen
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesActions
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesScreen
+import dev.danielgilchrist.knockoff.ui.zone.DefaultZone
 
 @Composable
 fun KnockoffScreen(
@@ -87,12 +89,12 @@ fun KnockoffScreen(
 
             is Editing.Renaming -> {
                 RuleOverview(current.rule, settings, choices.apps, saveStatus, editor) {
-                    RenameDialog(renaming = current, actions = sectionActions(editor, current.rule))
+                    RenameDialog(renaming = current, actions = sectionActions(editor, current.rule, choices.groups))
                 }
             }
 
             is Editing.Section -> {
-                SectionEditor(editing = current, choices = choices, editor = editor)
+                SectionEditor(editing = current, choices = choices, settings = settings, editor = editor)
             }
 
             is Editing.Guided -> {
@@ -106,13 +108,15 @@ fun KnockoffScreen(
 private fun SectionEditor(
     editing: Editing.Section,
     choices: TargetChoices,
+    settings: SettingsState,
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
 ) {
     RuleSectionScreen(
         editing = editing,
         choices = choices,
-        actions = sectionActions(editor, editing.rule),
+        defaultZone = DefaultZone.of(settings),
+        actions = sectionActions(editor, editing.rule, choices.groups),
         modifier = modifier,
     )
 }
@@ -131,8 +135,9 @@ private fun Wizard(
             WizardActions(
                 onDraftChange = editor::updateDraft,
                 onGuide = editor::guide,
-                onCreate = editor::saveDraft,
+                onCreate = { editor.saveDraft(choices.groups) },
                 onCancel = { editor.show(Editing.Closed) },
+                onFocus = editor::focus,
             ),
         modifier = modifier,
     )
@@ -248,9 +253,11 @@ private fun ClosedScreen(
 private fun sectionActions(
     editor: SettingsEditor,
     rule: Rule,
+    groups: KnownGroups,
 ): RuleSectionActions =
     RuleSectionActions(
         onDraftChange = editor::updateDraft,
-        onSave = editor::saveDraft,
+        onSave = { editor.saveDraft(groups) },
         onCancel = { editor.show(Editing.Viewing(rule)) },
+        onFocus = editor::focus,
     )

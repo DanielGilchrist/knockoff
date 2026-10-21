@@ -28,11 +28,14 @@ sealed interface Target {
 
     fun expandsTo(chat: Chat): Boolean = false
 
-    fun holds(chat: Chat): Boolean =
+    fun holds(
+        chat: Chat,
+        grouping: ChannelGrouping,
+    ): Boolean =
         covers(
             ChannelKey(chat.packageName, chat.channel),
             ChannelKind.ConversationOf(chat.channel, chat.id),
-            ChannelGrouping.Ungrouped,
+            grouping,
         ) ||
             expandsTo(chat)
 
@@ -85,7 +88,10 @@ sealed interface Target {
             grouping: ChannelGrouping,
         ): Boolean = channel.packageName == packageName && kind == ChannelKind.ConversationOf(this.channel, id)
 
-        override fun holds(chat: Chat): Boolean = chat.key == key
+        override fun holds(
+            chat: Chat,
+            grouping: ChannelGrouping,
+        ): Boolean = chat.key == key
     }
 
     sealed interface Pattern : Target {

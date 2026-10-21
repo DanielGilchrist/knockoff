@@ -1,44 +1,57 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
-import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.domain.rule.PatternPick
 import dev.danielgilchrist.knockoff.domain.rule.TextPattern
 import dev.danielgilchrist.knockoff.domain.rule.TextPatternParse
 
 data class PatternDraft(
-    val app: PackageName,
     val field: PatternField,
     val source: String,
 ) {
     companion object {
-        fun from(target: Target.Pattern): PatternDraft =
+        val BLANK: PatternDraft get() = PatternDraft(PatternField.ChatName, "")
+
+        fun from(pick: PatternPick): PatternDraft =
             PatternDraft(
-                target.packageName,
-                when (target) {
-                    is Target.ChatNamePattern -> PatternField.ChatName
-                    is Target.ChannelPattern -> PatternField.ChannelId
+                when (pick) {
+                    is PatternPick.ChatName -> PatternField.ChatName
+                    is PatternPick.Channel -> PatternField.ChannelId
                 },
-                target.pattern.source,
+                pick.pattern.source,
             )
     }
 
-    fun parse(number: Int): Checked<Target.Pattern> =
+    fun parse(
+        app: PackageName,
+        number: Int,
+    ): Checked<PatternPick> =
         when (val preview = preview()) {
-            PatternPreview.Empty -> Checked.Problems(listOf(DraftProblem.BlankPattern(number)))
-            is PatternPreview.Invalid -> Checked.Problems(listOf(DraftProblem.InvalidPattern(number, preview.detail)))
-            is PatternPreview.Valid -> Checked.Ok(preview.target)
+            PatternPreview.Empty -> {
+                Checked.Problems(listOf(DraftProblem.BlankPattern(app, number)))
+            }
+
+            is PatternPreview.Invalid -> {
+                Checked.Problems(
+                    listOf(DraftProblem.InvalidPattern(app, number, preview.detail)),
+                )
+            }
+
+            is PatternPreview.Valid -> {
+                Checked.Ok(preview.pick)
+            }
         }
 
     fun preview(): PatternPreview =
         when (val parse = TextPattern.parse(source)) {
             TextPatternParse.Blank -> PatternPreview.Empty
             is TextPatternParse.Invalid -> PatternPreview.Invalid(parse.detail)
-            is TextPatternParse.Valid -> PatternPreview.Valid(target(parse.pattern))
+            is TextPatternParse.Valid -> PatternPreview.Valid(pick(parse.pattern))
         }
 
-    private fun target(pattern: TextPattern): Target.Pattern =
+    private fun pick(pattern: TextPattern): PatternPick =
         when (field) {
-            PatternField.ChatName -> Target.ChatNamePattern(app, pattern)
-            PatternField.ChannelId -> Target.ChannelPattern(app, pattern)
+            PatternField.ChatName -> PatternPick.ChatName(pattern)
+            PatternField.ChannelId -> PatternPick.Channel(pattern)
         }
 }

@@ -2,7 +2,9 @@ package dev.danielgilchrist.knockoff.ui.editor
 
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
 import dev.danielgilchrist.knockoff.domain.rule.Policy
+import dev.danielgilchrist.knockoff.ui.AppFocus
 import dev.danielgilchrist.knockoff.ui.Editing
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -12,6 +14,8 @@ import org.junit.jupiter.params.provider.MethodSource
 import java.time.DayOfWeek
 import java.time.LocalTime
 
+private val SLACK_APP = PackageName("com.Slack")
+
 class WizardTest {
     companion object {
         @JvmStatic
@@ -20,14 +24,14 @@ class WizardTest {
                 Arguments.of(DraftProblem.BlankName, WizardStep.Review),
                 Arguments.of(DraftProblem.DuplicateName, WizardStep.Review),
                 Arguments.of(DraftProblem.NotSaved("x"), WizardStep.Review),
-                Arguments.of(DraftProblem.NoHours, WizardStep.When),
-                Arguments.of(DraftProblem.BreaksCoverAllHours, WizardStep.When),
-                Arguments.of(DraftProblem.HoursWithoutDays(1), WizardStep.When),
-                Arguments.of(DraftProblem.BlankBreakName(1), WizardStep.When),
-                Arguments.of(DraftProblem.BreakWithoutDays(1), WizardStep.When),
-                Arguments.of(DraftProblem.UnaddedAccount("x"), WizardStep.What),
-                Arguments.of(DraftProblem.BlankPattern(1), WizardStep.What),
-                Arguments.of(DraftProblem.InvalidPattern(1, "x"), WizardStep.What),
+                Arguments.of(DraftProblem.NoHours, WizardStep.Hours),
+                Arguments.of(DraftProblem.BreaksCoverAllHours, WizardStep.Hours),
+                Arguments.of(DraftProblem.HoursWithoutDays(1), WizardStep.Hours),
+                Arguments.of(DraftProblem.BlankBreakName(1), WizardStep.Hours),
+                Arguments.of(DraftProblem.BreakWithoutDays(1), WizardStep.Hours),
+                Arguments.of(DraftProblem.NothingChosen(SLACK_APP), WizardStep.Apps),
+                Arguments.of(DraftProblem.BlankPattern(SLACK_APP, 1), WizardStep.Apps),
+                Arguments.of(DraftProblem.InvalidPattern(SLACK_APP, 1, "x"), WizardStep.Apps),
             )
     }
 
@@ -56,15 +60,11 @@ class WizardTest {
     }
 
     @Test
-    fun `an invalid Gmail address being typed blocks the step but isn't listed twice`() {
-        val typing = start.choosing(WizardGoal.WorkHours).toStep(WizardStep.What)
-        val invalid =
-            typing.copy(
-                draft = typing.draft.copy(apps = setOf(PackageName("com.Slack")), pendingGmail = "dan"),
-            )
+    fun `an app narrowed to nothing blocks the step`() {
+        val apps = start.choosing(WizardGoal.WorkHours).toStep(WizardStep.Apps)
+        val nothing = AppDraft.EVERYTHING.copy(mode = AppMode.Narrowed)
+        val invalid = apps.copy(draft = apps.draft.copy(apps = mapOf(SLACK_APP to nothing)))
 
-        assertEquals(listOf(DraftProblem.UnaddedAccount("Not an email address: \"dan\"")), invalid.stepProblems())
-        assertEquals(emptyList<DraftProblem>(), invalid.shownProblems())
         assertEquals(false, invalid.canContinue())
     }
 
@@ -74,29 +74,34 @@ class WizardTest {
     }
 
     @Test
-    fun `a valid Gmail address being typed counts as a pick`() {
-        val work = start.choosing(WizardGoal.WorkHours).toStep(WizardStep.What)
+    fun `asking about an app's new chats counts as a pick`() {
+        val work = start.choosing(WizardGoal.WorkHours).toStep(WizardStep.Apps)
+        val asking = AppDraft.EVERYTHING.copy(mode = AppMode.Narrowed, asking = NewChatsAsking.Ask)
 
-        assertEquals(true, work.copy(draft = work.draft.copy(pendingGmail = "dan@work.example")).canContinue())
-        assertEquals(false, work.copy(draft = work.draft.copy(pendingGmail = "dan")).canContinue())
+        assertEquals(
+            true,
+            work.copy(draft = work.draft.copy(apps = mapOf(COLLEAGUE_CHAT.packageName to asking))).canContinue(),
+        )
     }
 
     @Test
-    fun `asking about an app's new chats counts as a pick`() {
-        val work = start.choosing(WizardGoal.WorkHours).toStep(WizardStep.What)
+    fun `opening an app focuses it and moving step returns to the list`() {
+        val apps = start.choosing(WizardGoal.WorkHours).toStep(WizardStep.Apps)
+        val focused = apps.focusing(AppFocus.App(SLACK_APP))
 
-        assertEquals(true, work.copy(draft = work.draft.copy(asking = setOf(COLLEAGUE_CHAT.packageName))).canContinue())
+        assertEquals(AppFocus.App(SLACK_APP), focused.focus)
+        assertEquals(AppFocus.List, focused.toStep(WizardStep.Hours).focus)
     }
 
     @Test
     fun `steps run in order`() {
         assertEquals(
-            listOf(WizardStep.What, WizardStep.When, WizardStep.Review),
-            listOf(WizardStep.Goal, WizardStep.What, WizardStep.When).map { it.next() },
+            listOf(WizardStep.Apps, WizardStep.Hours, WizardStep.Review),
+            listOf(WizardStep.Goal, WizardStep.Apps, WizardStep.Hours).map { it.next() },
         )
         assertEquals(
-            listOf(WizardStep.Goal, WizardStep.What, WizardStep.When),
-            listOf(WizardStep.What, WizardStep.When, WizardStep.Review).map { it.previous() },
+            listOf(WizardStep.Goal, WizardStep.Apps, WizardStep.Hours),
+            listOf(WizardStep.Apps, WizardStep.Hours, WizardStep.Review).map { it.previous() },
         )
     }
 
@@ -159,21 +164,13 @@ class WizardTest {
             start.copy(
                 draft =
                     RuleDraft.NEW.copy(
-                        apps =
-                            setOf(
-                                PackageName("com.Slack"),
-                            ),
-                        chats =
-                            listOf(COLLEAGUE_CHAT).associateBy {
-                                it.key
-                            },
+                        apps = mapOf(SLACK_APP to AppDraft.EVERYTHING),
                     ),
             )
 
         val chosen = picked.choosing(WizardGoal.QuietTime).draft
 
         assertEquals(picked.draft.apps, chosen.apps)
-        assertEquals(picked.draft.chats, chosen.chats)
         assertEquals(picked.draft.state, chosen.state)
         assertEquals(picked.draft.zone, chosen.zone)
     }
@@ -196,12 +193,20 @@ class WizardTest {
     @Test
     fun `each step needs its own choices before continuing`() {
         val work = start.choosing(WizardGoal.WorkHours)
-        val picked = work.copy(step = WizardStep.What, draft = work.draft.copy(apps = setOf(PackageName("com.Slack"))))
-        val noDays = picked.copy(step = WizardStep.When).withHours(dayJob.copy(days = emptySet()))
+        val picked =
+            work.copy(
+                step = WizardStep.Apps,
+                draft =
+                    work.draft.copy(
+                        apps =
+                            mapOf(SLACK_APP to AppDraft.EVERYTHING),
+                    ),
+            )
+        val noDays = picked.copy(step = WizardStep.Hours).withHours(dayJob.copy(days = emptySet()))
 
         assertEquals(false, start.canContinue())
         assertEquals(true, work.canContinue())
-        assertEquals(false, work.copy(step = WizardStep.What).canContinue())
+        assertEquals(false, work.copy(step = WizardStep.Apps).canContinue())
         assertEquals(true, picked.canContinue())
         assertEquals(false, noDays.canContinue())
         assertEquals(listOf(DraftProblem.HoursWithoutDays(1)), noDays.stepProblems())
@@ -216,6 +221,6 @@ class WizardTest {
             )
 
         assertEquals(listOf(DraftProblem.BlankName), unnamed.stepProblems())
-        assertEquals(listOf(DraftProblem.HoursWithoutDays(1)), unnamed.toStep(WizardStep.When).stepProblems())
+        assertEquals(listOf(DraftProblem.HoursWithoutDays(1)), unnamed.toStep(WizardStep.Hours).stepProblems())
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -32,9 +33,14 @@ internal fun ListScreen(
     modifier: Modifier = Modifier,
     actions: @Composable RowScope.() -> Unit = {},
     fab: ScreenFab = ScreenFab.None,
+    bar: ScreenBar = ScreenBar.Large,
     content: LazyListScope.() -> Unit,
 ) {
-    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val scroll =
+        when (bar) {
+            ScreenBar.Large -> TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+            ScreenBar.Small -> TopAppBarDefaults.pinnedScrollBehavior()
+        }
     val direction = LocalLayoutDirection.current
     val bottomSpace =
         when (fab) {
@@ -45,22 +51,25 @@ internal fun ListScreen(
     Scaffold(
         modifier = modifier.nestedScroll(scroll.nestedScrollConnection),
         topBar = {
-            LargeTopAppBar(
-                title = { Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                navigationIcon = {
-                    when (navigation) {
-                        ScreenNavigation.Root -> {}
+            val heading: @Composable () -> Unit = {
+                Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            val back: @Composable () -> Unit = { BackIcon(navigation) }
 
-                        is ScreenNavigation.Back -> {
-                            IconButton(onClick = navigation.onBack) {
-                                Icon(painter = painterResource(R.drawable.ic_back), contentDescription = "Back")
-                            }
-                        }
-                    }
-                },
-                actions = actions,
-                scrollBehavior = scroll,
-            )
+            when (bar) {
+                ScreenBar.Large -> {
+                    LargeTopAppBar(
+                        title = heading,
+                        navigationIcon = back,
+                        actions = actions,
+                        scrollBehavior = scroll,
+                    )
+                }
+
+                ScreenBar.Small -> {
+                    TopAppBar(title = heading, navigationIcon = back, actions = actions, scrollBehavior = scroll)
+                }
+            }
         },
         floatingActionButton = {
             when (fab) {
@@ -87,5 +96,18 @@ internal fun ListScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             content = content,
         )
+    }
+}
+
+@Composable
+private fun BackIcon(navigation: ScreenNavigation) {
+    when (navigation) {
+        ScreenNavigation.Root -> {}
+
+        is ScreenNavigation.Back -> {
+            IconButton(onClick = navigation.onBack) {
+                Icon(painter = painterResource(R.drawable.ic_back), contentDescription = "Back")
+            }
+        }
     }
 }

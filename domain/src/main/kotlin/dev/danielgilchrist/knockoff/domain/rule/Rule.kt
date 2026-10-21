@@ -35,7 +35,10 @@ data class Rule(
 
     fun withChat(chat: Target.Chat): Rule = copy(apps = apps.withChat(chat))
 
-    fun holds(chat: Target.Chat): Boolean = targets.any { it.holds(chat) }
+    fun holds(
+        chat: Target.Chat,
+        grouping: ChannelGrouping,
+    ): Boolean = targets.any { it.holds(chat, grouping) }
 
     fun asks(chat: Target.Chat): Boolean = state == RuleState.Enabled && apps.asks(chat.packageName)
 

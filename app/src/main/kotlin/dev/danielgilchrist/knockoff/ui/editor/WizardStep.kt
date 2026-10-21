@@ -2,8 +2,8 @@ package dev.danielgilchrist.knockoff.ui.editor
 
 enum class WizardStep {
     Goal,
-    What,
-    When,
+    Apps,
+    Hours,
     Review,
     ;
 
@@ -16,8 +16,8 @@ enum class WizardStep {
     companion object {
         fun of(problem: DraftProblem): WizardStep =
             when (problem) {
-                is DraftProblem.UnaddedAccount, is DraftProblem.BlankPattern, is DraftProblem.InvalidPattern -> {
-                    What
+                is DraftProblem.NothingChosen, is DraftProblem.BlankPattern, is DraftProblem.InvalidPattern -> {
+                    Apps
                 }
 
                 DraftProblem.NoHours,
@@ -26,7 +26,7 @@ enum class WizardStep {
                 is DraftProblem.BlankBreakName,
                 is DraftProblem.BreakWithoutDays,
                 -> {
-                    When
+                    Hours
                 }
 
                 DraftProblem.BlankName, DraftProblem.DuplicateName, is DraftProblem.NotSaved -> {

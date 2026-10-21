@@ -1,21 +1,23 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AppScope
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.zone.RuleZone
-import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
+import dev.danielgilchrist.knockoff.ui.zone.label
 
 data class RuleOverview(
     val sentence: String,
     val effect: String,
-    val what: String,
+    val apps: String,
     val hours: String,
-    val advanced: String,
 ) {
     companion object {
+        private const val SHOWN_APPS = 3
+
         fun of(
             rule: Rule,
             labelOf: (PackageName) -> String,
@@ -25,9 +27,8 @@ data class RuleOverview(
             return RuleOverview(
                 sentence = sentence(rule, effect),
                 effect = effect,
-                what = what(rule, labelOf),
+                apps = apps(rule, labelOf),
                 hours = hours(rule),
-                advanced = "${zone(rule.zone)} · ${counted(patterns(rule), "pattern")}",
             )
         }
 
@@ -46,10 +47,7 @@ data class RuleOverview(
 
         private fun effect(rule: Rule): String {
             val held = held(rule)
-            val breaks = rule.schedule.breaks.map { it.name.value }
-            val hours =
-                rule.schedule.windows.joinToString(" and ") { it.describeInSentence() } +
-                    breaks.joinToString(prefix = ", except ").takeIf { breaks.isNotEmpty() }.orEmpty()
+            val hours = rule.schedule.describeInSentence()
 
             return when {
                 held.isNotEmpty() && rule.policy == Policy.DeliverOnlyDuring -> {
@@ -61,11 +59,11 @@ data class RuleOverview(
                 }
 
                 rule.asking.isNotEmpty() -> {
-                    "Holds nothing yet. Asks about new chats from ${counted(rule.asking.size, "app")}."
+                    "Holds nothing yet. Asks about new chats from ${counted(rule.asking.size, "app", "apps")}."
                 }
 
                 else -> {
-                    "Holds nothing yet. Choose apps or chats under What."
+                    "Holds nothing yet. Add an app under Apps."
                 }
             }
         }
@@ -75,67 +73,64 @@ data class RuleOverview(
 
             return listOf(
                 targets.count { it is Target.App } to "app",
-                targets.count { it is Target.Account } to "Gmail account",
+                accounts(rule, GroupNoun.Accounts) to GroupNoun.Accounts.one,
+                accounts(rule, GroupNoun.Groups) to GroupNoun.Groups.one,
                 targets.count { it is Target.Chat } to "chat",
                 patterns(rule) to "pattern",
-            ).filter { (count, _) -> count > 0 }.map { (count, noun) -> counted(count, noun) }
+            ).filter { (count, _) -> count > 0 }.map { (count, noun) -> counted(count, noun, "${noun}s") }
         }
 
-        private fun what(
+        private fun apps(
             rule: Rule,
             labelOf: (PackageName) -> String,
         ): String {
-            val parts =
-                rule.targets
-                    .flatMap { target ->
-                        when (target) {
-                            is Target.App -> listOf(labelOf(target.packageName))
-                            is Target.Account -> listOf("Gmail (${target.label.value})")
-                            is Target.Chat, is Target.Pattern -> emptyList()
-                        }
-                    }.sorted() +
-                    listOf(counted(rule.chats.size, "chat")).filter { rule.chats.isNotEmpty() } +
-                    listOf(counted(patterns(rule), "pattern")).filter { patterns(rule) > 0 } +
-                    rule.asking.map { "asks about new ${labelOf(it)} chats" }.sorted()
+            val labels =
+                rule.apps.scopes.keys
+                    .map(labelOf)
 
-            return parts.joinToString(" · ").ifEmpty { "Nothing chosen" }
+            return when {
+                labels.isEmpty() -> "No apps yet"
+                labels.size <= SHOWN_APPS -> labels.joinToString()
+                else -> "${labels.take(SHOWN_APPS).joinToString()} and ${labels.size - SHOWN_APPS} more"
+            }
         }
 
         private fun hours(rule: Rule): String {
             val windows = rule.schedule.windows.joinToString("; ") { it.describe() }
             val breaks = rule.schedule.breaks.map { it.name.value }
 
-            return when {
-                breaks.isEmpty() -> windows
-                else -> "$windows · except ${breaks.joinToString()}"
+            val hours =
+                when {
+                    breaks.isEmpty() -> windows
+                    else -> "$windows · except ${breaks.joinToString()}"
+                }
+
+            return when (val zone = rule.zone) {
+                RuleZone.Default -> hours
+                is RuleZone.Chosen -> "$hours · ${zone.choice.label()}"
             }
         }
 
-        private fun patterns(rule: Rule): Int = rule.targets.count { it is Target.Pattern }
+        private fun accounts(
+            rule: Rule,
+            noun: GroupNoun,
+        ): Int =
+            rule.apps.scopes.values.sumOf { scope ->
+                when (scope) {
+                    AppScope.Everything -> {
+                        0
+                    }
 
-        private fun zone(zone: RuleZone): String =
-            when (zone) {
-                RuleZone.Default -> {
-                    "App default time zone"
-                }
-
-                is RuleZone.Chosen -> {
-                    when (val choice = zone.choice) {
-                        ZoneChoice.Device -> "Device time zone"
-                        is ZoneChoice.Fixed -> choice.zone.describe()
+                    is AppScope.Narrowed -> {
+                        when (GroupNoun.of(scope.accounts.values)) {
+                            noun -> scope.accounts.size
+                            else -> 0
+                        }
                     }
                 }
             }
 
-        private fun counted(
-            count: Int,
-            noun: String,
-        ): String =
-            when (count) {
-                0 -> "No ${noun}s"
-                1 -> "1 $noun"
-                else -> "$count ${noun}s"
-            }
+        private fun patterns(rule: Rule): Int = rule.targets.count { it is Target.Pattern }
 
         private fun List<String>.listed(): String =
             when (size) {

@@ -18,6 +18,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelPlan
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.gmailGroup
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId

@@ -1,10 +1,13 @@
 package dev.danielgilchrist.knockoff.ui.components
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -17,10 +20,11 @@ internal fun AddButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    supporting: String = "",
 ) {
     TextButton(
         onClick = onClick,
-        modifier = modifier,
+        modifier = modifier.offset(x = -BUTTON_INSET),
         contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
     ) {
         Icon(
@@ -29,6 +33,15 @@ internal fun AddButton(
             modifier = Modifier.size(ButtonDefaults.IconSize),
         )
         Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-        Text(text = text)
+        Column {
+            Text(text = text)
+            if (supporting.isNotEmpty()) {
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }

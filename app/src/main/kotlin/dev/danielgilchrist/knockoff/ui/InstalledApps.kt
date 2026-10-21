@@ -37,4 +37,10 @@ sealed interface InstalledApps {
             Loading -> packageName.value
             is Loaded -> apps.firstOrNull { it.packageName == packageName }?.label ?: packageName.value
         }
+
+    fun isMissing(packageName: PackageName): Boolean =
+        when (this) {
+            Loading -> false
+            is Loaded -> apps.none { it.packageName == packageName }
+        }
 }

@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.chat
 
+import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.json.VersionedDecode
 import dev.danielgilchrist.knockoff.domain.json.VersionedJson
 import dev.danielgilchrist.knockoff.domain.rule.RuleSet
@@ -34,20 +35,26 @@ data class SeenChats private constructor(
     fun undecided(
         rules: RuleSet,
         decisions: ChatDecisions,
-    ): List<Target.Chat> = asked(rules, decisions).map { it.chat }
+        groups: KnownGroups,
+    ): List<Target.Chat> = asked(rules, decisions, groups).map { it.chat }
 
     fun questions(
         rules: RuleSet,
         decisions: ChatDecisions,
-    ): List<ChatQuestion> = asked(rules, decisions).filter { it.chat.key !in decisions.asked }
+        groups: KnownGroups,
+    ): List<ChatQuestion> = asked(rules, decisions, groups).filter { it.chat.key !in decisions.asked }
 
     private fun asked(
         rules: RuleSet,
         decisions: ChatDecisions,
+        groups: KnownGroups,
     ): List<ChatQuestion> =
         chats
-            .filter { chat -> rules.rules.none { it.holds(chat) } && chat.key !in decisions.letThrough }
-            .flatMap { chat ->
+            .filter { chat ->
+                val grouping = groups.groupingOf(chat)
+
+                rules.rules.none { it.holds(chat, grouping) } && chat.key !in decisions.letThrough
+            }.flatMap { chat ->
                 val askers = rules.rules.filter { it.asks(chat) }.map { it.name }
 
                 when {

@@ -15,6 +15,7 @@ import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
+import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.gmailGroup
 import dev.danielgilchrist.knockoff.domain.group.GroupName
 import dev.danielgilchrist.knockoff.domain.known
@@ -125,20 +126,14 @@ class TargetTest {
     }
 
     @Test
-    fun `an account never claims a seen chat, even one in its group`() {
-        val account = Target.Account(WHATSAPP, ChannelGroupId("channel_group_chats"), GroupName.of(WORK_ADDRESS))
+    fun `an account claims a seen chat only when its parent channel is in the account's group`() {
+        val group = ChannelGroupId("channel_group_chats")
+        val account = Target.Account(WHATSAPP, group, WORK_ADDRESS)
 
-        account.holds(COLLEAGUE_CHAT) shouldBe false
-    }
-
-    @Test
-    fun `a gmail account is named and grouped after its address`() {
-        val account = WORK_ADDRESS.gmailAccount()
-
-        account.packageName shouldBe PackageName.GMAIL
-        account.group shouldBe ChannelGroupId("^ncg_1_account_dan@work.example")
-        account.label.value shouldBe "dan@work.example"
-        account.gmailAddress() shouldBe "dan@work.example"
+        account.holds(COLLEAGUE_CHAT, ChannelGrouping.Grouped(group)) shouldBe true
+        account.holds(COLLEAGUE_CHAT, ChannelGrouping.Grouped(ChannelGroupId("other"))) shouldBe false
+        account.holds(COLLEAGUE_CHAT, ChannelGrouping.Ungrouped) shouldBe false
+        COLLEAGUE_CHAT.holds(COLLEAGUE_CHAT, ChannelGrouping.Ungrouped) shouldBe true
     }
 
     @Test

@@ -10,6 +10,7 @@ import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.Target
 
 @ConsistentCopyVisibility
 data class KnownGroups private constructor(
@@ -85,6 +86,12 @@ data class KnownGroups private constructor(
         when (val group = appOf(channel.packageName).channels[channel.channelId]) {
             null -> OriginGroup.Unknown
             else -> OriginGroup.Known(ChannelGrouping.Grouped(group))
+        }
+
+    fun groupingOf(chat: Target.Chat): ChannelGrouping =
+        when (val group = groupOf(ChannelKey(chat.packageName, chat.channel))) {
+            OriginGroup.Unknown -> ChannelGrouping.Ungrouped
+            is OriginGroup.Known -> group.grouping
         }
 
     fun groupsOf(packageName: PackageName): List<KnownGroup> = appOf(packageName).groups

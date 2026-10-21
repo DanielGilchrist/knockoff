@@ -1,19 +1,24 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
+import dev.danielgilchrist.knockoff.domain.group.GroupName
+import dev.danielgilchrist.knockoff.domain.group.KnownGroups
+import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
+import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.ChatPick
+import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
+import dev.danielgilchrist.knockoff.domain.rule.PatternPick
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
-import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.rule.TextPattern
 import dev.danielgilchrist.knockoff.domain.rule.TextPatternParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
-import dev.danielgilchrist.knockoff.ui.SeenChatsState
+import dev.danielgilchrist.knockoff.groupName
+import dev.danielgilchrist.knockoff.ruleApps
 import dev.danielgilchrist.knockoff.ui.describe
 import dev.danielgilchrist.knockoff.ui.describeCoverage
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -24,6 +29,24 @@ import java.time.DayOfWeek
 import java.time.LocalTime
 
 class RuleDraftTest {
+    private val slack = PackageName("com.Slack")
+    private val whatsapp = COLLEAGUE_CHAT.packageName
+    private val workMail =
+        AppDraft(
+            AppMode.Narrowed,
+            mapOf(ChannelGroupId("^ncg_1_account_dan@work.example") to groupName("dan@work.example")),
+            emptyMap(),
+            emptyList(),
+            NewChatsAsking.DontAsk,
+        )
+    private val colleague =
+        AppDraft(
+            AppMode.Narrowed,
+            emptyMap(),
+            mapOf(COLLEAGUE_CHAT.id to ChatPick.of(COLLEAGUE_CHAT)),
+            listOf(PatternDraft(PatternField.ChatName, "^Work")),
+            NewChatsAsking.Ask,
+        )
     private val defaultRule: Rule =
         Settings.DEFAULT.rules.rules
             .single()
@@ -34,135 +57,151 @@ class RuleDraftTest {
     }
 
     @Test
-    fun `apps to ask about come from seen and picked chats, less whole apps, plus earlier choices`() {
-        val slack = PackageName("com.Slack")
-        val gmail = PackageName.GMAIL
-        val whatsapp = COLLEAGUE_CHAT.packageName
-        val draft = RuleDraft.NEW.copy(chats = mapOf(COLLEAGUE_CHAT.key to COLLEAGUE_CHAT), asking = setOf(gmail))
-        val seen = SeenChatsState.Loaded(listOf(COLLEAGUE_CHAT.copy(packageName = slack), COLLEAGUE_CHAT))
-
-        assertEquals(setOf(slack, whatsapp, gmail), draft.askableApps(seen))
-        assertEquals(setOf(whatsapp, gmail), draft.askableApps(SeenChatsState.Loading))
-        assertEquals(setOf(whatsapp, gmail), draft.askableApps(SeenChatsState.Failed("x")))
-        assertEquals(setOf(whatsapp, gmail), draft.copy(apps = setOf(slack, gmail)).askableApps(seen))
-    }
-
-    @Test
     fun `the apps a rule asks about survive a round trip`() {
         val asking =
             defaultRule.copy(
-                apps = RuleApps.fromTargets(defaultRule.targets, setOf(COLLEAGUE_CHAT.packageName)),
+                apps = ruleApps(defaultRule.targets, setOf(COLLEAGUE_CHAT.packageName)),
             )
 
         assertEquals(Checked.Ok(asking), RuleDraft.from(asking).parse())
     }
 
     @Test
-    fun `a full draft becomes a rule with every target`() {
-        val address =
-            assertInstanceOf(
-                AccountAddressParse.Valid::class.java,
-                AccountAddress.parse("dan@work.example"),
-            ).address
+    fun `a full draft becomes a rule with every kind of app`() {
         val draft =
             RuleDraft.NEW.copy(
                 name = "Evenings",
                 state = RuleState.Disabled,
                 policy = Policy.HoldDuring,
                 windows = listOf(WindowDraft(setOf(DayOfWeek.SUNDAY), LocalTime.of(18, 0), LocalTime.of(8, 0))),
-                apps = setOf(PackageName("com.Slack")),
-                gmailAccounts = setOf(address),
-                chats =
-                    listOf(
-                        COLLEAGUE_CHAT,
-                    ).associateBy { it.key },
-                patterns = listOf(PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, "^Work")),
+                apps = mapOf(slack to AppDraft.EVERYTHING, PackageName.GMAIL to workMail, whatsapp to colleague),
                 breaks = listOf(lateBreak()),
             )
 
-        val rule = valid(draft)
-
-        assertEquals(draft, RuleDraft.from(rule))
+        assertEquals(draft, RuleDraft.from(valid(draft)))
     }
 
     @Test
-    fun `a rule's patterns survive editing`() {
-        val patterns =
-            listOf(
-                PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, "^Work"),
-                PatternDraft(PackageName("com.google.android.gm"), PatternField.ChannelId, "_dan@work\\.example$"),
-            )
-        val rule = valid(RuleDraft.NEW.copy(name = "x", patterns = patterns))
-
-        assertEquals(patterns.toSet(), RuleDraft.from(rule).patterns.toSet())
-        assertEquals(rule, valid(RuleDraft.from(rule)))
-    }
-
-    @Test
-    fun `blank and invalid patterns are reported with their number`() {
+    fun `blank and invalid patterns are reported with their app and number`() {
         val draft =
             RuleDraft.NEW.copy(
                 name = "x",
-                patterns =
-                    listOf(
-                        PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, " "),
-                        PatternDraft(PackageName("com.whatsapp"), PatternField.ChannelId, "(Work"),
+                apps =
+                    mapOf(
+                        whatsapp to
+                            colleague.copy(
+                                patterns =
+                                    listOf(
+                                        PatternDraft(PatternField.ChatName, " "),
+                                        PatternDraft(PatternField.ChannelId, "(Work"),
+                                    ),
+                            ),
                     ),
             )
 
         assertEquals(
-            Checked.Problems(listOf(DraftProblem.BlankPattern(1), DraftProblem.InvalidPattern(2, invalidDetail()))),
+            Checked.Problems(
+                listOf(
+                    DraftProblem.BlankPattern(whatsapp, 1),
+                    DraftProblem.InvalidPattern(whatsapp, 2, invalidDetail()),
+                ),
+            ),
             draft.parse(),
         )
     }
 
     @Test
     fun `a pattern previews whether it is empty, invalid or valid`() {
-        val app = PackageName("com.whatsapp")
-
-        assertEquals(PatternPreview.Empty, PatternDraft(app, PatternField.ChatName, " ").preview())
-        assertEquals(
-            PatternPreview.Invalid(invalidDetail()),
-            PatternDraft(app, PatternField.ChatName, "(Work").preview(),
-        )
+        assertEquals(PatternPreview.Empty, PatternDraft(PatternField.ChatName, " ").preview())
+        assertEquals(PatternPreview.Invalid(invalidDetail()), PatternDraft(PatternField.ChatName, "(Work").preview())
         assertEquals(
             PatternPreview.Valid(
-                Target.ChannelPattern(
-                    app,
+                PatternPick.Channel(
                     assertInstanceOf(TextPatternParse.Valid::class.java, TextPattern.parse("^chats")).pattern,
                 ),
             ),
-            PatternDraft(app, PatternField.ChannelId, "^chats").preview(),
+            PatternDraft(PatternField.ChannelId, "^chats").preview(),
         )
+        assertEquals(PatternDraft.BLANK, PatternDraft(PatternField.ChatName, ""))
     }
 
     @Test
-    fun `pattern problems are reported with name and account problems`() {
+    fun `pattern problems are reported with name problems`() {
         val draft =
             RuleDraft.NEW.copy(
                 name = " ",
-                pendingGmail = "dan",
-                patterns = listOf(PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, " ")),
+                apps = mapOf(whatsapp to colleague.copy(patterns = listOf(PatternDraft(PatternField.ChatName, " ")))),
             )
 
         assertEquals(
-            Checked.Problems(
-                listOf(
-                    DraftProblem.BlankName,
-                    DraftProblem.UnaddedAccount("Not an email address: \"dan\""),
-                    DraftProblem.BlankPattern(1),
-                ),
-            ),
+            Checked.Problems(listOf(DraftProblem.BlankName, DraftProblem.BlankPattern(whatsapp, 1))),
             draft.parse(),
         )
     }
 
     @Test
-    fun `the same pattern twice becomes one target`() {
-        val pattern = PatternDraft(PackageName("com.whatsapp"), PatternField.ChatName, "^Work")
-        val rule = valid(RuleDraft.NEW.copy(name = "x", patterns = listOf(pattern, pattern)))
+    fun `the same pattern twice becomes one`() {
+        val pattern = PatternDraft(PatternField.ChatName, "^Work")
+        val rule =
+            valid(
+                RuleDraft.NEW.copy(
+                    name = "x",
+                    apps =
+                        mapOf(whatsapp to colleague.copy(patterns = listOf(pattern, pattern))),
+                ),
+            )
 
-        assertEquals(listOf(pattern), RuleDraft.from(rule).patterns)
+        assertEquals(
+            listOf(pattern),
+            RuleDraft
+                .from(rule)
+                .apps
+                .getValue(whatsapp)
+                .patterns,
+        )
+    }
+
+    @Test
+    fun `an app narrowed to nothing is a problem`() {
+        val nothing = AppDraft.EVERYTHING.copy(mode = AppMode.Narrowed)
+
+        assertEquals(
+            Checked.Problems(listOf(DraftProblem.NothingChosen(whatsapp))),
+            RuleDraft.NEW.copy(name = "x", apps = mapOf(whatsapp to nothing)).parse(),
+        )
+    }
+
+    @Test
+    fun `an app held whole keeps its picks while editing but saves without them`() {
+        val whole = colleague.copy(mode = AppMode.Everything)
+        val rule = valid(RuleDraft.NEW.copy(name = "x", apps = mapOf(whatsapp to whole)))
+
+        assertEquals(mapOf(whatsapp to AppDraft.EVERYTHING), RuleDraft.from(rule).apps)
+    }
+
+    @Test
+    fun `apps are added whole, kept once and removed`() {
+        val draft = RuleDraft.NEW.copy(apps = mapOf(whatsapp to colleague))
+
+        assertEquals(
+            mapOf(whatsapp to colleague, slack to AppDraft.EVERYTHING),
+            draft.withApps(setOf(whatsapp, slack)).apps,
+        )
+        assertEquals(mapOf(whatsapp to workMail), draft.withApp(whatsapp, workMail).apps)
+        assertEquals(emptyMap<PackageName, AppDraft>(), draft.withoutApp(whatsapp).apps)
+    }
+
+    @Test
+    fun `saving names accounts by what was learned for their app`() {
+        val id = ChannelGroupId("^ncg_1_account_dan@work.example")
+        val bare = workMail.copy(accounts = mapOf(id to GroupName.of(id)))
+        val groups = KnownGroups.NONE.read(whatsapp, emptyMap(), mapOf(id to groupName("dan@work.example")))
+        val draft = RuleDraft.NEW.copy(apps = mapOf(whatsapp to bare, slack to bare))
+
+        assertEquals(
+            mapOf(whatsapp to workMail, slack to bare),
+            draft.withLearnedNames(groups).apps,
+        )
     }
 
     @Test
@@ -175,11 +214,22 @@ class RuleDraftTest {
     }
 
     @Test
-    fun `pattern problems are described`() {
-        assertEquals("Pattern 1 is empty.", DraftProblem.BlankPattern(1).describe())
+    fun `app problems are described with the app's name`() {
+        val labelOf = { app: PackageName -> if (app == whatsapp) "WhatsApp" else app.value }
+
+        val pickOf = { _: PackageName -> "chat" }
+
         assertEquals(
-            "Pattern 2 isn't a valid regular expression: Unclosed group",
-            DraftProblem.InvalidPattern(2, "Unclosed group").describe(),
+            "WhatsApp pattern 1 is empty.",
+            DraftProblem.BlankPattern(whatsapp, 1).describe(labelOf, pickOf),
+        )
+        assertEquals(
+            "WhatsApp pattern 2 isn't a valid regular expression: Unclosed group",
+            DraftProblem.InvalidPattern(whatsapp, 2, "Unclosed group").describe(labelOf, pickOf),
+        )
+        assertEquals(
+            "Pick at least one chat for WhatsApp, or choose All notifications.",
+            DraftProblem.NothingChosen(whatsapp).describe(labelOf, pickOf),
         )
     }
 
@@ -308,41 +358,6 @@ class RuleDraftTest {
         assertEquals(WindowDraft.WORKING_HOURS.days + DayOfWeek.SUNDAY, sunday.days)
         assertEquals(WindowDraft.WORKING_HOURS, sunday.toggle(DayOfWeek.SUNDAY))
     }
-
-    @Test
-    fun `a valid pending gmail account is saved without pressing add`() {
-        val draft = RuleDraft.NEW.copy(name = "Work mail", pendingGmail = " Dan@Work.Example ")
-
-        val rule = valid(draft)
-
-        assertEquals(setOf(address("dan@work.example")), RuleDraft.from(rule).gmailAccounts)
-    }
-
-    @Test
-    fun `an invalid pending gmail account is a problem`() {
-        assertEquals(
-            Checked.Problems(listOf(DraftProblem.UnaddedAccount("Not an email address: \"dan\""))),
-            RuleDraft.NEW.copy(name = "x", pendingGmail = "dan").parse(),
-        )
-    }
-
-    @Test
-    fun `adding a pending gmail account moves it into the set`() {
-        val added = RuleDraft.NEW.copy(pendingGmail = "dan@work.example").withPendingGmailAdded()
-
-        assertEquals(setOf(address("dan@work.example")), added.gmailAccounts)
-        assertEquals("", added.pendingGmail)
-    }
-
-    @Test
-    fun `adding an invalid pending gmail account changes nothing`() {
-        val draft = RuleDraft.NEW.copy(pendingGmail = "dan")
-
-        assertEquals(draft, draft.withPendingGmailAdded())
-    }
-
-    private fun address(raw: String): AccountAddress =
-        assertInstanceOf(AccountAddressParse.Valid::class.java, AccountAddress.parse(raw)).address
 
     private fun valid(draft: RuleDraft): Rule =
         when (val checked = draft.parse()) {

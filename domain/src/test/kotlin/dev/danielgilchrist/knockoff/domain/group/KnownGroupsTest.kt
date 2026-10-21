@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.group
 
+import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.notification.Channel
@@ -54,6 +55,15 @@ class KnownGroupsTest {
         KnownGroups.NONE.sighted(Origin(gmail, named, Conversation.None, known)).groupOf(workMail) shouldBe known
         KnownGroups.NONE.sighted(Origin(gmail, named, Conversation.None, OriginGroup.Unknown)) shouldBe KnownGroups.NONE
         KnownGroups.NONE.sighted(Origin(gmail, Channel.Unnamed, Conversation.None, known)) shouldBe KnownGroups.NONE
+    }
+
+    @Test
+    fun `a chat is grouped by its parent channel's known group`() {
+        val chat = COLLEAGUE_CHAT
+        val known = KnownGroups.NONE.sighted(ChannelKey(chat.packageName, chat.channel), ChannelGrouping.Grouped(work))
+
+        known.groupingOf(chat) shouldBe ChannelGrouping.Grouped(work)
+        KnownGroups.NONE.groupingOf(chat) shouldBe ChannelGrouping.Ungrouped
     }
 
     @Test
@@ -166,6 +176,11 @@ class KnownGroupsTest {
             true
         KnownGroupsDecode.UnsupportedVersion(2).version shouldBe 2
         KnownGroupsDecode.UnsupportedVersion(2).detail shouldBe "Unsupported known groups version 2"
+    }
+
+    @Test
+    fun `a group without a name is named after its id`() {
+        GroupName.of(ChannelGroupId("^ncg_~_misc")).value shouldBe "^ncg_~_misc"
     }
 
     @Test

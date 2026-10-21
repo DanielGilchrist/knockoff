@@ -1,16 +1,12 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,10 +23,12 @@ import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.RuleSection
 import dev.danielgilchrist.knockoff.ui.SaveStatus
+import dev.danielgilchrist.knockoff.ui.components.DestructiveMenuItem
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
 import dev.danielgilchrist.knockoff.ui.components.ListScreen
 import dev.danielgilchrist.knockoff.ui.components.MainSwitchBar
 import dev.danielgilchrist.knockoff.ui.components.NavigationListItem
+import dev.danielgilchrist.knockoff.ui.components.OverflowMenu
 import dev.danielgilchrist.knockoff.ui.components.ScreenNavigation
 import dev.danielgilchrist.knockoff.ui.saveProblem
 
@@ -53,7 +51,7 @@ internal fun RuleOverviewScreen(
         navigation = ScreenNavigation.Back(actions.onBack),
         modifier = modifier,
         actions = {
-            OverflowMenu(
+            RuleMenu(
                 onRename = actions.onRename,
                 onDelete = { deleting = true },
             )
@@ -96,59 +94,40 @@ private fun SectionRows(
     ListGroup(modifier = modifier) {
         NavigationListItem(
             icon = R.drawable.ic_apps,
-            headline = "What",
-            supporting = overview.what,
-            onClick = { onEditSection(RuleSection.What) },
+            headline = "Apps",
+            supporting = overview.apps,
+            onClick = { onEditSection(RuleSection.Apps) },
         )
         NavigationListItem(
             icon = R.drawable.ic_schedule,
-            headline = "When",
+            headline = "Hours",
             supporting = overview.hours,
-            onClick = { onEditSection(RuleSection.When) },
-        )
-        NavigationListItem(
-            icon = R.drawable.ic_tune,
-            headline = "Advanced",
-            supporting = overview.advanced,
-            onClick = { onEditSection(RuleSection.Advanced) },
+            onClick = { onEditSection(RuleSection.Hours) },
         )
     }
 }
 
 @Composable
-private fun OverflowMenu(
+private fun RuleMenu(
     onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    var open by rememberSaveable { mutableStateOf(false) }
-
-    Box {
-        IconButton(onClick = { open = true }) {
-            Icon(painter = painterResource(R.drawable.ic_more_vert), contentDescription = "More")
-        }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(text = "Rename") },
-                leadingIcon = { Icon(painter = painterResource(R.drawable.ic_edit), contentDescription = null) },
-                onClick = {
-                    open = false
-                    onRename()
-                },
-            )
-            DropdownMenuItem(
-                text = { Text(text = "Delete rule") },
-                leadingIcon = { Icon(painter = painterResource(R.drawable.ic_delete), contentDescription = null) },
-                colors =
-                    MenuDefaults.itemColors(
-                        textColor = MaterialTheme.colorScheme.error,
-                        leadingIconColor = MaterialTheme.colorScheme.error,
-                    ),
-                onClick = {
-                    open = false
-                    onDelete()
-                },
-            )
-        }
+    OverflowMenu { close ->
+        DropdownMenuItem(
+            text = { Text(text = "Rename") },
+            leadingIcon = { Icon(painter = painterResource(R.drawable.ic_edit), contentDescription = null) },
+            onClick = {
+                close()
+                onRename()
+            },
+        )
+        DestructiveMenuItem(
+            text = "Delete rule",
+            onClick = {
+                close()
+                onDelete()
+            },
+        )
     }
 }
 
