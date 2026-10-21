@@ -4,6 +4,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
+import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
@@ -17,6 +18,7 @@ import java.time.Instant
 internal class NotificationSweeper(
     private val listener: NotificationListenerService,
     private val scope: CoroutineScope,
+    private val knownGroups: suspend () -> KnownGroups,
 ) {
     private val snoozer = Snoozer(listener)
 
@@ -46,7 +48,11 @@ internal class NotificationSweeper(
                 Log.i(LOG_TAG, "rechecking ${read.notifications.size} snoozed notifications")
                 val active = lazy { activeGroups() }
 
-                read.notifications.forEach { sbn -> scope.launch { recheck(sbn, active, before, after) } }
+                scope.launch {
+                    val known = knownGroups()
+
+                    read.notifications.forEach { sbn -> launch { recheck(sbn, known, active, before, after) } }
+                }
             }
 
             is NotificationRead.Failure -> {
@@ -138,11 +144,12 @@ internal class NotificationSweeper(
 
     private suspend fun recheck(
         sbn: StatusBarNotification,
+        known: KnownGroups,
         active: Lazy<ActiveGroups>,
         before: Evaluation,
         after: Evaluation,
     ) {
-        val entry = GroupEntry.of(sbn, OriginGroup.Unknown)
+        val entry = GroupEntry.of(sbn, known.groupOf(sbn))
         val snoozed = entry.posted
 
         when (val lookup = entry.role { active.value }) {

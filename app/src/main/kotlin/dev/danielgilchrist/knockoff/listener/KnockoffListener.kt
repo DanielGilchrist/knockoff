@@ -10,6 +10,8 @@ import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.channel.BoundaryAlarm
 import dev.danielgilchrist.knockoff.channel.ChannelAccess
 import dev.danielgilchrist.knockoff.channel.ChannelSilencer
+import dev.danielgilchrist.knockoff.channel.GroupLearning
+import dev.danielgilchrist.knockoff.channel.GroupNames
 import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
 import dev.danielgilchrist.knockoff.domain.change.Change
 import dev.danielgilchrist.knockoff.domain.change.next
@@ -35,7 +37,7 @@ import java.time.ZoneId
 
 class KnockoffListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val sweeper = NotificationSweeper(this, scope)
+    private val sweeper = NotificationSweeper(this, scope) { knockoff.knownGroupsStore.current() }
     private var connection: Connection = Connection.Idle
 
     @Volatile
@@ -48,12 +50,15 @@ class KnockoffListener : NotificationListenerService() {
         get() = knockoff.settingsStore
 
     private val silencer by lazy {
+        val access = ChannelAccess(this)
+
         ChannelSilencer(
-            ChannelAccess(this),
+            access,
             BoundaryAlarm(this),
             settingsStore,
             knockoff.silencedChannelsStore,
             knockoff.seenChatsStore,
+            GroupLearning(GroupNames(this), knockoff.knownGroupsStore),
         )
     }
 
@@ -125,6 +130,7 @@ class KnockoffListener : NotificationListenerService() {
         val posted = sbn.toSnapshot(rankingMap.groupOf(sbn)).parse()
 
         scope.launch { knockoff.seenChatsStore.record(ChatSighting.of(posted, sbn.shortcutLabels(rankingMap))) }
+        scope.launch { knockoff.knownGroupsStore.record(posted.origin) }
         scope.launch {
             when (val change = applied) {
                 Change.Pending -> evaluateBeforeConnected(sbn, posted)

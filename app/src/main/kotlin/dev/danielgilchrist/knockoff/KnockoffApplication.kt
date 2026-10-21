@@ -7,6 +7,7 @@ import dev.danielgilchrist.knockoff.ask.ChatQuestionNotifier
 import dev.danielgilchrist.knockoff.channel.SilencedChannelsStore
 import dev.danielgilchrist.knockoff.chat.ChatDecisionsStore
 import dev.danielgilchrist.knockoff.chat.SeenChatsStore
+import dev.danielgilchrist.knockoff.group.KnownGroupsStore
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import dev.danielgilchrist.knockoff.ui.NotificationPermission
 import kotlinx.coroutines.CoroutineScope
@@ -35,6 +36,10 @@ class KnockoffApplication : Application() {
 
     val seenChatsStore: SeenChatsStore by lazy {
         SeenChatsStore(File(filesDir, "seen-chats.json"))
+    }
+
+    val knownGroupsStore: KnownGroupsStore by lazy {
+        KnownGroupsStore(File(filesDir, "channel-groups.json"))
     }
 
     val chatDecisionsStore: ChatDecisionsStore by lazy {

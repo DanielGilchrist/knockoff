@@ -28,6 +28,7 @@ internal class ChannelSilencer(
     private val settings: SettingsStore,
     private val store: SilencedChannelsStore,
     private val seenChats: SeenChatsStore,
+    private val learning: GroupLearning,
 ) {
     companion object {
         private val RESTORE_GRACE = 5.seconds
@@ -154,7 +155,7 @@ internal class ChannelSilencer(
         }
     }
 
-    private inline fun read(
+    private suspend inline fun read(
         rules: RuleSet,
         packages: Set<PackageName>,
         onRead: (Map<ChannelKey, ReadChannel>) -> Preparation,
@@ -172,6 +173,7 @@ internal class ChannelSilencer(
             }
 
             is ChannelRead.Read -> {
+                learning.learn(read.channels)
                 onRead(read.channels)
             }
         }

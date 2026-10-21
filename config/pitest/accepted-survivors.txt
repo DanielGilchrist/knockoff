@@ -7,15 +7,14 @@ NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.AccountAddress getV
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.schedule.BreakName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/schedule/BreakName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ChannelId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ChannelId::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ChannelGroupId::getValue
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.group.GroupName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/group/GroupName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ConversationId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ConversationId::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ConversationName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ConversationName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.NotificationKey getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/NotificationKey::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.PackageName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/PackageName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.rule.RuleName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/rule/RuleName::getValue
 
-# A conversation channel's id and a channel group id are only ever compared whole, through data class equality, so
-# nothing reads them.
-NO_COVERAGE dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping$Grouped getId-rEq8toc L7 replaced return value with "" for dev/danielgilchrist/knockoff/domain/channel/ChannelGrouping$Grouped::getId-rEq8toc
+# A conversation channel's id is only ever compared whole, through data class equality, so nothing reads it.
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.channel.ChannelKind$ConversationOf getId-rYnfllY L11 replaced return value with "" for dev/danielgilchrist/knockoff/domain/channel/ChannelKind$ConversationOf::getId-rYnfllY
 
 # The last branch of an exhaustive when compiles to equality checks whose only alternative is an unreachable
@@ -25,6 +24,10 @@ SURVIVED dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot p
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.PostedNotification describe L24 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Decision describe L27 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation decide L25 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sighted L45 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sighted L48 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sighted L62 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.StoredKnownApp toKnownApp L31 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Recheck describe L18 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.RuleZone resolve L31 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.RuleZone stored L37 removed conditional - replaced equality check with true
