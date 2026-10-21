@@ -122,7 +122,7 @@ class KnockoffListener : NotificationListenerService() {
         sbn: StatusBarNotification,
         rankingMap: RankingMap,
     ) {
-        val posted = sbn.toSnapshot().parse()
+        val posted = sbn.toSnapshot(rankingMap.groupOf(sbn)).parse()
 
         scope.launch { knockoff.seenChatsStore.record(ChatSighting.of(posted, sbn.shortcutLabels(rankingMap))) }
         scope.launch {

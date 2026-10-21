@@ -12,6 +12,7 @@ import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.channel.AlertingImportance
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
@@ -276,7 +277,7 @@ class SeenChatsTest {
     fun `a chat renamed out of a pattern has its channel restored`() {
         val pattern = Target.ChatNamePattern(WHATSAPP, textPattern("^Work"))
         val rules = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(pattern)))
-        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.Low, COLLEAGUE_KIND))
+        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.Low, COLLEAGUE_KIND, ChannelGrouping.Ungrouped))
         val silenced = SilencedChannels.of(mapOf(COLLEAGUE_CHANNEL to AlertingImportance.High))
         val evening = london("2026-10-14T20:00")
         val working = SeenChats.NONE.seen(COLLEAGUE_CHAT.copy(name = ConversationName("Work chat")))

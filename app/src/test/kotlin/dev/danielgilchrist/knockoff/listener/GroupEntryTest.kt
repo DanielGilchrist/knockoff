@@ -5,6 +5,7 @@ import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot
 import dev.danielgilchrist.knockoff.domain.notification.NotificationStyle
+import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -75,6 +76,7 @@ class GroupEntryTest {
                 NotificationKey(key),
                 PackageName("com.whatsapp"),
                 channelId = null,
+                group = OriginGroup.Unknown,
                 style = NotificationStyle.Other,
                 shortcutId = null,
                 titles = emptyList(),

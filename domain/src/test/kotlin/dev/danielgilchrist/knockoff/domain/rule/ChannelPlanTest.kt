@@ -11,6 +11,7 @@ import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.channel.AlertingImportance
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.ChannelPlan
@@ -63,8 +64,8 @@ class ChannelPlanTest {
         val shared = ChannelKey(WHATSAPP, WHATSAPP_CHATS)
         val read =
             mapOf(
-                shared to ReadChannel(Importance.High, ChannelKind.Shared),
-                COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND),
+                shared to ReadChannel(Importance.High, ChannelKind.Shared, ChannelGrouping.Ungrouped),
+                COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND, ChannelGrouping.Ungrouped),
             )
 
         chatOnly.planChannels(read, SilencedChannels.NONE, evening) shouldBe
@@ -78,7 +79,7 @@ class ChannelPlanTest {
     @Test
     fun `an app rule holds its chats' own channels too`() {
         val app = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(Target.App(WHATSAPP))))
-        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND))
+        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND, ChannelGrouping.Ungrouped))
 
         app.planChannels(read, SilencedChannels.NONE, evening).silence shouldBe
             listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.High, Importance.Low))
@@ -87,7 +88,7 @@ class ChannelPlanTest {
     @Test
     fun `a chat's own channel is restored once its rule permits`() {
         val chatOnly = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
-        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.Low, COLLEAGUE_KIND))
+        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.Low, COLLEAGUE_KIND, ChannelGrouping.Ungrouped))
 
         chatOnly.planChannels(read, saved(COLLEAGUE_CHANNEL to AlertingImportance.High), morning) shouldBe
             ChannelPlan(
@@ -101,7 +102,7 @@ class ChannelPlanTest {
     fun `a chat in a disabled rule leaves its own channel alone`() {
         val disabled =
             ruleSet(rule("Off", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT), RuleState.Disabled))
-        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND))
+        val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND, ChannelGrouping.Ungrouped))
 
         disabled.planChannels(read, SilencedChannels.NONE, evening) shouldBe nothing(SilencedChannels.NONE)
     }

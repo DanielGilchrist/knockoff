@@ -10,6 +10,7 @@ import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.channel.AlertingImportance
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.Importance
@@ -39,7 +40,8 @@ class ChatChannelNeedsTest {
 
     @Test
     fun `a chat that already has its own channel needs none`() {
-        val read = shared + (COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND))
+        val read =
+            shared + (COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND, ChannelGrouping.Ungrouped))
 
         both.chatChannelNeeds(read, SilencedChannels.NONE) shouldBe setOf(ChatChannelNeed.Create(friendChat))
     }
@@ -50,8 +52,9 @@ class ChatChannelNeedsTest {
         val read =
             shared +
                 mapOf(
-                    COLLEAGUE_CHANNEL to ReadChannel(Importance.High, oldParent),
-                    ChannelKey(SLACK, ChannelId("c1")) to ReadChannel(Importance.High, COLLEAGUE_KIND),
+                    COLLEAGUE_CHANNEL to ReadChannel(Importance.High, oldParent, ChannelGrouping.Ungrouped),
+                    ChannelKey(SLACK, ChannelId("c1")) to
+                        ReadChannel(Importance.High, COLLEAGUE_KIND, ChannelGrouping.Ungrouped),
                 )
         val colleagueOnly = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
 

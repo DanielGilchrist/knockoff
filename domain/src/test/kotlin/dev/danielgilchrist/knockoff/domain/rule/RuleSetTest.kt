@@ -19,6 +19,7 @@ import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule
@@ -68,7 +69,9 @@ class RuleSetTest {
 
     @Test
     fun `non-work app outside hours is left`() {
-        ruleSet(workOnly).decide(post(Origin(WHATSAPP, Channel.Unnamed, Conversation.None)), evening) shouldBe
+        ruleSet(
+            workOnly,
+        ).decide(post(Origin(WHATSAPP, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)), evening) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
 

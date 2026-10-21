@@ -10,6 +10,7 @@ import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.traits
@@ -38,7 +39,7 @@ class ChatSightingTest {
 
     @Test
     fun `a conversation without a channel is not a chat`() {
-        val unnamed = Origin(WHATSAPP, Channel.Unnamed, known(COLLEAGUE))
+        val unnamed = Origin(WHATSAPP, Channel.Unnamed, known(COLLEAGUE), OriginGroup.Unknown)
 
         ChatSighting.of(posted(unnamed), emptyList()) shouldBe ChatSighting.NotAChat
     }

@@ -21,6 +21,7 @@ import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.textPattern
@@ -31,7 +32,8 @@ class TargetTest {
     @Test
     fun `app target matches only its own package`() {
         Target.App(SLACK).matches(SLACK_ORIGIN) shouldBe true
-        Target.App(SLACK).matches(Origin(WHATSAPP, Channel.Unnamed, Conversation.None)) shouldBe false
+        Target.App(SLACK).matches(Origin(WHATSAPP, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe
+            false
         Target.App(SLACK).matches(WORK_GMAIL_ORIGIN) shouldBe false
     }
 
@@ -41,7 +43,7 @@ class TargetTest {
 
         gmail.matches(WORK_GMAIL_ORIGIN) shouldBe true
         gmail.matches(PERSONAL_GMAIL_ORIGIN) shouldBe true
-        gmail.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None)) shouldBe true
+        gmail.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe true
         gmail.matches(SLACK_ORIGIN) shouldBe false
     }
 
@@ -51,7 +53,7 @@ class TargetTest {
 
         inbox.matches(WORK_GMAIL_ORIGIN) shouldBe true
         inbox.matches(PERSONAL_GMAIL_ORIGIN) shouldBe false
-        inbox.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None)) shouldBe false
+        inbox.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe false
         inbox.matches(SLACK_ORIGIN) shouldBe false
     }
 
@@ -62,13 +64,15 @@ class TargetTest {
         COLLEAGUE_CHAT.matches(whatsappOrigin(Conversation.None)) shouldBe false
         COLLEAGUE_CHAT.matches(whatsappOrigin(Conversation.Routed(COLLEAGUE))) shouldBe true
         COLLEAGUE_CHAT.matches(whatsappOrigin(Conversation.Routed(FRIEND))) shouldBe false
-        COLLEAGUE_CHAT.matches(Origin(SLACK, Channel.Named(WHATSAPP_CHATS), known(COLLEAGUE))) shouldBe
+        COLLEAGUE_CHAT.matches(
+            Origin(SLACK, Channel.Named(WHATSAPP_CHATS), known(COLLEAGUE), OriginGroup.Unknown),
+        ) shouldBe
             false
     }
 
     @Test
     fun `chat target ignores which channel the conversation arrives on`() {
-        val elsewhere = Origin(WHATSAPP, Channel.Unnamed, known(COLLEAGUE))
+        val elsewhere = Origin(WHATSAPP, Channel.Unnamed, known(COLLEAGUE), OriginGroup.Unknown)
 
         COLLEAGUE_CHAT.matches(elsewhere) shouldBe true
     }
@@ -120,7 +124,13 @@ class TargetTest {
 
     @Test
     fun `gmail inbox target ignores other apps with a matching channel`() {
-        val lookalike = Origin(SLACK, Channel.Named(ChannelId("^nc_1_mail_dan@work.example")), Conversation.None)
+        val lookalike =
+            Origin(
+                SLACK,
+                Channel.Named(ChannelId("^nc_1_mail_dan@work.example")),
+                Conversation.None,
+                OriginGroup.Unknown,
+            )
 
         Target.GmailInbox(WORK_ADDRESS).matches(lookalike) shouldBe false
     }
@@ -131,9 +141,15 @@ class TargetTest {
 
         accounts.matches(WORK_GMAIL_ORIGIN) shouldBe true
         accounts.matches(PERSONAL_GMAIL_ORIGIN) shouldBe false
-        accounts.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None)) shouldBe false
+        accounts.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe
+            false
         accounts.matches(
-            Origin(SLACK, Channel.Named(ChannelId("^nc_1_mail_dan@work.example")), Conversation.None),
+            Origin(
+                SLACK,
+                Channel.Named(ChannelId("^nc_1_mail_dan@work.example")),
+                Conversation.None,
+                OriginGroup.Unknown,
+            ),
         ) shouldBe
             false
         accounts.covers(
@@ -170,7 +186,10 @@ class TargetTest {
         work.matches(whatsappOrigin(Conversation.None)) shouldBe false
         work.matches(whatsappOrigin(Conversation.Routed(COLLEAGUE))) shouldBe false
         work.matches(whatsappOrigin(Conversation.Known(COLLEAGUE, ConversationTitle.Untitled))) shouldBe false
-        work.matches(Origin(SLACK, Channel.Named(WHATSAPP_CHATS), known(COLLEAGUE, "Work"))) shouldBe false
+        work.matches(
+            Origin(SLACK, Channel.Named(WHATSAPP_CHATS), known(COLLEAGUE, "Work"), OriginGroup.Unknown),
+        ) shouldBe
+            false
     }
 
     @Test

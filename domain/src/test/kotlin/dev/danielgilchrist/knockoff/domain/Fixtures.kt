@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain
 
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.Importance
@@ -16,6 +17,7 @@ import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTraits
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTraitsParse
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
@@ -128,13 +130,13 @@ fun ruleSet(vararg rules: Rule): RuleSet =
     }
 
 fun gmailOrigin(channelId: String): Origin =
-    Origin(PackageName.GMAIL, Channel.Named(ChannelId(channelId)), Conversation.None)
+    Origin(PackageName.GMAIL, Channel.Named(ChannelId(channelId)), Conversation.None, OriginGroup.Unknown)
 
 val SLACK = PackageName("com.Slack")
 
 val WORK_ADDRESS = address("dan@work.example")
 
-val SLACK_ORIGIN = Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None)
+val SLACK_ORIGIN = Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None, OriginGroup.Unknown)
 
 val WORK_GMAIL_ORIGIN = gmailOrigin("^nc_1_mail_dan@work.example")
 
@@ -154,7 +156,8 @@ val COLLEAGUE_CHANNEL = ChannelKey(WHATSAPP, ChannelId("7c0ffee0-conversation"))
 
 val COLLEAGUE_KIND = ChannelKind.ConversationOf(WHATSAPP_CHATS, COLLEAGUE)
 
-fun whatsappOrigin(conversation: Conversation): Origin = Origin(WHATSAPP, Channel.Named(WHATSAPP_CHATS), conversation)
+fun whatsappOrigin(conversation: Conversation): Origin =
+    Origin(WHATSAPP, Channel.Named(WHATSAPP_CHATS), conversation, OriginGroup.Unknown)
 
 fun traits(vararg traits: NotificationTrait): NotificationTraits =
     when (val parse = NotificationTraits.parse(traits.toSet())) {
@@ -172,7 +175,10 @@ internal fun interval(
     }
 
 fun sharedChannels(vararg channels: Pair<ChannelKey, Importance>): Map<ChannelKey, ReadChannel> =
-    channels.associate { (key, importance) -> key to ReadChannel(importance, ChannelKind.Shared) }
+    channels.associate { (key, importance) ->
+        key to
+            ReadChannel(importance, ChannelKind.Shared, ChannelGrouping.Ungrouped)
+    }
 
 fun known(
     id: ConversationId,

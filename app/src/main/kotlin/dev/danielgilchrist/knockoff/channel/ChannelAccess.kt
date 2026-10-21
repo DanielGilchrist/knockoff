@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
@@ -125,7 +126,7 @@ internal class ChannelAccess(
 
                 when (val parse = AndroidImportance.parse(channel.importance)) {
                     is ImportanceParse.Known -> {
-                        listOf(key to ReadChannel(parse.importance, kindOf(channel)))
+                        listOf(key to ReadChannel(parse.importance, kindOf(channel), ChannelGrouping.of(channel.group)))
                     }
 
                     is ImportanceParse.Unknown -> {

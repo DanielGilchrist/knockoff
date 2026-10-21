@@ -18,7 +18,10 @@ class PostedNotificationTest {
     @Test
     fun `unsnoozable notifications without a channel say so`() {
         PostedNotification
-            .Unsnoozable(key, Origin(SLACK, Channel.Unnamed, Conversation.None), traits(NotificationTrait.Ongoing))
-            .describe() shouldBe "key=0|com.google.android.gm|7|gig|10206 package=com.Slack channel=(none)"
+            .Unsnoozable(
+                key,
+                Origin(SLACK, Channel.Unnamed, Conversation.None, OriginGroup.Unknown),
+                traits(NotificationTrait.Ongoing),
+            ).describe() shouldBe "key=0|com.google.android.gm|7|gig|10206 package=com.Slack channel=(none)"
     }
 }

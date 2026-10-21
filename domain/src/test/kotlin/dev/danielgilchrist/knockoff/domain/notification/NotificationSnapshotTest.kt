@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.COLLEAGUE
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.traits
@@ -19,7 +20,10 @@ class NotificationSnapshotTest {
     @Test
     fun `an app notification without blocking traits is snoozable`() {
         snapshot(SLACK, "messages").parse() shouldBe
-            PostedNotification.Snoozable(key, Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None))
+            PostedNotification.Snoozable(
+                key,
+                Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None, OriginGroup.Unknown),
+            )
     }
 
     @Test
@@ -27,14 +31,27 @@ class NotificationSnapshotTest {
         snapshot(PackageName.GMAIL, "^nc_1_mail_dan@work.example").parse() shouldBe
             PostedNotification.Snoozable(
                 key,
-                Origin(PackageName.GMAIL, Channel.Named(ChannelId("^nc_1_mail_dan@work.example")), Conversation.None),
+                Origin(
+                    PackageName.GMAIL,
+                    Channel.Named(ChannelId("^nc_1_mail_dan@work.example")),
+                    Conversation.None,
+                    OriginGroup.Unknown,
+                ),
             )
+    }
+
+    @Test
+    fun `a notification keeps the group its channel is in`() {
+        val grouped = OriginGroup.Known(ChannelGrouping.Grouped(ChannelGroupId("^ncg_1_account_dan@work.example")))
+
+        snapshot(PackageName.GMAIL, "^nc_1_mail_dan@work.example", group = grouped).parse().origin.group shouldBe
+            grouped
     }
 
     @Test
     fun `a notification without a channel is unnamed`() {
         snapshot(SLACK, channelId = null).parse() shouldBe
-            PostedNotification.Snoozable(key, Origin(SLACK, Channel.Unnamed, Conversation.None))
+            PostedNotification.Snoozable(key, Origin(SLACK, Channel.Unnamed, Conversation.None, OriginGroup.Unknown))
     }
 
     @Test
@@ -84,7 +101,7 @@ class NotificationSnapshotTest {
         snapshot(SLACK, "messages", setOf(trait)).parse() shouldBe
             PostedNotification.Unsnoozable(
                 key,
-                Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None),
+                Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None, OriginGroup.Unknown),
                 traits(trait),
             )
     }
@@ -96,7 +113,7 @@ class NotificationSnapshotTest {
         snapshot(SLACK, "media", traits.values).parse() shouldBe
             PostedNotification.Unsnoozable(
                 key,
-                Origin(SLACK, Channel.Named(ChannelId("media")), Conversation.None),
+                Origin(SLACK, Channel.Named(ChannelId("media")), Conversation.None, OriginGroup.Unknown),
                 traits,
             )
     }
@@ -108,5 +125,7 @@ class NotificationSnapshotTest {
         shortcutId: String? = null,
         titles: List<String> = listOf("Colleague"),
         style: NotificationStyle = NotificationStyle.Messaging,
-    ): NotificationSnapshot = NotificationSnapshot(key, packageName, channelId, style, shortcutId, titles, traits)
+        group: OriginGroup = OriginGroup.Unknown,
+    ): NotificationSnapshot =
+        NotificationSnapshot(key, packageName, channelId, group, style, shortcutId, titles, traits)
 }

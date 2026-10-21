@@ -4,6 +4,7 @@ class NotificationSnapshot(
     private val key: NotificationKey,
     private val packageName: PackageName,
     private val channelId: String?,
+    private val group: OriginGroup,
     private val style: NotificationStyle,
     private val shortcutId: String?,
     private val titles: List<String>,
@@ -20,7 +21,7 @@ class NotificationSnapshot(
                 shortcutId.isNullOrBlank() -> Conversation.None
                 else -> conversationOf(ConversationId(shortcutId))
             }
-        val origin = Origin(packageName, channel, conversation)
+        val origin = Origin(packageName, channel, conversation, group)
 
         return when (val parse = NotificationTraits.parse(traits)) {
             NotificationTraitsParse.None -> PostedNotification.Snoozable(key, origin)

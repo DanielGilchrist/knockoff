@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.channel
 
+import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.Importance
@@ -87,7 +88,7 @@ class SilencedChannelsStoreTest {
             ).rules
         return rules
             .planChannels(
-                mapOf(messages to ReadChannel(Importance.High, ChannelKind.Shared)),
+                mapOf(messages to ReadChannel(Importance.High, ChannelKind.Shared, ChannelGrouping.Ungrouped)),
                 SilencedChannels.NONE,
                 ZonedDateTime.parse("2026-10-14T10:00+01:00[Europe/London]"),
             ).silenced

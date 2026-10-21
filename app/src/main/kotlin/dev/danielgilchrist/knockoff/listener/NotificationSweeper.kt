@@ -5,6 +5,7 @@ import android.service.notification.StatusBarNotification
 import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
+import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule.Decision
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
@@ -23,7 +24,7 @@ internal class NotificationSweeper(
         when (val read = listener.read(NotificationList.Active)) {
             is NotificationRead.Read -> {
                 Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
-                val active = ActiveGroups.Read(read.notifications.map(GroupEntry::of))
+                val active = ActiveGroups.Read(entriesOf(read.notifications))
 
                 read.notifications.zip(active.entries).forEach { (sbn, entry) ->
                     scope.launch { decide(sbn, entry.posted, entry.role { active }, evaluation) }
@@ -74,7 +75,7 @@ internal class NotificationSweeper(
                     GroupPosition.Summary -> {}
 
                     GroupPosition.Member -> {
-                        scope.launch { revisitSummariesOf(GroupEntry.of(removed), evaluation) }
+                        scope.launch { revisitSummariesOf(GroupEntry.of(removed, OriginGroup.Unknown), evaluation) }
                     }
                 }
             }
@@ -88,7 +89,7 @@ internal class NotificationSweeper(
         when (val read = listener.read(NotificationList.Active)) {
             is NotificationRead.Read -> {
                 read.notifications
-                    .map { it to GroupEntry.of(it) }
+                    .zip(entriesOf(read.notifications))
                     .filter { (_, entry) -> entry.position == GroupPosition.Summary && entry.sharesGroupWith(gone) }
                     .forEach { (sbn, entry) -> scope.launch { evaluate(sbn, entry.posted, evaluation) } }
             }
@@ -141,7 +142,7 @@ internal class NotificationSweeper(
         before: Evaluation,
         after: Evaluation,
     ) {
-        val entry = GroupEntry.of(sbn)
+        val entry = GroupEntry.of(sbn, OriginGroup.Unknown)
         val snoozed = entry.posted
 
         when (val lookup = entry.role { active.value }) {
@@ -184,7 +185,18 @@ internal class NotificationSweeper(
 
     private fun activeGroups(): ActiveGroups =
         when (val read = listener.read(NotificationList.Active)) {
-            is NotificationRead.Read -> ActiveGroups.Read(read.notifications.map(GroupEntry::of))
-            is NotificationRead.Failure -> ActiveGroups.Unavailable(read.detail)
+            is NotificationRead.Read -> {
+                ActiveGroups.Read(entriesOf(read.notifications))
+            }
+
+            is NotificationRead.Failure -> {
+                ActiveGroups.Unavailable(read.detail)
+            }
         }
+
+    private fun entriesOf(notifications: List<StatusBarNotification>): List<GroupEntry> {
+        val groupOf = listener.groupsNow()
+
+        return notifications.map { GroupEntry.of(it, groupOf(it)) }
+    }
 }

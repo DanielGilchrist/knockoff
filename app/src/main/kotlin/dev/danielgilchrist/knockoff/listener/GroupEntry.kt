@@ -3,6 +3,7 @@ package dev.danielgilchrist.knockoff.listener
 import android.app.Notification
 import android.service.notification.StatusBarNotification
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
+import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 
 internal data class GroupEntry(
@@ -33,7 +34,10 @@ internal data class GroupEntry(
         active.filter { sharesGroupWith(it) && it.position == GroupPosition.Member }.map { it.posted }
 
     companion object {
-        fun of(sbn: StatusBarNotification): GroupEntry = of(sbn, sbn.toSnapshot().parse())
+        fun of(
+            sbn: StatusBarNotification,
+            group: OriginGroup,
+        ): GroupEntry = of(sbn, sbn.toSnapshot(group).parse())
 
         fun of(
             sbn: StatusBarNotification,
