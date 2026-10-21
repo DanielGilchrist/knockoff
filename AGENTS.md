@@ -209,9 +209,10 @@ adb logcat -s Knockoff:V
 
 ### FakeChat
 
-`:fakechat` (`dev.danielgilchrist.knockoff.fakechat`) is a debug-only app that posts WhatsApp-shaped notifications, so chat and summary behaviour can be tested without real conversations. It's never shipped and Knockoff doesn't depend on it. It doesn't cover group chats or a shortcut label that differs from the title.
+`:fakechat` (`dev.danielgilchrist.knockoff.fakechat`) is a debug-only app that posts WhatsApp- and mail-shaped notifications, so chat, account and summary behaviour can be tested without real conversations. It's never shipped and Knockoff doesn't depend on it. It doesn't cover group chats or a shortcut label that differs from the title.
 
 - Chats: one `MessagingStyle` notification per chat on channel `individual_chat_defaults`, group `group_key_messages`, shortcut ID `<name>@lid` (lowercased, spaces as dots; IDs differ from names because a chat named by its ID is never recorded), plus an `InboxStyle` group summary tagged with the latest chat's shortcut.
+- Mail (`do mail`): one Gmail-shaped notification per account, in group `^ncg_1_account_<account>`. See `FakeMail.kt`.
 
 ```
 ./gradlew :fakechat:installDebug
@@ -219,6 +220,7 @@ adb shell pm grant dev.danielgilchrist.knockoff.fakechat android.permission.POST
 R=dev.danielgilchrist.knockoff.fakechat/.CommandReceiver
 adb shell "am broadcast -n $R --es chat Boss --es text 'Quick question'"   # a message; updates the summary
 adb shell "am broadcast -n $R --es do dismiss --es chat 'Mum Smith'"        # the app cancels that chat
+adb shell "am broadcast -n $R --es do mail --es account work@work.example --es from 'The Boss' --es text 'Numbers'"
 adb shell "am broadcast -n $R --es do clear"                               # cancels everything
 ```
 

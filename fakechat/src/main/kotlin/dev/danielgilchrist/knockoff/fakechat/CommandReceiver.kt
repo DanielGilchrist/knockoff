@@ -27,6 +27,10 @@ class CommandReceiver : BroadcastReceiver() {
                 }
             }
 
+            is Command.Mail -> {
+                FakeMail(context).post(command.account, command.from, command.subject)
+            }
+
             Command.Clear -> {
                 conversations.clear()
                 notifications.cancelAll()

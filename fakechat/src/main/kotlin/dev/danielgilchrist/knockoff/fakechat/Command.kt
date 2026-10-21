@@ -12,6 +12,12 @@ sealed interface Command {
         val chat: String,
     ) : Command
 
+    data class Mail(
+        val account: String,
+        val from: String,
+        val subject: String,
+    ) : Command
+
     data object Clear : Command
 
     data class Invalid(
@@ -25,9 +31,16 @@ sealed interface Command {
             return when (intent.getStringExtra("do") ?: "message") {
                 "message" -> chat?.let { Message(it, intent.getStringExtra("text") ?: "Hi") } ?: Invalid("no chat")
                 "dismiss" -> chat?.let(::Dismiss) ?: Invalid("no chat")
+                "mail" -> mail(intent)
                 "clear" -> Clear
                 else -> Invalid("unknown command ${intent.getStringExtra("do")}")
             }
         }
+
+        private fun mail(intent: Intent): Command =
+            when (val account = intent.getStringExtra("account")) {
+                null -> Invalid("no account")
+                else -> Mail(account, intent.getStringExtra("from") ?: "Someone", intent.getStringExtra("text") ?: "Hi")
+            }
     }
 }
