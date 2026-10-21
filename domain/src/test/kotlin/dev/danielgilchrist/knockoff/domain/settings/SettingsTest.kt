@@ -8,8 +8,14 @@ import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.breakNamed
 import dev.danielgilchrist.knockoff.domain.days
+import dev.danielgilchrist.knockoff.domain.group.GroupName
+import dev.danielgilchrist.knockoff.domain.group.GroupNameParse
+import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule
+import dev.danielgilchrist.knockoff.domain.rule.AppScope
+import dev.danielgilchrist.knockoff.domain.rule.NarrowedParse
+import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
@@ -48,10 +54,6 @@ class SettingsTest {
                 Arguments.of("""{"state": "Paused"}""", "rule 1: \"Work\": unknown state \"Paused\""),
                 Arguments.of("""{"policy": "Mute"}""", "rule 1: \"Work\": unknown policy \"Mute\""),
                 Arguments.of("""{"windows": []}""", "rule 1: \"Work\": no windows"),
-                Arguments.of(
-                    """{"gmailAccounts": ["dan@work.example", "dan"]}""",
-                    "rule 1: \"Work\": Gmail account 2: Not an email address: \"dan\"",
-                ),
                 Arguments.of(
                     """{"windows": [$MONDAY, {"days": ["FUNDAY"], "start": "08:00", "end": "17:00"}]}""",
                     "rule 1: \"Work\": window 2: unknown days [FUNDAY]",
@@ -147,7 +149,7 @@ class SettingsTest {
         Settings.DEFAULT.toJson() shouldBe
             """
             {
-                "version": 6,
+                "version": 7,
                 "defaultZone": "device",
                 "theme": "System",
                 "rules": [
@@ -169,12 +171,8 @@ class SettingsTest {
                             }
                         ],
                         "breaks": [],
-                        "apps": [],
-                        "gmailAccounts": [],
-                        "chats": [],
-                        "patterns": [],
                         "zone": "default",
-                        "asking": []
+                        "apps": []
                     }
                 ]
             }
@@ -198,6 +196,71 @@ class SettingsTest {
                     ),
                     Theme.System,
                 ),
+            )
+    }
+
+    @Test
+    fun `version 6 rules are regrouped by app`() {
+        val chat =
+            """{"app": "com.whatsapp", "channel": "individual_chat_defaults_4", "id": "1000000000001@lid",
+            "name": "Colleague"}"""
+        val slackChat = chat.replace("com.whatsapp", "com.Slack")
+        val rule =
+            ruleJson(
+                """{"apps": ["com.Slack"], "gmailAccounts": ["dan@work.example"], "chats": [$chat, $slackChat],
+                "patterns": [$WORK_PATTERN], "breaks": [], "zone": "default",
+                "asking": ["com.whatsapp", "com.Slack", "org.signal"]}""",
+            )
+
+        Settings.fromJson("""{"version": 6, "defaultZone": "device", "theme": "System", "rules": [$rule]}""") shouldBe
+            SettingsDecode.Decoded(
+                Settings(
+                    ruleSet(
+                        rule(
+                            "Work",
+                            Policy.DeliverOnlyDuring,
+                            schedule(window(days(DayOfWeek.MONDAY), "08:00", "17:00")),
+                            setOf(
+                                Target.App(SLACK),
+                                WORK_ADDRESS.gmailAccount(),
+                                COLLEAGUE_CHAT,
+                                Target.ChatNamePattern(WHATSAPP, textPattern("^Work")),
+                            ),
+                            asking = setOf(WHATSAPP, PackageName("org.signal")),
+                        ),
+                    ),
+                    Theme.System,
+                ),
+            )
+    }
+
+    @Test
+    fun `a version 6 Gmail address becomes its account group whatever its shape`() {
+        val rule =
+            ruleJson(
+                """{"gmailAccounts": ["dan"], "breaks": [], "chats": [], "patterns": [], "zone": "default",
+                "asking": []}""",
+            )
+
+        Settings
+            .fromJson("""{"version": 6, "defaultZone": "device", "theme": "System", "rules": [$rule]}""")
+            .shouldBeInstanceOf<SettingsDecode.Decoded>()
+            .settings.rules.rules
+            .single()
+            .apps.scopes shouldBe
+            mapOf(
+                PackageName.GMAIL to
+                    AppScope.Narrowed
+                        .parse(
+                            mapOf(
+                                ChannelGroupId("^ncg_1_account_dan") to
+                                    GroupName.parse("dan").shouldBeInstanceOf<GroupNameParse.Valid>().name,
+                            ),
+                            emptyList(),
+                            emptySet(),
+                            NewChatsAsking.DontAsk,
+                        ).shouldBeInstanceOf<NarrowedParse.Valid>()
+                        .scope,
             )
     }
 
@@ -257,14 +320,14 @@ class SettingsTest {
         source: String,
         problem: String,
     ) {
-        val pattern = """{"app": "com.whatsapp", "field": "$field", "pattern": "$source"}"""
+        val pattern = """{"field": "$field", "pattern": "$source"}"""
 
         Settings
             .fromJson(
-                currentDocument(patterns = pattern),
+                appsDocument(narrowedApp("com.whatsapp", patterns = pattern)),
             ).shouldBeInstanceOf<SettingsDecode.Invalid>()
             .detail shouldBe
-            "rule 1: \"Work\": pattern 1: $problem"
+            "rule 1: \"Work\": app 1: \"com.whatsapp\": pattern 1: $problem"
     }
 
     @Test
@@ -320,37 +383,81 @@ class SettingsTest {
             )
     }
 
-    @ParameterizedTest(name = "{4}")
+    @ParameterizedTest(name = "{3}")
     @CsvSource(
-        "' ', chats, 1000000000001@lid, Someone, blank chat app",
-        "com.whatsapp, ' ', 1000000000001@lid, Someone, blank chat channel",
-        "com.whatsapp, chats, ' ', Someone, blank chat id",
-        "com.whatsapp, chats, 1000000000001@lid, ' ', blank chat name",
+        "' ', 1000000000001@lid, Someone, blank chat channel",
+        "chats, ' ', Someone, blank chat id",
+        "chats, 1000000000001@lid, ' ', blank chat name",
     )
     fun `a chat missing a part is invalid`(
-        app: String,
         channel: String,
         id: String,
         name: String,
         problem: String,
     ) {
-        val chat = """{"app": "$app", "channel": "$channel", "id": "$id", "name": "$name"}"""
+        val chat = """{"channel": "$channel", "id": "$id", "name": "$name"}"""
 
-        Settings.fromJson(currentDocument(chats = chat)).shouldBeInstanceOf<SettingsDecode.Invalid>().detail shouldBe
-            "rule 1: \"Work\": chat 1: $problem"
+        Settings
+            .fromJson(appsDocument(narrowedApp("com.whatsapp", chats = chat)))
+            .shouldBeInstanceOf<SettingsDecode.Invalid>()
+            .detail shouldBe
+            "rule 1: \"Work\": app 1: \"com.whatsapp\": chat 1: $problem"
+    }
+
+    @ParameterizedTest(name = "{2}")
+    @CsvSource(
+        "' ', a, blank account group",
+        "^ncg_1_account_a, ' ', blank account label",
+    )
+    fun `an account missing a part is invalid`(
+        group: String,
+        label: String,
+        problem: String,
+    ) {
+        val account = """{"group": "$group", "label": "$label"}"""
+
+        Settings
+            .fromJson(appsDocument(narrowedApp("com.google.android.gm", accounts = account)))
+            .shouldBeInstanceOf<SettingsDecode.Invalid>()
+            .detail shouldBe
+            "rule 1: \"Work\": app 1: \"com.google.android.gm\": account 1: $problem"
+    }
+
+    @Test
+    fun `an app's scope must be valid and each app listed once`() {
+        val everything = """{"app": "com.Slack", "scope": {"type": "everything"}}"""
+        val account = """{"group": "^ncg_1_account_a@b.c", "label": "a@b.c"}"""
+
+        Settings
+            .fromJson(appsDocument("""{"app": " ", "scope": {"type": "everything"}}"""))
+            .shouldBeInstanceOf<SettingsDecode.Invalid>()
+            .detail shouldBe "rule 1: \"Work\": app 1: blank app"
+        Settings
+            .fromJson(appsDocument("$everything, $everything"))
+            .shouldBeInstanceOf<SettingsDecode.Invalid>()
+            .detail shouldBe "rule 1: \"Work\": duplicate apps [com.Slack]"
+        Settings
+            .fromJson(appsDocument(narrowedApp("com.whatsapp")))
+            .shouldBeInstanceOf<SettingsDecode.Invalid>()
+            .detail shouldBe "rule 1: \"Work\": app 1: \"com.whatsapp\": narrowed to nothing"
+        Settings
+            .fromJson(appsDocument(narrowedApp("com.google.android.gm", accounts = "$account, $account")))
+            .shouldBeInstanceOf<SettingsDecode.Invalid>()
+            .detail shouldBe
+            "rule 1: \"Work\": app 1: \"com.google.android.gm\": duplicate accounts [^ncg_1_account_a@b.c]"
     }
 
     @Test
     fun `the same chat twice is invalid whatever its name`() {
-        val chat = """{"app": "com.whatsapp", "channel": "chats", "id": "1000000000001@lid", "name": "Someone"}"""
+        val chat = """{"channel": "chats", "id": "1000000000001@lid", "name": "Someone"}"""
         val renamed = chat.replace("Someone", "Someone else")
 
         Settings
             .fromJson(
-                currentDocument(chats = "$chat, $renamed"),
+                appsDocument(narrowedApp("com.whatsapp", chats = "$chat, $renamed")),
             ).shouldBeInstanceOf<SettingsDecode.Invalid>()
             .detail shouldBe
-            "rule 1: \"Work\": duplicate chats [com.whatsapp/1000000000001@lid]"
+            "rule 1: \"Work\": app 1: \"com.whatsapp\": duplicate chats [1000000000001@lid]"
     }
 
     @Test
@@ -379,14 +486,14 @@ class SettingsTest {
     }
 
     @Test
-    fun `a migrated document saves as version 6`() {
+    fun `a migrated document saves as version 7`() {
         val migrated =
             Settings
                 .fromJson(
                     """{"version": 1, "rules": [${ruleJson("{}")}]}""",
                 ).shouldBeInstanceOf<SettingsDecode.Decoded>()
 
-        migrated.settings.toJson().startsWith("{\n    \"version\": 6,") shouldBe true
+        migrated.settings.toJson().startsWith("{\n    \"version\": 7,") shouldBe true
         Settings.fromJson(migrated.settings.toJson()) shouldBe migrated
     }
 
@@ -422,10 +529,10 @@ class SettingsTest {
 
     @Test
     fun `other versions are unsupported whatever their shape`() {
-        val decode = Settings.fromJson("""{"version": 7, "profiles": [], "schedules": {}}""")
+        val decode = Settings.fromJson("""{"version": 8, "profiles": [], "schedules": {}}""")
 
-        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 7
-        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 7"
+        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 8
+        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 8"
     }
 
     @ParameterizedTest(name = "{0}")
@@ -476,6 +583,20 @@ class SettingsTest {
 
         return """{"version": 6, "defaultZone": "device", "theme": "System", "rules": [$rule]}"""
     }
+
+    private fun narrowedApp(
+        app: String,
+        accounts: String = "",
+        chats: String = "",
+        patterns: String = "",
+        asking: Boolean = false,
+    ): String =
+        """{"app": "$app", "scope": {"type": "narrowed", "accounts": [$accounts], "chats": [$chats],
+        "patterns": [$patterns], "asking": $asking}}"""
+
+    private fun appsDocument(apps: String): String =
+        """{"version": 7, "defaultZone": "device", "theme": "System", "rules": [{"name": "Work", "state": "Enabled",
+        "policy": "DeliverOnlyDuring", "windows": [$MONDAY], "breaks": [], "zone": "default", "apps": [$apps]}]}"""
 
     private fun document(rule: String): String = """{"version": 1, "rules": [${ruleJson(rule)}]}"""
 

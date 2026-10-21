@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
@@ -36,7 +37,12 @@ class SetupNoticeTest {
         assertInstanceOf(
             RuleSetParse.Valid::class.java,
             Settings.DEFAULT.rules.withRules(
-                listOf(work.copy(state = state, asking = setOf(COLLEAGUE_CHAT.packageName))),
+                listOf(
+                    work.copy(
+                        state = state,
+                        apps = RuleApps.fromTargets(work.targets, setOf(COLLEAGUE_CHAT.packageName)),
+                    ),
+                ),
             ),
         ).rules
 }

@@ -5,6 +5,7 @@ import dev.danielgilchrist.knockoff.chat.ChatDecisionsLoad
 import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
 import dev.danielgilchrist.knockoff.domain.chat.ChatDecisions
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -15,7 +16,7 @@ class NewChatsTest {
     private val work =
         Settings.DEFAULT.rules.rules
             .single()
-            .copy(asking = setOf(COLLEAGUE_CHAT.packageName))
+            .let { it.copy(apps = RuleApps.fromTargets(it.targets, setOf(COLLEAGUE_CHAT.packageName))) }
     private val ready =
         SettingsState.Ready(
             Settings(

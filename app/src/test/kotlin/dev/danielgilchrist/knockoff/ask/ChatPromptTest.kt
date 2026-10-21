@@ -8,6 +8,7 @@ import dev.danielgilchrist.knockoff.domain.chat.ChatQuestion
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.SettingsDecode
@@ -20,7 +21,7 @@ class ChatPromptTest {
     private val work =
         Settings.DEFAULT.rules.rules
             .single()
-            .copy(asking = setOf(COLLEAGUE_CHAT.packageName))
+            .let { it.copy(apps = RuleApps.fromTargets(it.targets, setOf(COLLEAGUE_CHAT.packageName))) }
     private val asking =
         SettingsLoad.Loaded(
             Settings(

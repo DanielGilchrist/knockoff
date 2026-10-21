@@ -9,6 +9,7 @@ import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.settings.Settings
@@ -82,7 +83,10 @@ class SilencedChannelsStoreTest {
                 RuleSetParse.Valid::class.java,
                 Settings.DEFAULT.rules.withRules(
                     Settings.DEFAULT.rules.rules.map {
-                        it.copy(policy = Policy.HoldDuring, targets = setOf(Target.App(slack)))
+                        it.copy(
+                            policy = Policy.HoldDuring,
+                            apps = RuleApps.fromTargets(setOf(Target.App(slack)), emptySet()),
+                        )
                     },
                 ),
             ).rules

@@ -15,6 +15,6 @@ internal data class StoredRuleV5(
     private val patterns: List<StoredPattern>,
     private val zone: String,
 ) {
-    fun upgraded(): StoredRule =
-        StoredRule(name, state, policy, windows, breaks, apps, gmailAccounts, chats, patterns, zone, emptyList())
+    fun upgraded(): StoredRuleV6 =
+        StoredRuleV6(name, state, policy, windows, breaks, apps, gmailAccounts, chats, patterns, zone, emptyList())
 }

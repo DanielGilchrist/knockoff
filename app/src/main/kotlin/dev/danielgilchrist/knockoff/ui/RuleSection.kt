@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.Target
 
 enum class RuleSection {
@@ -14,9 +15,20 @@ enum class RuleSection {
         edited: Rule,
     ): Rule =
         when (this) {
-            What -> current.copy(targets = current.patterns() + edited.picks(), asking = edited.asking)
-            When -> current.copy(policy = edited.policy, schedule = edited.schedule)
-            Advanced -> current.copy(zone = edited.zone, targets = current.picks() + edited.patterns())
+            What -> {
+                current.copy(apps = RuleApps.fromTargets(current.patterns() + edited.picks(), edited.asking))
+            }
+
+            When -> {
+                current.copy(policy = edited.policy, schedule = edited.schedule)
+            }
+
+            Advanced -> {
+                current.copy(
+                    zone = edited.zone,
+                    apps = RuleApps.fromTargets(current.picks() + edited.patterns(), current.asking),
+                )
+            }
         }
 
     private fun Rule.patterns(): Set<Target> = targets.filter { it.isPattern() }.toSet()

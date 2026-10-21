@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class StoredChat(
-    private val app: String,
+    val app: String,
     private val channel: String,
     private val id: String,
     private val name: String,
@@ -18,6 +18,8 @@ internal data class StoredChat(
         fun from(chat: Target.Chat): StoredChat =
             StoredChat(chat.packageName.value, chat.channel.value, chat.id.value, chat.name.value)
     }
+
+    fun pick(): StoredChatPick = StoredChatPick(channel, id, name)
 
     fun parse(): Parsed<Target.Chat> =
         when {

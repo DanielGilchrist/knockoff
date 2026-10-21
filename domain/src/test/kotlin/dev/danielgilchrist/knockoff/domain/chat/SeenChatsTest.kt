@@ -32,6 +32,7 @@ import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.domain.rule.LeaveReason
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Recheck
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.ruleName
@@ -42,6 +43,8 @@ import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
 import dev.danielgilchrist.knockoff.domain.textPattern
 import dev.danielgilchrist.knockoff.domain.whatsappOrigin
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 
 class SeenChatsTest {
     private val friend = COLLEAGUE_CHAT.copy(id = FRIEND, name = ConversationName("Friend"))
@@ -199,14 +202,26 @@ class SeenChatsTest {
                 .expand(rules)
     }
 
-    @Test
-    fun `an invalid chat is reported`() {
-        val chat = """{"app": "com.whatsapp", "channel": "chats", "id": " ", "name": "Someone"}"""
+    @ParameterizedTest(name = "{4}")
+    @CsvSource(
+        "' ', chats, 1@lid, Someone, blank chat app",
+        "com.whatsapp, ' ', 1@lid, Someone, blank chat channel",
+        "com.whatsapp, chats, ' ', Someone, blank chat id",
+        "com.whatsapp, chats, 1@lid, ' ', blank chat name",
+    )
+    fun `an invalid chat is reported`(
+        app: String,
+        channel: String,
+        id: String,
+        name: String,
+        problem: String,
+    ) {
+        val chat = """{"app": "$app", "channel": "$channel", "id": "$id", "name": "$name"}"""
 
         SeenChats
             .fromJson("""{"version": 1, "chats": [$chat]}""")
             .shouldBeInstanceOf<SeenChatsDecode.Invalid>()
-            .detail shouldBe "chat 1: blank chat id"
+            .detail shouldBe "chat 1: $problem"
     }
 
     @Test
@@ -400,6 +415,10 @@ class SeenChatsTest {
         holding(COLLEAGUE_CHAT) shouldBe emptyList()
         holding(Target.ChatNamePattern(WHATSAPP, textPattern("^Coll"))) shouldBe emptyList()
         holding(Target.App(WHATSAPP)) shouldBe emptyList()
-        seen.questions(ruleSet(asker.copy(targets = setOf(COLLEAGUE_CHAT))), ChatDecisions.NONE) shouldBe emptyList()
+        seen.questions(
+            ruleSet(asker.copy(apps = RuleApps.fromTargets(setOf(COLLEAGUE_CHAT), asker.asking))),
+            ChatDecisions.NONE,
+        ) shouldBe
+            emptyList()
     }
 }

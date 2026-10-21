@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.json.VersionedDecode
 import dev.danielgilchrist.knockoff.domain.json.VersionedJson
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
@@ -26,9 +27,8 @@ data class Settings(
                             state = RuleState.Enabled,
                             policy = Policy.DeliverOnlyDuring,
                             schedule = Schedule.of(Window.WORKING_HOURS),
-                            targets = emptySet(),
+                            apps = RuleApps.NONE,
                             zone = RuleZone.Default,
-                            asking = emptySet(),
                         ),
                         ZoneChoice.Device,
                     ),
@@ -46,6 +46,7 @@ data class Settings(
                             StoredSettingsV3.VERSION to StoredSettingsV3.serializer(),
                             StoredSettingsV4.VERSION to StoredSettingsV4.serializer(),
                             StoredSettingsV5.VERSION to StoredSettingsV5.serializer(),
+                            StoredSettingsV6.VERSION to StoredSettingsV6.serializer(),
                             StoredSettings.CURRENT_VERSION to StoredSettings.serializer(),
                         ),
                     )

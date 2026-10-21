@@ -5,6 +5,7 @@ import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.LONDON
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
+import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.breakNamed
@@ -196,13 +197,19 @@ class RuleTest {
     }
 
     @Test
-    fun `adding a chat replaces one with the same key and keeps other targets`() {
+    fun `a rule asks about the apps its narrowed apps ask about`() {
+        rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(Target.App(SLACK)), asking = setOf(WHATSAPP, SLACK))
+            .asking shouldBe setOf(WHATSAPP)
+    }
+
+    @Test
+    fun `adding a chat replaces one with the same key and adds nothing to an app held whole`() {
         val app = Target.App(SLACK)
         val renamed = COLLEAGUE_CHAT.copy(name = ConversationName("Renamed"))
         val other = COLLEAGUE_CHAT.copy(packageName = SLACK)
         val rule = rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(app, COLLEAGUE_CHAT))
 
         rule.withChat(renamed).targets shouldBe setOf(app, renamed)
-        rule.withChat(other).targets shouldBe setOf(app, COLLEAGUE_CHAT, other)
+        rule.withChat(other).targets shouldBe setOf(app, COLLEAGUE_CHAT)
     }
 }

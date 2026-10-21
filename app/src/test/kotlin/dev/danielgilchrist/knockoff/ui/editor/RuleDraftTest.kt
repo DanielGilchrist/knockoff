@@ -7,6 +7,7 @@ import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.domain.rule.Target
 import dev.danielgilchrist.knockoff.domain.rule.TextPattern
@@ -48,7 +49,10 @@ class RuleDraftTest {
 
     @Test
     fun `the apps a rule asks about survive a round trip`() {
-        val asking = defaultRule.copy(asking = setOf(COLLEAGUE_CHAT.packageName))
+        val asking =
+            defaultRule.copy(
+                apps = RuleApps.fromTargets(defaultRule.targets, setOf(COLLEAGUE_CHAT.packageName)),
+            )
 
         assertEquals(Checked.Ok(asking), RuleDraft.from(asking).parse())
     }

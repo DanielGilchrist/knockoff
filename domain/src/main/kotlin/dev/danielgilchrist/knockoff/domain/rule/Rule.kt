@@ -17,10 +17,13 @@ data class Rule(
     val state: RuleState,
     val policy: Policy,
     val schedule: Schedule,
-    val targets: Set<Target>,
+    val apps: RuleApps,
     val zone: RuleZone,
-    val asking: Set<PackageName>,
 ) {
+    val targets: Set<Target> = apps.targets
+
+    val asking: Set<PackageName> = apps.asking
+
     val chats: List<Target.Chat>
         get() =
             targets.flatMap { target ->
@@ -30,27 +33,13 @@ data class Rule(
                 }
             }
 
-    fun withChat(chat: Target.Chat): Rule = copy(targets = targets - chats.filter { it.key == chat.key }.toSet() + chat)
+    fun withChat(chat: Target.Chat): Rule = copy(apps = apps.withChat(chat))
 
     fun holds(chat: Target.Chat): Boolean = targets.any { it.holds(chat) }
 
-    fun asks(chat: Target.Chat): Boolean = state == RuleState.Enabled && chat.packageName in asking
+    fun asks(chat: Target.Chat): Boolean = state == RuleState.Enabled && apps.asks(chat.packageName)
 
-    internal fun withSeenChats(seen: SeenChats): Rule {
-        val latest = seen.chats.associateBy { it.key }
-        val picked = chats
-        val refreshed =
-            picked.map { chat ->
-                when (val fresh = latest[chat.key]) {
-                    null -> chat
-                    else -> chat.copy(channel = fresh.channel)
-                }
-            }
-        val pickedKeys = picked.map { it.key }.toSet()
-        val matching = seen.chats.filter { chat -> chat.key !in pickedKeys && targets.any { it.expandsTo(chat) } }
-
-        return copy(targets = targets - picked.toSet() + refreshed + matching)
-    }
+    internal fun withSeenChats(seen: SeenChats): Rule = copy(apps = apps.expanded(seen))
 
     fun localised(
         at: ZonedDateTime,

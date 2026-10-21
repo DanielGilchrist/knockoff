@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.ChatKey
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
@@ -106,7 +107,7 @@ data class RuleDraft(
         ruleName()
             .and(schedule()) { ruleName, schedule -> ruleName to schedule }
             .and(targets()) { (ruleName, schedule), targets ->
-                Rule(ruleName, state, policy, schedule, targets, zone, asking)
+                Rule(ruleName, state, policy, schedule, RuleApps.fromTargets(targets, asking), zone)
             }
 
     fun withBreakAdded(): RuleDraft {

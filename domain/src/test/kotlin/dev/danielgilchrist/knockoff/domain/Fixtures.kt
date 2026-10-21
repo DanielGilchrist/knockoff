@@ -22,6 +22,7 @@ import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleSet
@@ -116,7 +117,7 @@ fun rule(
     state: RuleState = RuleState.Enabled,
     zone: RuleZone = RuleZone.Default,
     asking: Set<PackageName> = emptySet(),
-): Rule = Rule(ruleName(name), state, policy, schedule, targets, zone, asking)
+): Rule = Rule(ruleName(name), state, policy, schedule, RuleApps.fromTargets(targets, asking), zone)
 
 fun ruleName(raw: String): RuleName =
     when (val parse = RuleName.parse(raw)) {

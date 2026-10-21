@@ -36,7 +36,7 @@ class BoundaryTest {
     fun `disabled rules, untargeted rules and always-covered schedules have no boundary`() {
         val always = rule("Always", Policy.HoldDuring, schedule(window(EVERY_DAY, "00:00", "00:00")), slack)
         val disabled = lunch.copy(state = RuleState.Disabled)
-        val untargeted = lunch.copy(name = ruleName("Untargeted"), targets = emptySet())
+        val untargeted = lunch.copy(name = ruleName("Untargeted"), apps = RuleApps.NONE)
 
         ruleSet(always, disabled, untargeted).nextBoundary(london("2026-10-14T10:00")) shouldBe Boundary.None
     }

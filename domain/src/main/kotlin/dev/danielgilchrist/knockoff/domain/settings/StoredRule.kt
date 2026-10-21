@@ -1,16 +1,13 @@
 package dev.danielgilchrist.knockoff.domain.settings
 
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
-import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AppScope
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
 import dev.danielgilchrist.knockoff.domain.rule.RuleState
-import dev.danielgilchrist.knockoff.domain.rule.Target
-import dev.danielgilchrist.knockoff.domain.rule.gmailAccount
-import dev.danielgilchrist.knockoff.domain.rule.gmailAddress
 import dev.danielgilchrist.knockoff.domain.schedule.Schedule
 import dev.danielgilchrist.knockoff.domain.schedule.ScheduleParse
 import dev.danielgilchrist.knockoff.domain.zone.RuleZone
@@ -24,12 +21,8 @@ internal data class StoredRule(
     private val policy: String,
     private val windows: List<StoredWindow>,
     private val breaks: List<StoredBreak>,
-    private val apps: List<String>,
-    private val gmailAccounts: List<String>,
-    private val chats: List<StoredChat>,
-    private val patterns: List<StoredPattern>,
     private val zone: String,
-    private val asking: List<String>,
+    private val apps: List<StoredApp>,
 ) {
     companion object {
         fun from(rule: Rule): StoredRule =
@@ -39,36 +32,8 @@ internal data class StoredRule(
                 policy = rule.policy.name,
                 windows = rule.schedule.windows.map(StoredWindow::from),
                 breaks = rule.schedule.breaks.map(StoredBreak::from),
-                apps =
-                    rule.targets.flatMap { target ->
-                        when (target) {
-                            is Target.App -> listOf(target.packageName.value)
-                            is Target.Account, is Target.Chat, is Target.Pattern -> emptyList()
-                        }
-                    },
-                gmailAccounts =
-                    rule.targets.flatMap { target ->
-                        when (target) {
-                            is Target.App, is Target.Chat, is Target.Pattern -> emptyList()
-                            is Target.Account -> listOf(target.gmailAddress())
-                        }
-                    },
-                chats =
-                    rule.targets.flatMap { target ->
-                        when (target) {
-                            is Target.App, is Target.Account, is Target.Pattern -> emptyList()
-                            is Target.Chat -> listOf(StoredChat.from(target))
-                        }
-                    },
-                patterns =
-                    rule.targets.flatMap { target ->
-                        when (target) {
-                            is Target.App, is Target.Account, is Target.Chat -> emptyList()
-                            is Target.Pattern -> listOf(StoredPattern.from(target))
-                        }
-                    },
                 zone = rule.zone.stored(),
-                asking = rule.asking.map { it.value },
+                apps = rule.apps.scopes.map { (packageName, scope) -> StoredApp.from(packageName, scope) },
             )
     }
 
@@ -78,19 +43,9 @@ internal data class StoredRule(
                 .then { ruleState ->
                     rulePolicy().then { rulePolicy ->
                         schedule().then { schedule ->
-                            targets().then { targets ->
+                            ruleApps().then { ruleApps ->
                                 ruleZone().then { ruleZone ->
-                                    Parsed.Ok(
-                                        Rule(
-                                            ruleName,
-                                            ruleState,
-                                            rulePolicy,
-                                            schedule,
-                                            targets,
-                                            ruleZone,
-                                            asking.map(::PackageName).toSet(),
-                                        ),
-                                    )
+                                    Parsed.Ok(Rule(ruleName, ruleState, rulePolicy, schedule, ruleApps, ruleZone))
                                 }
                             }
                         }
@@ -133,33 +88,13 @@ internal data class StoredRule(
             is RuleZoneParse.Unknown -> Parsed.Failed("unknown zone \"${parse.cause.raw}\": ${parse.cause.detail}")
         }
 
-    private fun targets(): Parsed<Set<Target>> =
-        gmailAccounts
-            .parseEach("Gmail account") { raw ->
-                when (val parse = AccountAddress.parse(raw)) {
-                    is AccountAddressParse.Valid -> Parsed.Ok(parse.address.gmailAccount())
-                    is AccountAddressParse.Invalid -> Parsed.Failed(parse.detail)
-                }
-            }.then { inboxes ->
-                chats.parseEach("chat") { it.parse() }.then { parsedChats ->
-                    val repeated = parsedChats.groupBy { it.key }.filterValues { it.size > 1 }.keys
+    private fun ruleApps(): Parsed<RuleApps> =
+        apps.parseEach("app") { it.parse() }.then { parsed ->
+            val repeated = parsed.groupBy { it.first }.filterValues { it.size > 1 }.keys
 
-                    when {
-                        repeated.isEmpty() -> {
-                            patterns.parseEach("pattern") { it.parse() }.then { parsedPatterns ->
-                                Parsed.Ok(
-                                    apps.map { Target.App(PackageName(it)) }.toSet() + inboxes + parsedChats +
-                                        parsedPatterns,
-                                )
-                            }
-                        }
-
-                        else -> {
-                            Parsed.Failed(
-                                "duplicate chats ${repeated.map { "${it.packageName.value}/${it.id.value}" }}",
-                            )
-                        }
-                    }
-                }
+            when {
+                repeated.isEmpty() -> Parsed.Ok(RuleApps.of(parsed.toMap<PackageName, AppScope>()))
+                else -> Parsed.Failed("duplicate apps ${repeated.map { it.value }}")
             }
+        }
 }
