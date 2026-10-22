@@ -31,7 +31,7 @@ internal class NotificationSweeper(
                 val active = ActiveGroups.Read(entriesOf(read.notifications))
 
                 read.notifications.zip(active.entries).forEach { (sbn, entry) ->
-                    scope.launch { decide(sbn, entry, entry.role { active }, evaluation) }
+                    scope.launch { decide(entry, entry.role { active }, evaluation) }
                 }
             }
 
@@ -72,7 +72,7 @@ internal class NotificationSweeper(
     ) {
         val entry = GroupEntry.of(sbn, posted)
 
-        decide(sbn, entry, entry.role(::activeGroups), evaluation)
+        decide(entry, entry.role(::activeGroups), evaluation)
     }
 
     fun revisitSummaries(
@@ -112,7 +112,7 @@ internal class NotificationSweeper(
                     .zip(entriesOf(read.notifications))
                     .filter { (_, entry) -> revisit.covers(entry.position) && entry.sharesGroupWith(gone) }
                     .forEach { (sbn, entry) ->
-                        scope.launch { decide(sbn, entry, entry.role(::activeGroups), evaluation) }
+                        scope.launch { decide(entry, entry.role(::activeGroups), evaluation) }
                     }
             }
 
@@ -123,31 +123,29 @@ internal class NotificationSweeper(
     }
 
     private suspend fun decide(
-        sbn: StatusBarNotification,
         entry: GroupEntry,
         lookup: GroupRoleLookup,
         evaluation: Evaluation,
     ) {
         when (lookup) {
             is GroupRoleLookup.Found -> {
-                decide(sbn, entry, lookup.role, evaluation)
+                decide(entry, lookup.role, evaluation)
             }
 
             is GroupRoleLookup.Unknown -> {
-                Log.w(LOG_TAG, "${sbn.describe(entry.posted)} -> leave: its group couldn't be read: ${lookup.detail}")
+                Log.w(LOG_TAG, "${entry.posted.describe()} -> leave: its group couldn't be read: ${lookup.detail}")
             }
         }
     }
 
     private suspend fun decide(
-        sbn: StatusBarNotification,
         entry: GroupEntry,
         role: GroupRole,
         evaluation: Evaluation,
     ) {
         val decision = evaluation.decide(entry.posted, role, Instant.now())
 
-        Log.i(LOG_TAG, "${sbn.describe(entry.posted)} -> ${decision.describe()}")
+        Log.i(LOG_TAG, "${entry.posted.describe()} -> ${decision.describe()}")
 
         when (decision) {
             is Decision.Leave -> {}
@@ -170,20 +168,19 @@ internal class NotificationSweeper(
 
         when (val lookup = entry.role { active.value }) {
             is GroupRoleLookup.Found -> {
-                recheck(sbn, snoozed, lookup.role, before, after)
+                recheck(snoozed, lookup.role, before, after)
             }
 
             is GroupRoleLookup.Unknown -> {
                 Log.w(
                     LOG_TAG,
-                    "snoozed ${sbn.describe(snoozed)} not rechecked, its group couldn't be read: ${lookup.detail}",
+                    "snoozed ${snoozed.describe()} not rechecked, its group couldn't be read: ${lookup.detail}",
                 )
             }
         }
     }
 
     private suspend fun recheck(
-        sbn: StatusBarNotification,
         snoozed: PostedNotification,
         role: GroupRole,
         before: Baseline.Known<Evaluation>,
@@ -191,7 +188,7 @@ internal class NotificationSweeper(
     ) {
         val recheck = after.recheck(snoozed, role, before, Instant.now())
 
-        Log.i(LOG_TAG, "snoozed ${sbn.describe(snoozed)} -> ${recheck.describe()}")
+        Log.i(LOG_TAG, "snoozed ${snoozed.describe()} -> ${recheck.describe()}")
 
         when (recheck) {
             Recheck.Unchanged -> {}
