@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
+import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import java.time.Instant
@@ -30,23 +31,23 @@ data class Evaluation(
     fun recheck(
         snoozed: PostedNotification,
         role: GroupRole,
-        before: Evaluation,
+        before: Baseline.Known<Evaluation>,
         at: Instant,
     ): Recheck {
-        val previous = before.decide(snoozed, role, at)
+        val previous = before.candidates.map { it.decide(snoozed, role, at) }
 
         return when (val current = decide(snoozed, role, at)) {
             is Decision.Snooze -> {
                 when {
-                    previous is Decision.Snooze && previous.until.isEqual(current.until) -> Recheck.Unchanged
+                    previous.all { it is Decision.Snooze && it.until.isEqual(current.until) } -> Recheck.Unchanged
                     else -> Recheck.Resnooze(current)
                 }
             }
 
             is Decision.Leave -> {
-                when (previous) {
-                    is Decision.Snooze -> Recheck.Release(current)
-                    is Decision.Leave -> Recheck.Unchanged
+                when {
+                    previous.any { it is Decision.Snooze } -> Recheck.Release(current)
+                    else -> Recheck.Unchanged
                 }
             }
         }

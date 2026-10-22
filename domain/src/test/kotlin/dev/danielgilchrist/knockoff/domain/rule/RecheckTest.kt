@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
@@ -121,5 +122,10 @@ class RecheckTest {
         before: RuleSet,
         at: ZonedDateTime,
     ): Recheck =
-        Evaluation(this, at.zone).recheck(snoozed, GroupRole.Member, Evaluation(before, at.zone), at.toInstant())
+        Evaluation(this, at.zone).recheck(
+            snoozed,
+            GroupRole.Member,
+            Baseline.Known.of(Evaluation(before, at.zone)),
+            at.toInstant(),
+        )
 }

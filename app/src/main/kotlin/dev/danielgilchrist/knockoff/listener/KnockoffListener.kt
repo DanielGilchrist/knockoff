@@ -14,12 +14,11 @@ import dev.danielgilchrist.knockoff.channel.GroupDiscoverer
 import dev.danielgilchrist.knockoff.channel.GroupLearning
 import dev.danielgilchrist.knockoff.channel.GroupNames
 import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
-import dev.danielgilchrist.knockoff.domain.change.Change
-import dev.danielgilchrist.knockoff.domain.change.next
 import dev.danielgilchrist.knockoff.domain.chat.ChatSighting
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
+import dev.danielgilchrist.knockoff.domain.settings.AppliedRules
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +26,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.distinctUntilChangedBy
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.scan
@@ -41,8 +40,12 @@ class KnockoffListener : NotificationListenerService() {
     private val sweeper = NotificationSweeper(this, scope) { knockoff.knownGroupsStore.current() }
     private var connection: Connection = Connection.Idle
 
-    @Volatile
-    private var applied: Change<Evaluation> = Change.Pending
+    private val applier by lazy {
+        RulesApplier(sweeper, silencer::request, knockoff.appliedRulesStore) { Log.i(LOG_TAG, it) }
+    }
+
+    private val applied: Applied
+        get() = applier.applied
 
     private val knockoff
         get() = application as KnockoffApplication
@@ -115,11 +118,11 @@ class KnockoffListener : NotificationListenerService() {
                             }.drop(1)
 
                     combine(rules, seen, deviceZones(this@KnockoffListener)) { ruleSet, chats, zone ->
-                        Evaluation(chats.expand(ruleSet), zone)
-                    }.distinctUntilChanged()
-                        .scan(applied) { change, evaluation -> change.next(evaluation) }
-                        .drop(1)
-                        .collect(::apply)
+                        Applying(AppliedRules(ruleSet, zone), chats)
+                    }.distinctUntilChangedBy(Applying::evaluation)
+                        .collect { applying ->
+                            applier.apply(applying)
+                        }
                 },
             )
     }
@@ -139,10 +142,9 @@ class KnockoffListener : NotificationListenerService() {
         scope.launch { knockoff.seenChatsStore.record(ChatSighting.of(posted, sbn.shortcutLabels(rankingMap))) }
         scope.launch { knockoff.knownGroupsStore.record(posted.origin) }
         scope.launch {
-            when (val change = applied) {
-                Change.Pending -> evaluateBeforeConnected(sbn, posted)
-                is Change.Initial -> sweeper.evaluate(sbn, posted, change.value)
-                is Change.Changed -> sweeper.evaluate(sbn, posted, change.after)
+            when (val current = applied) {
+                Applied.Pending -> evaluateBeforeConnected(sbn, posted)
+                is Applied.Active -> sweeper.evaluate(sbn, posted, current.evaluation)
             }
         }
     }
@@ -154,15 +156,11 @@ class KnockoffListener : NotificationListenerService() {
     ) {
         val revisit = SummaryRevisit.afterRemoval(reason)
 
-        when (val change = applied) {
-            Change.Pending -> {}
+        when (val current = applied) {
+            Applied.Pending -> {}
 
-            is Change.Initial -> {
-                sweeper.revisitSummaries(sbn, revisit, change.value)
-            }
-
-            is Change.Changed -> {
-                sweeper.revisitSummaries(sbn, revisit, change.after)
+            is Applied.Active -> {
+                sweeper.revisitSummaries(sbn, revisit, current.evaluation)
             }
         }
     }
@@ -220,34 +218,11 @@ class KnockoffListener : NotificationListenerService() {
     private fun sweepAtBoundary() {
         Log.i(LOG_TAG, "boundary reached")
 
-        when (val change = applied) {
-            Change.Pending -> {}
+        when (val current = applied) {
+            Applied.Pending -> {}
 
-            is Change.Initial -> {
-                sweeper.sweep(change.value)
-            }
-
-            is Change.Changed -> {
-                sweeper.sweep(change.after)
-            }
-        }
-    }
-
-    private fun apply(change: Change<Evaluation>) {
-        applied = change
-
-        when (change) {
-            Change.Pending -> {}
-
-            is Change.Initial -> {
-                sweeper.sweep(change.value)
-                silencer.request()
-            }
-
-            is Change.Changed -> {
-                sweeper.sweep(change.after)
-                sweeper.recheckSnoozed(change.before, change.after)
-                silencer.request()
+            is Applied.Active -> {
+                sweeper.sweep(current.evaluation)
             }
         }
     }

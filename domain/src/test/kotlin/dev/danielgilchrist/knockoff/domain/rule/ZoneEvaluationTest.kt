@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.LONDON
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.Importance
@@ -81,7 +82,12 @@ class ZoneEvaluationTest {
         val at = london("2026-10-14T02:00").toInstant()
         val inSeoul = Evaluation(ruleSet(tokyoAfternoonHold.copy(zone = RuleZone.Chosen(seoul))), LONDON)
 
-        inSeoul.recheck(snoozable, GroupRole.Member, Evaluation(ruleSet(tokyoAfternoonHold), LONDON), at) shouldBe
+        inSeoul.recheck(
+            snoozable,
+            GroupRole.Member,
+            Baseline.Known.of(Evaluation(ruleSet(tokyoAfternoonHold), LONDON)),
+            at,
+        ) shouldBe
             Recheck.Unchanged
     }
 
@@ -108,7 +114,7 @@ class ZoneEvaluationTest {
         Evaluation(
             ruleSet(localWork),
             tokyoZone,
-        ).recheck(snoozable, GroupRole.Member, Evaluation(ruleSet(localWork), LONDON), at) shouldBe
+        ).recheck(snoozable, GroupRole.Member, Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)), at) shouldBe
             Recheck.Resnooze(
                 Decision.Snooze(
                     at.atZone(tokyoZone),
@@ -126,7 +132,7 @@ class ZoneEvaluationTest {
         Evaluation(
             ruleSet(localWork),
             NEW_YORK,
-        ).recheck(snoozable, GroupRole.Member, Evaluation(ruleSet(localWork), LONDON), at) shouldBe
+        ).recheck(snoozable, GroupRole.Member, Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)), at) shouldBe
             Recheck.Release(Decision.Leave(LeaveReason.Permitted(setOf(localWork.name))))
     }
 
@@ -135,7 +141,7 @@ class ZoneEvaluationTest {
         val at = london("2026-10-14T13:00").toInstant()
 
         Evaluation(ruleSet(localWork), ZoneId.of("Asia/Tokyo"))
-            .recheck(snoozable, GroupRole.Member, Evaluation(ruleSet(localWork), LONDON), at)
+            .recheck(snoozable, GroupRole.Member, Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)), at)
             .shouldBeInstanceOf<Recheck.Resnooze>()
     }
 
@@ -146,7 +152,7 @@ class ZoneEvaluationTest {
         Evaluation(
             ruleSet(localWork),
             NEW_YORK,
-        ).recheck(snoozable, GroupRole.Member, Evaluation(ruleSet(localWork), LONDON), at) shouldBe
+        ).recheck(snoozable, GroupRole.Member, Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)), at) shouldBe
             Recheck.Unchanged
     }
 
@@ -155,7 +161,12 @@ class ZoneEvaluationTest {
         val winterEvening = london("2026-11-04T20:00").toInstant()
 
         Evaluation(ruleSet(localWork), ZoneId.of("Europe/Lisbon"))
-            .recheck(snoozable, GroupRole.Member, Evaluation(ruleSet(localWork), LONDON), winterEvening) shouldBe
+            .recheck(
+                snoozable,
+                GroupRole.Member,
+                Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)),
+                winterEvening,
+            ) shouldBe
             Recheck.Unchanged
     }
 
@@ -164,7 +175,12 @@ class ZoneEvaluationTest {
         val at = london("2026-10-14T02:00").toInstant()
 
         Evaluation(ruleSet(tokyoAfternoonHold), NEW_YORK)
-            .recheck(snoozable, GroupRole.Member, Evaluation(ruleSet(tokyoAfternoonHold), LONDON), at) shouldBe
+            .recheck(
+                snoozable,
+                GroupRole.Member,
+                Baseline.Known.of(Evaluation(ruleSet(tokyoAfternoonHold), LONDON)),
+                at,
+            ) shouldBe
             Recheck.Unchanged
     }
 

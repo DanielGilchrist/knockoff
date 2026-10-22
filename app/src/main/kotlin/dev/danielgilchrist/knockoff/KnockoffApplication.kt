@@ -9,6 +9,7 @@ import dev.danielgilchrist.knockoff.chat.ChatDecisionsStore
 import dev.danielgilchrist.knockoff.chat.SeenChatsStore
 import dev.danielgilchrist.knockoff.group.GroupReach
 import dev.danielgilchrist.knockoff.group.KnownGroupsStore
+import dev.danielgilchrist.knockoff.settings.AppliedRulesStore
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import dev.danielgilchrist.knockoff.ui.NotificationPermission
 import dev.danielgilchrist.knockoff.ui.appicon.AppIcons
@@ -32,6 +33,10 @@ class KnockoffApplication : Application() {
 
     val settingsStore: SettingsStore by lazy {
         SettingsStore(File(filesDir, "settings.json"))
+    }
+
+    val appliedRulesStore: AppliedRulesStore by lazy {
+        AppliedRulesStore(File(filesDir, "applied-rules.json"))
     }
 
     val silencedChannelsStore: SilencedChannelsStore by lazy {

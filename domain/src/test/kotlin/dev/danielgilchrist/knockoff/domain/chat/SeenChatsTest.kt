@@ -11,6 +11,7 @@ import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.channel.AlertingImportance
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
 import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
@@ -180,7 +181,7 @@ class SeenChatsTest {
             .recheck(
                 snoozed,
                 GroupRole.Member,
-                before,
+                Baseline.Known.of(before),
                 london("2026-10-14T20:00").toInstant(),
             ).shouldBeInstanceOf<Recheck.Release>()
     }

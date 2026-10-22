@@ -19,11 +19,13 @@ NO_COVERAGE dev.danielgilchrist.knockoff.domain.channel.ChannelKind$Conversation
 
 # The last branch of an exhaustive when compiles to equality checks whose only alternative is an unreachable
 # NoWhenBranchMatchedException. Forcing those checks towards the branch is equivalent.
+SURVIVED dev.danielgilchrist.knockoff.domain.change.BaselineKt stepTo L25 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredAppliedEntry toAppliedRules L35 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.StoredChatAnswer$Hold parse L23 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot parse L30 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.PostedNotification describe L24 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Decision describe L27 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation decide L25 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation decide L26 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps asks-Xf2oX2M L41 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps accountsOf-Xf2oX2M L47 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps chatsOf-Xf2oX2M L53 removed conditional - replaced equality check with true
@@ -66,7 +68,6 @@ SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels restoring 
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels silenceIfAlerting L106 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet nextBoundary L100 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.schedule.DailyHours occurrenceStartingOn$knockoff_domain L64 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.change.ChangeKt next L20 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Rule scheduledVerdictAt L100 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holds L189 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet holds L189 removed conditional - replaced equality check with true
@@ -81,11 +82,17 @@ SURVIVED dev.danielgilchrist.knockoff.domain.group.StoredKnownApp toKnownApp L42
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.OriginAddress$Companion of L20 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredAppScope$Narrowed address L53 removed conditional - replaced equality check with true
 
-# Inlined Iterable.none, Iterable.any and Map.none: the empty-collection shortcut and the Collection type check only
+# Inlined Iterable.none, Iterable.any, Iterable.all and Map.none: the empty-collection shortcut and the Collection type check only
 # skip a loop that would return the same answer.
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L67 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L67 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L67 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation recheck L42 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation recheck L42 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation recheck L42 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation recheck L49 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation recheck L49 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation recheck L49 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L124 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L124 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L124 removed conditional - replaced equality check with true

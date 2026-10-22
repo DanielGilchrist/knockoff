@@ -4,6 +4,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
+import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
@@ -19,11 +20,11 @@ internal class NotificationSweeper(
     private val listener: NotificationListenerService,
     private val scope: CoroutineScope,
     private val knownGroups: suspend () -> KnownGroups,
-) {
+) : HeldNotifications {
     private val snoozer = Snoozer(listener)
     private val holder = NotificationHolder(snoozer, SummaryDismisser(listener), ::activeGroups)
 
-    fun sweep(evaluation: Evaluation) {
+    override fun sweep(evaluation: Evaluation) {
         when (val read = listener.read(NotificationList.Active)) {
             is NotificationRead.Read -> {
                 Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
@@ -40,27 +41,29 @@ internal class NotificationSweeper(
         }
     }
 
-    fun recheckSnoozed(
-        before: Evaluation,
+    override fun recheckSnoozed(
+        before: Baseline.Known<Evaluation>,
         after: Evaluation,
-    ) {
+    ): RecheckStart =
         when (val read = listener.read(NotificationList.Snoozed)) {
             is NotificationRead.Read -> {
                 Log.i(LOG_TAG, "rechecking ${read.notifications.size} snoozed notifications")
                 val active = lazy { activeGroups() }
 
-                scope.launch {
-                    val known = knownGroups()
+                RecheckStart.Started(
+                    scope.launch {
+                        val known = knownGroups()
 
-                    read.notifications.forEach { sbn -> launch { recheck(sbn, known, active, before, after) } }
-                }
+                        read.notifications.forEach { sbn -> launch { recheck(sbn, known, active, before, after) } }
+                    },
+                )
             }
 
             is NotificationRead.Failure -> {
                 Log.e(LOG_TAG, "recheck skipped, snoozed notifications unavailable: ${read.detail}")
+                RecheckStart.Skipped(read.detail)
             }
         }
-    }
 
     suspend fun evaluate(
         sbn: StatusBarNotification,
@@ -159,7 +162,7 @@ internal class NotificationSweeper(
         sbn: StatusBarNotification,
         known: KnownGroups,
         active: Lazy<ActiveGroups>,
-        before: Evaluation,
+        before: Baseline.Known<Evaluation>,
         after: Evaluation,
     ) {
         val entry = GroupEntry.of(sbn, known.groupOf(sbn))
@@ -183,7 +186,7 @@ internal class NotificationSweeper(
         sbn: StatusBarNotification,
         snoozed: PostedNotification,
         role: GroupRole,
-        before: Evaluation,
+        before: Baseline.Known<Evaluation>,
         after: Evaluation,
     ) {
         val recheck = after.recheck(snoozed, role, before, Instant.now())

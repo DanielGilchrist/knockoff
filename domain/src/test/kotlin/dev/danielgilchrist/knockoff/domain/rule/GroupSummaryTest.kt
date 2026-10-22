@@ -5,6 +5,7 @@ import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.FRIEND
 import dev.danielgilchrist.knockoff.domain.LONDON
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
@@ -19,6 +20,7 @@ import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
 import dev.danielgilchrist.knockoff.domain.traits
 import dev.danielgilchrist.knockoff.domain.whatsappOrigin
 import org.junit.jupiter.api.Test
+import java.time.ZoneId
 
 class GroupSummaryTest {
     private val evening = london("2026-10-14T20:00").toInstant()
@@ -75,10 +77,24 @@ class GroupSummaryTest {
     fun `a summary is rechecked with what shows under it`() {
         val none = Evaluation(ruleSet(), LONDON)
 
-        work.recheck(summary, GroupRole.Summary(emptyList()), none, evening).shouldBeInstanceOf<Recheck.Resnooze>()
-        work.recheck(summary, GroupRole.Summary(listOf(friend)), none, evening) shouldBe Recheck.Unchanged
-        none.recheck(summary, GroupRole.Summary(emptyList()), work, evening).shouldBeInstanceOf<Recheck.Release>()
-        work.recheck(summary, GroupRole.Summary(listOf(friend)), work, evening) shouldBe Recheck.Unchanged
+        work
+            .recheck(
+                summary,
+                GroupRole.Summary(emptyList()),
+                Baseline.Known.of(none),
+                evening,
+            ).shouldBeInstanceOf<Recheck.Resnooze>()
+        work.recheck(summary, GroupRole.Summary(listOf(friend)), Baseline.Known.of(none), evening) shouldBe
+            Recheck.Unchanged
+        none
+            .recheck(
+                summary,
+                GroupRole.Summary(emptyList()),
+                Baseline.Known.of(work),
+                evening,
+            ).shouldBeInstanceOf<Recheck.Release>()
+        work.recheck(summary, GroupRole.Summary(listOf(friend)), Baseline.Known.of(work), evening) shouldBe
+            Recheck.Unchanged
     }
 
     @Test
@@ -91,4 +107,24 @@ class GroupSummaryTest {
         key: String,
         conversation: Conversation,
     ): PostedNotification = PostedNotification.Snoozable(NotificationKey(key), whatsappOrigin(conversation))
+
+    @Test
+    fun `going back after a skipped change releases what only the skipped rules held`() {
+        val none = Evaluation(ruleSet(), LONDON)
+        val skipped = Baseline.Known.of(none).skipped(work)
+
+        none.recheck(colleague, GroupRole.Member, skipped, evening).shouldBeInstanceOf<Recheck.Release>()
+        none.recheck(friend, GroupRole.Member, skipped, evening) shouldBe Recheck.Unchanged
+    }
+
+    @Test
+    fun `a change after a skipped one treats what the skipped rules held as held`() {
+        val none = Evaluation(ruleSet(), LONDON)
+        val elsewhere = Evaluation(ruleSet(), ZoneId.of("Europe/Paris"))
+        val skipped = Baseline.Known.of(none).skipped(work)
+
+        elsewhere.recheck(colleague, GroupRole.Member, skipped, evening).shouldBeInstanceOf<Recheck.Release>()
+        work.recheck(colleague, GroupRole.Member, skipped, evening).shouldBeInstanceOf<Recheck.Resnooze>()
+        work.recheck(colleague, GroupRole.Member, Baseline.Known.of(work), evening) shouldBe Recheck.Unchanged
+    }
 }
