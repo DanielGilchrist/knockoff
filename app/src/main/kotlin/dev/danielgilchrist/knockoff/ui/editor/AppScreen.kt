@@ -42,6 +42,7 @@ internal fun AppScreen(
     val available = accounts.offered.size + AppKind.seenChatsOf(app, choices.chats).size
     val discovery = choices.discoveries.of(app)
     val effect = rule.appEffect(appHeld(label, draft.mode, kind, accounts.noun))
+    val offer = AddressOffer.of(draft, available, choices.apps.purposeOf(app), accounts.noun)
     var patterning by rememberSaveable { mutableStateOf(false) }
 
     BackHandler(onBack = actions.onBack)
@@ -65,6 +66,7 @@ internal fun AppScreen(
                 seen = choices.chats,
                 available = available,
                 discovery = discovery,
+                offer = offer,
                 onDraftChange = actions.onDraftChange,
             )
         }
@@ -79,6 +81,7 @@ internal fun AppScreen(
         if (note == DiscoveryNote.None && (kind == AppKind.Plain || !draft.offersNarrowing(available))) {
             item { Caption(text = moreCaption(label, kind, accounts.noun)) }
         }
+        addressItem(offer, accounts, draft, actions.onDraftChange)
         patternItems(
             app = app,
             draft = draft,
@@ -107,6 +110,27 @@ private fun RemoveMenu(
                 onRemove()
             },
         )
+    }
+}
+
+private fun LazyListScope.addressItem(
+    offer: AddressOffer,
+    accounts: AccountChoices,
+    draft: AppDraft,
+    onDraftChange: (AppDraft) -> Unit,
+) {
+    when (draft.mode) {
+        AppMode.Everything -> {
+            when (offer) {
+                AddressOffer.Shown -> {
+                    item { AddressEntry(accounts.offered, draft, onDraftChange) }
+                }
+
+                AddressOffer.Hidden -> {}
+            }
+        }
+
+        AppMode.Narrowed -> {}
     }
 }
 

@@ -1,9 +1,11 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import dev.danielgilchrist.knockoff.domain.group.GroupName
+import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AccountId
 import dev.danielgilchrist.knockoff.domain.rule.AppScope
 import dev.danielgilchrist.knockoff.domain.rule.ChatPick
 import dev.danielgilchrist.knockoff.domain.rule.NarrowedParse
@@ -11,7 +13,7 @@ import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
 
 data class AppDraft(
     val mode: AppMode,
-    val accounts: Map<ChannelGroupId, GroupName>,
+    val accounts: Map<AccountId, GroupName>,
     val chats: Map<ConversationId, ChatPick>,
     val patterns: List<PatternDraft>,
     val asking: NewChatsAsking,
@@ -41,12 +43,28 @@ data class AppDraft(
     val picksSomething: Boolean
         get() = accounts.isNotEmpty() || chats.isNotEmpty() || patterns.isNotEmpty() || asking == NewChatsAsking.Ask
 
+    val pickedAddresses: List<AccountAddress>
+        get() =
+            accounts.keys.flatMap { id ->
+                when (id) {
+                    is AccountId.Group -> emptyList()
+                    is AccountId.Address -> listOf(id.address)
+                }
+            }
+
+    fun withAddress(address: AccountAddress): AppDraft = withAccount(AccountId.Address(address), GroupName.of(address))
+
+    fun withAccount(
+        id: AccountId,
+        name: GroupName,
+    ): AppDraft = copy(mode = AppMode.Narrowed, accounts = accounts + (id to name))
+
     fun leavesNothingChosen(app: PackageName): Boolean = ProblemSplit.of(parse(app)).unchosen.isNotEmpty()
 
     fun offersNarrowing(available: Int): Boolean = available > 0 || mode == AppMode.Narrowed || picksSomething
 
     fun withLearnedNames(learned: Map<ChannelGroupId, GroupName>): AppDraft =
-        copy(accounts = accounts.mapValues { (id, name) -> learned.getOrDefault(id, name) })
+        copy(accounts = accounts.mapValues { (id, name) -> AccountChoices.renamed(id, name, learned) })
 
     fun parse(app: PackageName): Checked<AppScope> =
         when (mode) {

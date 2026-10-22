@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -86,6 +87,7 @@ internal fun ListScreen(
         },
     ) { padding ->
         LazyColumn(
+            modifier = Modifier.imePadding(),
             contentPadding =
                 PaddingValues(
                     start = padding.calculateStartPadding(direction) + 16.dp,

@@ -212,7 +212,7 @@ adb logcat -s Knockoff:V
 `:fakechat` (`dev.danielgilchrist.knockoff.fakechat`) is a debug-only app that posts WhatsApp- and mail-shaped notifications, so chat, account and summary behaviour can be tested without real conversations. It's never shipped and Knockoff doesn't depend on it. It doesn't cover group chats or a shortcut label that differs from the title.
 
 - Chats: one `MessagingStyle` notification per chat on channel `individual_chat_defaults`, group `group_key_messages`, shortcut ID `<name>@lid` (lowercased, spaces as dots; IDs differ from names because a chat named by its ID is never recorded), plus an `InboxStyle` group summary tagged with the latest chat's shortcut.
-- Mail (`do mail`): one Gmail-shaped notification per account, in group `^ncg_1_account_<account>`. See `FakeMail.kt`.
+- Mail (`do mail`), styles via `--es style`: `grouped` (default, Gmail shape, group `^ncg_1_account_<account>`), `subtext` (Proton shape, account only in subtext), `subtext-uncategorised` (category not `email`, so not learned), `category` (an "Updates" group plus the account in subtext). See `FakeMail.kt`.
 
 ```
 ./gradlew :fakechat:installDebug

@@ -5,24 +5,29 @@ import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.FRIEND
 import dev.danielgilchrist.knockoff.domain.PERSONAL_GMAIL_ORIGIN
+import dev.danielgilchrist.knockoff.domain.PROTON
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.address
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
+import dev.danielgilchrist.knockoff.domain.notification.NotificationCategory
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginAddress
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
+import dev.danielgilchrist.knockoff.domain.protonOrigin
 import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.ruleName
 import dev.danielgilchrist.knockoff.domain.ruleSet
@@ -72,7 +77,19 @@ class RuleSetTest {
     fun `non-work app outside hours is left`() {
         ruleSet(
             workOnly,
-        ).decide(post(Origin(WHATSAPP, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)), evening) shouldBe
+        ).decide(
+            post(
+                Origin(
+                    WHATSAPP,
+                    Channel.Unnamed,
+                    Conversation.None,
+                    OriginGroup.Unknown,
+                    OriginAddress.Unaddressed,
+                    NotificationCategory.Other,
+                ),
+            ),
+            evening,
+        ) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
 
@@ -273,4 +290,22 @@ class RuleSetTest {
     }
 
     private fun post(origin: Origin): PostedNotification = PostedNotification.Snoozable(key, origin)
+
+    @Test
+    fun `mail for a held address outside hours snoozes and other addresses are left`() {
+        val proton =
+            ruleSet(
+                rule(
+                    "Work",
+                    Policy.DeliverOnlyDuring,
+                    WORK_HOURS,
+                    setOf(Target.SubTextAccount(PROTON, address("dan@work.example"))),
+                ),
+            )
+
+        proton.decide(post(protonOrigin("dan@work.example")), evening) shouldBe untilMorning
+        proton.decide(post(protonOrigin("dan@home.example")), evening) shouldBe
+            Decision.Leave(LeaveReason.NoRuleTargets)
+        proton.decide(post(protonOrigin(null)), evening) shouldBe Decision.Leave(LeaveReason.NoRuleTargets)
+    }
 }

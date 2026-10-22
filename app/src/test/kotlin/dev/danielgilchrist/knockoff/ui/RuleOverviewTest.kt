@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.group.GroupName
 import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AccountId
 import dev.danielgilchrist.knockoff.domain.rule.ChatPick
 import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
 import dev.danielgilchrist.knockoff.domain.rule.Policy
@@ -166,13 +167,16 @@ class RuleOverviewTest {
         val accounts =
             AppDraft.EVERYTHING.copy(
                 mode = AppMode.Narrowed,
-                accounts = mapOf(ChannelGroupId("a") to groupName("dan@work.example")),
+                accounts = mapOf(AccountId.Group(ChannelGroupId("a")) to groupName("dan@work.example")),
             )
         val groups =
             AppDraft.EVERYTHING.copy(
                 mode = AppMode.Narrowed,
                 accounts =
-                    mapOf(ChannelGroupId("b") to groupName("Chats"), ChannelGroupId("c") to groupName("Calls")),
+                    mapOf(
+                        AccountId.Group(ChannelGroupId("b")) to groupName("Chats"),
+                        AccountId.Group(ChannelGroupId("c")) to groupName("Calls"),
+                    ),
             )
         val draft = RuleDraft.NEW.copy(name = "x", apps = mapOf(mail to accounts, slack to groups))
 
@@ -250,7 +254,7 @@ class RuleOverviewTest {
         val combined =
             AppDraft(
                 AppMode.Narrowed,
-                mapOf(ChannelGroupId("a") to groupName("dan@work.example")),
+                mapOf(AccountId.Group(ChannelGroupId("a")) to groupName("dan@work.example")),
                 mapOf(COLLEAGUE_CHAT.id to ChatPick.of(COLLEAGUE_CHAT.copy(packageName = mail))),
                 emptyList(),
                 NewChatsAsking.DontAsk,

@@ -6,12 +6,13 @@
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.schedule.BreakName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/schedule/BreakName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ChannelId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ChannelId::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ChannelGroupId::getValue
-NO_COVERAGE dev.danielgilchrist.knockoff.domain.group.GroupName getValue L7 replaced return value with "" for dev/danielgilchrist/knockoff/domain/group/GroupName::getValue
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.group.GroupName getValue L8 replaced return value with "" for dev/danielgilchrist/knockoff/domain/group/GroupName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ConversationId getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ConversationId::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.ConversationName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/ConversationName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.NotificationKey getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/NotificationKey::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.PackageName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/PackageName::getValue
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.rule.RuleName getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/rule/RuleName::getValue
+NO_COVERAGE dev.danielgilchrist.knockoff.domain.notification.AccountAddress getValue L5 replaced return value with "" for dev/danielgilchrist/knockoff/domain/notification/AccountAddress::getValue
 
 # A conversation channel's id is only ever compared whole, through data class equality, so nothing reads it.
 NO_COVERAGE dev.danielgilchrist.knockoff.domain.channel.ChannelKind$ConversationOf getId-rYnfllY L11 replaced return value with "" for dev/danielgilchrist/knockoff/domain/channel/ChannelKind$ConversationOf::getId-rYnfllY
@@ -19,22 +20,20 @@ NO_COVERAGE dev.danielgilchrist.knockoff.domain.channel.ChannelKind$Conversation
 # The last branch of an exhaustive when compiles to equality checks whose only alternative is an unreachable
 # NoWhenBranchMatchedException. Forcing those checks towards the branch is equivalent.
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.StoredChatAnswer$Hold parse L23 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot parse L28 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot parse L30 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.notification.PostedNotification describe L24 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Decision describe L27 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation decide L25 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps asks-Xf2oX2M L42 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps accountsOf-Xf2oX2M L48 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps chatsOf-Xf2oX2M L54 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps expanded$knockoff_domain L100 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps getTargets L28 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps withChat L67 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps rebased L85 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sighted L46 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sighted L49 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sighted L63 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups groupingOf L94 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.group.StoredKnownApp toKnownApp L31 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps asks-Xf2oX2M L41 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps accountsOf-Xf2oX2M L47 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps chatsOf-Xf2oX2M L53 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps expanded$knockoff_domain L109 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps getTargets L27 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps withChat L66 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps rebased L84 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sighted L95 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups groupingOf L126 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.StoredKnownApp toKnownApp L35 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Recheck describe L18 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.RuleZone resolve L31 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.zone.RuleZone stored L37 removed conditional - replaced equality check with true
@@ -44,20 +43,20 @@ SURVIVED dev.danielgilchrist.knockoff.domain.rule.Boundary noLaterThan L15 remov
 SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Interval without L31 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredBreak parse L20 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule schedule$lambda$1$1 L80 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChannelPattern matches L115 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$Chat matches L82 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L142 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChannelPattern covers L128 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L146 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChannelPattern matches L131 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$Chat matches L98 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L158 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChannelPattern covers L144 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L162 removed conditional - replaced equality check with true
 # A last branch joining two cases checks them in turn; forcing the first check off falls through to the second,
 # which is that same branch.
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L146 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.Target$ChatNamePattern matches L162 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion nameOf L69 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L50 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion labelOrTitle L80 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredAccount parse L22 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredAppScope$Companion from L85 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredAppScope$Narrowed scopeOf L71 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredAppScope$Companion from L115 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredAppScope$Narrowed scopeOf L87 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredPatternPick parse L28 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.channel.SilencedChannels saved L122 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.ChatSighting$Companion of L36 removed conditional - replaced equality check with true
@@ -75,15 +74,21 @@ SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleSet releaseFrom L176 remov
 SURVIVED dev.danielgilchrist.knockoff.domain.schedule.Window occurrencesStartingWithin$knockoff_domain L26 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredRule ruleName L59 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredWindow weekDays L45 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sightedAddress L54 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sightedGroup L78 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.KnownGroups sightedGroup L81 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.group.StoredKnownApp toKnownApp L42 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.notification.OriginAddress$Companion of L20 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.settings.StoredAppScope$Narrowed address L53 removed conditional - replaced equality check with true
 
 # Inlined Iterable.none, Iterable.any and Map.none: the empty-collection shortcut and the Collection type check only
 # skip a loop that would return the same answer.
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.rule.Evaluation held L66 removed conditional - replaced equality check with true
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L115 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L115 removed conditional - replaced equality check with false
-SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L115 removed conditional - replaced equality check with true
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L124 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L124 removed conditional - replaced equality check with false
+SURVIVED dev.danielgilchrist.knockoff.domain.rule.RuleApps seenFor-EIV36M0 L124 removed conditional - replaced equality check with true
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L56 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L56 removed conditional - replaced equality check with false
 SURVIVED dev.danielgilchrist.knockoff.domain.chat.SeenChats asked L56 removed conditional - replaced equality check with true

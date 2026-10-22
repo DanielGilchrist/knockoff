@@ -4,11 +4,14 @@ import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHANNEL
 import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.COLLEAGUE_KIND
 import dev.danielgilchrist.knockoff.domain.EVERY_DAY
+import dev.danielgilchrist.knockoff.domain.PROTON
+import dev.danielgilchrist.knockoff.domain.PROTON_MAIL
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.address
 import dev.danielgilchrist.knockoff.domain.channel.AlertingImportance
 import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
 import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
@@ -268,4 +271,24 @@ class ChannelPlanTest {
 
     private fun nothing(silenced: SilencedChannels): ChannelPlan =
         ChannelPlan(silence = emptyList(), restore = emptyList(), silenced = silenced)
+
+    @Test
+    fun `a sub text account silences no channel, so its app keeps alerting`() {
+        val proton =
+            ruleSet(
+                rule(
+                    "Work",
+                    Policy.DeliverOnlyDuring,
+                    WORK_HOURS,
+                    setOf(Target.SubTextAccount(PROTON, address("dan@work.example"))),
+                ),
+            )
+        val read =
+            mapOf(
+                ChannelKey(PROTON, PROTON_MAIL) to
+                    ReadChannel(Importance.High, ChannelKind.Shared, ChannelGrouping.Ungrouped),
+            )
+
+        proton.planChannels(read, SilencedChannels.NONE, evening) shouldBe nothing(SilencedChannels.NONE)
+    }
 }

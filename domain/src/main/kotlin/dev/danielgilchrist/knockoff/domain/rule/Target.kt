@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.group.GroupName
+import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
@@ -12,6 +13,7 @@ import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginAddress
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 
@@ -64,6 +66,20 @@ sealed interface Target {
             kind: ChannelKind,
             grouping: ChannelGrouping,
         ): Boolean = channel.packageName == packageName && grouping == ChannelGrouping.Grouped(group)
+    }
+
+    data class SubTextAccount(
+        override val packageName: PackageName,
+        val address: AccountAddress,
+    ) : Target {
+        override fun matches(origin: Origin): Boolean =
+            origin.packageName == packageName && origin.address == OriginAddress.Addressed(address)
+
+        override fun covers(
+            channel: ChannelKey,
+            kind: ChannelKind,
+            grouping: ChannelGrouping,
+        ): Boolean = false
     }
 
     data class Chat(

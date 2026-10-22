@@ -76,7 +76,7 @@ enum class AppKind {
             Plain -> "Only ones matching a pattern"
             Accounts -> "Only some ${noun.many}"
             Chats -> "Only some chats"
-            AccountsAndChats -> "Only some ${noun.many} and chats"
+            AccountsAndChats -> "Only some ${noun.manyAnd("chats")}"
         }
 
     fun more(noun: GroupNoun): String =
@@ -84,7 +84,7 @@ enum class AppKind {
             Plain -> "notifications"
             Accounts -> noun.many
             Chats -> "chats"
-            AccountsAndChats -> "${noun.many} and chats"
+            AccountsAndChats -> noun.manyAnd("chats")
         }
 
     fun pick(noun: GroupNoun): String =
@@ -92,6 +92,6 @@ enum class AppKind {
             Plain -> "pattern"
             Accounts -> noun.one
             Chats -> "chat"
-            AccountsAndChats -> "${noun.one} or chat"
+            AccountsAndChats -> noun.oneOr("chat")
         }
 }

@@ -27,9 +27,8 @@ internal object HeldPhrases {
         val phrases = listOf(first) + rest
 
         return when {
-            rest.isEmpty() -> first
-            phrases.size <= SHOWN -> "${phrases.dropLast(1).joinToString()} and ${phrases.last()}"
-            else -> "${phrases.take(SHOWN).joinToString()} and ${phrases.size - SHOWN} more"
+            phrases.size <= SHOWN -> listed(phrases, "and")
+            else -> listed(phrases.take(SHOWN) + "${phrases.size - SHOWN} more", "and")
         }
     }
 

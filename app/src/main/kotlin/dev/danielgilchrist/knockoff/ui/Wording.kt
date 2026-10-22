@@ -14,6 +14,16 @@ internal fun counted(
         else -> "$count $many"
     }
 
+internal fun listed(
+    words: List<String>,
+    conjunction: String,
+): String =
+    when (words.size) {
+        0 -> ""
+        1 -> words.single()
+        else -> "${words.dropLast(1).joinToString()} $conjunction ${words.last()}"
+    }
+
 internal fun withArticle(noun: String): String =
     when (noun.firstOrNull()?.lowercaseChar()) {
         'a', 'e', 'i', 'o', 'u' -> "an $noun"

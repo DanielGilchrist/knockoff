@@ -47,6 +47,7 @@ data class Settings(
                             StoredSettingsV4.VERSION to StoredSettingsV4.serializer(),
                             StoredSettingsV5.VERSION to StoredSettingsV5.serializer(),
                             StoredSettingsV6.VERSION to StoredSettingsV6.serializer(),
+                            StoredSettingsV7.VERSION to StoredSettingsV7.serializer(),
                             StoredSettings.CURRENT_VERSION to StoredSettings.serializer(),
                         ),
                     )

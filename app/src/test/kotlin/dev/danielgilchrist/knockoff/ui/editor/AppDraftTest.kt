@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.address
 import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.group.GroupLabel
@@ -12,6 +13,7 @@ import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AccountId
 import dev.danielgilchrist.knockoff.domain.rule.AppScope
 import dev.danielgilchrist.knockoff.domain.rule.ChatPick
 import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
@@ -33,6 +35,12 @@ class AppDraftTest {
     private val whatsapp = COLLEAGUE_CHAT.packageName
     private val gmail = PackageName.GMAIL
     private val work = ChannelGroupId("^ncg_1_account_dan@work.example")
+    private val workId = AccountId.Group(work)
+    private val twoAccounts =
+        mapOf<AccountId, GroupName>(
+            workId to groupName("a"),
+            AccountId.Group(ChannelGroupId("b")) to groupName("b"),
+        )
     private val narrowed = AppDraft.EVERYTHING.copy(mode = AppMode.Narrowed)
     private val boss = ChatPick.of(COLLEAGUE_CHAT.copy(id = ConversationId("2@lid"), name = ConversationName("Boss")))
     private val team = ChatPick.of(COLLEAGUE_CHAT.copy(id = ConversationId("3@lid"), name = ConversationName("Team")))
@@ -56,7 +64,7 @@ class AppDraftTest {
         assertEquals(
             "dan@work.example",
             AppSummary.of(
-                narrowed.copy(accounts = mapOf(work to groupName("dan@work.example"))),
+                narrowed.copy(accounts = mapOf(workId to groupName("dan@work.example"))),
                 none(GroupNoun.Accounts),
             ),
         )
@@ -64,7 +72,7 @@ class AppDraftTest {
             "2 accounts · 1 pattern",
             AppSummary.of(
                 narrowed.copy(
-                    accounts = mapOf(work to groupName("a"), ChannelGroupId("b") to groupName("b")),
+                    accounts = twoAccounts,
                     patterns = listOf(PatternDraft.BLANK),
                 ),
                 none(GroupNoun.Accounts),
@@ -73,7 +81,9 @@ class AppDraftTest {
         assertEquals(
             "2 categories",
             AppSummary.of(
-                narrowed.copy(accounts = mapOf(work to groupName("a"), ChannelGroupId("b") to groupName("b"))),
+                narrowed.copy(
+                    accounts = twoAccounts,
+                ),
                 none(GroupNoun.Categories),
             ),
         )
@@ -102,8 +112,8 @@ class AppDraftTest {
         assertEquals(
             "dan@work.example",
             AppSummary.of(
-                narrowed.copy(accounts = mapOf(work to GroupName.of(work))),
-                offering(GroupNoun.Accounts, mapOf(work to groupName("dan@work.example"))),
+                narrowed.copy(accounts = mapOf(workId to GroupName.of(work))),
+                offering(GroupNoun.Accounts, mapOf(workId to groupName("dan@work.example"))),
             ),
         )
     }
@@ -119,7 +129,14 @@ class AppDraftTest {
         assertEquals(AppKind.Plain, kindOf(gmail, AppDraft.EVERYTHING, chats = seen))
         assertEquals(
             AppKind.AccountsAndChats,
-            kindOf(whatsapp, narrowed.copy(accounts = mapOf(work to groupName("a")), chats = mapOf(boss.id to boss))),
+            kindOf(
+                whatsapp,
+                narrowed.copy(
+                    accounts = mapOf(workId to groupName("a")),
+                    chats =
+                        mapOf(boss.id to boss),
+                ),
+            ),
         )
         assertEquals(listOf(false, true, false, true), AppKind.entries.map { it.hasAccounts })
         assertEquals(listOf(false, false, true, true), AppKind.entries.map { it.hasChats })
@@ -140,7 +157,7 @@ class AppDraftTest {
 
         assertEquals(AppKind.Accounts, AppKind.of(gmail, narrowed, accounts, SeenChatsState.Loaded(emptyList())))
         assertEquals(GroupNoun.Accounts, accounts.noun)
-        assertEquals(mapOf(work to groupName("dan@work.example")), accounts.offered)
+        assertEquals(mapOf(workId to groupName("dan@work.example")), accounts.offered)
     }
 
     @Test
@@ -155,19 +172,19 @@ class AppDraftTest {
 
         val read = AppDiscovery.Finished(GroupDiscovery.Read)
 
-        assertEquals(AccountSighting.NotChecked, unseen.sightingOf(work, AppDiscovery.NotAsked))
-        assertEquals(AccountSighting.NotChecked, unseen.sightingOf(work, AppDiscovery.Reading))
+        assertEquals(AccountSighting.NotChecked, unseen.sightingOf(workId, AppDiscovery.NotAsked))
+        assertEquals(AccountSighting.NotChecked, unseen.sightingOf(workId, AppDiscovery.Reading))
         assertEquals(
             listOf(AccountSighting.CouldNotCheck, AccountSighting.CouldNotCheck, AccountSighting.CouldNotCheck),
             listOf(
                 GroupDiscovery.NotLinked("no association"),
                 GroupDiscovery.Unbound,
                 GroupDiscovery.Unrecorded("disk"),
-            ).map { unseen.sightingOf(work, AppDiscovery.Finished(it)) },
+            ).map { unseen.sightingOf(workId, AppDiscovery.Finished(it)) },
         )
-        assertEquals(AccountSighting.NotOnPhone, unseen.sightingOf(work, read))
-        assertEquals(AccountSighting.Seen, unseen.sightingOf(home, read))
-        assertEquals(AccountSighting.Seen, seen.sightingOf(work, read))
+        assertEquals(AccountSighting.NotOnPhone, unseen.sightingOf(workId, read))
+        assertEquals(AccountSighting.Seen, unseen.sightingOf(AccountId.Group(home), read))
+        assertEquals(AccountSighting.Seen, seen.sightingOf(workId, read))
     }
 
     @Test
@@ -205,7 +222,7 @@ class AppDraftTest {
             listOf(false, true, true, true, true),
             listOf(
                 AppDraft.EVERYTHING,
-                AppDraft.EVERYTHING.copy(accounts = mapOf(work to groupName("a"))),
+                AppDraft.EVERYTHING.copy(accounts = mapOf(workId to groupName("a"))),
                 AppDraft.EVERYTHING.copy(chats = mapOf(boss.id to boss)),
                 AppDraft.EVERYTHING.copy(patterns = listOf(PatternDraft.BLANK)),
                 AppDraft.EVERYTHING.copy(asking = NewChatsAsking.Ask),
@@ -257,7 +274,7 @@ class AppDraftTest {
     @Test
     fun `the narrowed choice says how many there are and that the rule leaves the rest alone`() {
         val accounts =
-            offering(GroupNoun.Accounts, mapOf(work to groupName("dan@work.example")))
+            offering(GroupNoun.Accounts, mapOf(workId to groupName("dan@work.example")))
         val none = offering(GroupNoun.Categories, emptyMap())
 
         assertEquals(
@@ -297,22 +314,24 @@ class AppDraftTest {
     fun `accounts list known groups by name, or id when unnamed, plus picked and stored ones`() {
         val named = KnownGroup(ChannelGroupId("chats"), GroupLabel.Named(groupName("Chats")))
         val unnamed = KnownGroup(ChannelGroupId("misc"), GroupLabel.Unnamed)
-        val stored = mapOf(ChannelGroupId("gone") to groupName("Gone"))
-        val picked = narrowed.copy(accounts = mapOf(ChannelGroupId("old") to groupName("Old")))
+        val stored = mapOf<AccountId, GroupName>(AccountId.Group(ChannelGroupId("gone")) to groupName("Gone"))
+        val picked = narrowed.copy(accounts = mapOf(AccountId.Group(ChannelGroupId("old")) to groupName("Old")))
 
         assertEquals(
             AccountChoices(
-                GroupNoun.Categories,
-                mapOf(
-                    ChannelGroupId("chats") to groupName("Chats"),
-                    ChannelGroupId("misc") to groupName("misc"),
-                    ChannelGroupId("gone") to groupName("Gone"),
-                    ChannelGroupId("old") to groupName("Old"),
+                AccountList.Single(
+                    GroupNoun.Categories,
+                    mapOf(
+                        AccountId.Group(ChannelGroupId("chats")) to groupName("Chats"),
+                        AccountId.Group(ChannelGroupId("misc")) to groupName("misc"),
+                        AccountId.Group(ChannelGroupId("gone")) to groupName("Gone"),
+                        AccountId.Group(ChannelGroupId("old")) to groupName("Old"),
+                    ),
                 ),
-                setOf(ChannelGroupId("gone"), ChannelGroupId("old")),
+                setOf(AccountId.Group(ChannelGroupId("gone")), AccountId.Group(ChannelGroupId("old"))),
                 GroupNaming.SomeUnnamed,
             ),
-            AccountChoices.of(listOf(named, unnamed), stored, picked),
+            AccountChoices.of(listOf(named, unnamed), emptyList(), stored, picked),
         )
     }
 
@@ -323,21 +342,93 @@ class AppDraftTest {
         val other = KnownGroup(ChannelGroupId("other"), GroupLabel.Unnamed)
         val picked =
             narrowed.copy(
-                accounts = mapOf(work to GroupName.of(work), ChannelGroupId("other") to groupName("Other")),
+                accounts =
+                    mapOf(
+                        workId to GroupName.of(work),
+                        AccountId.Group(ChannelGroupId("other")) to groupName("Other"),
+                    ),
             )
 
         assertEquals(
             AccountChoices(
-                GroupNoun.Accounts,
-                mapOf(work to groupName("dan@work.example"), ChannelGroupId("other") to groupName("Other")),
+                AccountList.Single(
+                    GroupNoun.Accounts,
+                    mapOf(
+                        workId to groupName("dan@work.example"),
+                        AccountId.Group(ChannelGroupId("other")) to groupName("Other"),
+                    ),
+                ),
                 emptySet(),
                 GroupNaming.SomeUnnamed,
             ),
-            AccountChoices.of(listOf(account, misc, other), emptyMap(), picked),
+            AccountChoices.of(listOf(account, misc, other), emptyList(), emptyMap(), picked),
         )
         assertEquals(
-            mapOf(work to groupName("dan@work.example"), ChannelGroupId("other") to groupName("Other")),
+            mapOf(
+                workId to groupName("dan@work.example"),
+                AccountId.Group(ChannelGroupId("other")) to groupName("Other"),
+            ),
             picked.withLearnedNames(AccountChoices.learnedNames(listOf(account, misc, other))).accounts,
+        )
+    }
+
+    @Test
+    fun `addresses seen in notifications are offered as accounts unless a group already names them`() {
+        val proton = PackageName("ch.protonmail.android")
+        val work = address("dan@work.example")
+        val home = address("dan@home.example")
+        val gmailWork = KnownGroup(this.work, GroupLabel.Named(groupName("Dan@Work.Example")))
+        val choices = AccountChoices.of(listOf(gmailWork), listOf(work, home), emptyMap(), narrowed)
+
+        assertEquals(GroupNoun.Accounts, choices.noun)
+        assertEquals(
+            mapOf(
+                workId to groupName("Dan@Work.Example"),
+                AccountId.Address(home) to GroupName.of(home),
+            ),
+            choices.offered,
+        )
+        assertEquals(
+            mapOf(AccountId.Address(work) to GroupName.of(work)),
+            AccountChoices.of(emptyList(), listOf(work), emptyMap(), narrowed).offered,
+        )
+
+        val picked = narrowed.copy(accounts = mapOf(AccountId.Address(home) to GroupName.of(home)))
+        val scope = assertInstanceOf(Checked.Ok::class.java, picked.parse(proton)).value
+
+        assertEquals(
+            setOf(Target.SubTextAccount(proton, home)),
+            RuleApps.of(mapOf(proton to assertInstanceOf(AppScope.Narrowed::class.java, scope))).targets,
+        )
+    }
+
+    @Test
+    fun `a kept address not seen since reads as not in a notification yet, whatever discovery found`() {
+        val gone = address("old@work.example")
+        val choices =
+            AccountChoices.of(
+                emptyList(),
+                listOf(address("dan@work.example")),
+                mapOf(AccountId.Address(gone) to GroupName.of(gone)),
+                narrowed,
+            )
+
+        assertEquals(
+            listOf(AccountSighting.NotNotified, AccountSighting.NotNotified),
+            listOf(AppDiscovery.NotAsked, AppDiscovery.Finished(GroupDiscovery.Read)).map {
+                choices.sightingOf(AccountId.Address(gone), it)
+            },
+        )
+        assertEquals(
+            AccountSighting.Seen,
+            choices.sightingOf(AccountId.Address(address("dan@work.example")), AppDiscovery.NotAsked),
+        )
+        assertEquals(
+            mapOf(AccountId.Address(gone) to GroupName.of(gone)),
+            narrowed
+                .copy(accounts = mapOf(AccountId.Address(gone) to GroupName.of(gone)))
+                .withLearnedNames(mapOf(ChannelGroupId(gone.value) to groupName("Renamed")))
+                .accounts,
         )
     }
 
@@ -351,8 +442,8 @@ class AppDraftTest {
 
     private fun offering(
         noun: GroupNoun,
-        offered: Map<ChannelGroupId, GroupName>,
-    ): AccountChoices = AccountChoices(noun, offered, emptySet(), GroupNaming.AllNamed)
+        offered: Map<AccountId, GroupName>,
+    ): AccountChoices = AccountChoices(AccountList.Single(noun, offered), emptySet(), GroupNaming.AllNamed)
 
     private fun none(noun: GroupNoun): AccountChoices = offering(noun, emptyMap())
 

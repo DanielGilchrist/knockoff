@@ -1,7 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
 import dev.danielgilchrist.knockoff.domain.group.GroupName
-import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 
 sealed interface AppScope {
@@ -9,7 +8,7 @@ sealed interface AppScope {
 
     @ConsistentCopyVisibility
     data class Narrowed private constructor(
-        val accounts: Map<ChannelGroupId, GroupName>,
+        val accounts: Map<AccountId, GroupName>,
         val chats: Map<ConversationId, ChatPick>,
         val patterns: Set<PatternPick>,
         val asking: NewChatsAsking,
@@ -19,14 +18,14 @@ sealed interface AppScope {
                 Narrowed(emptyMap(), mapOf(chat.id to chat), emptySet(), NewChatsAsking.DontAsk)
 
             internal fun chosen(
-                accounts: Map<ChannelGroupId, GroupName>,
+                accounts: Map<AccountId, GroupName>,
                 chats: Collection<ChatPick>,
                 patterns: Set<PatternPick>,
                 asking: NewChatsAsking,
             ): Narrowed = Narrowed(accounts, chats.associateBy { it.id }, patterns, asking)
 
             fun parse(
-                accounts: Map<ChannelGroupId, GroupName>,
+                accounts: Map<AccountId, GroupName>,
                 chats: Collection<ChatPick>,
                 patterns: Set<PatternPick>,
                 asking: NewChatsAsking,

@@ -16,6 +16,7 @@ sealed interface Command {
         val account: String,
         val from: String,
         val subject: String,
+        val style: MailStyle,
     ) : Command
 
     data object Clear : Command
@@ -37,10 +38,27 @@ sealed interface Command {
             }
         }
 
-        private fun mail(intent: Intent): Command =
-            when (val account = intent.getStringExtra("account")) {
-                null -> Invalid("no account")
-                else -> Mail(account, intent.getStringExtra("from") ?: "Someone", intent.getStringExtra("text") ?: "Hi")
+        private fun mail(intent: Intent): Command {
+            val account = intent.getStringExtra("account")
+            val from = intent.getStringExtra("from") ?: "Someone"
+            val subject = intent.getStringExtra("text") ?: "Hi"
+
+            return when {
+                account == null -> Invalid("no account")
+                else -> styled(intent.getStringExtra("style")) { Mail(account, from, subject, it) }
+            }
+        }
+
+        private fun styled(
+            style: String?,
+            mail: (MailStyle) -> Mail,
+        ): Command =
+            when (style) {
+                null, "grouped" -> mail(MailStyle.Grouped)
+                "subtext" -> mail(MailStyle.SubText)
+                "subtext-uncategorised" -> mail(MailStyle.SubTextUncategorised)
+                "category" -> mail(MailStyle.Category)
+                else -> Invalid("unknown mail style $style")
             }
     }
 }

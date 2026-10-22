@@ -11,11 +11,15 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.danielgilchrist.knockoff.domain.group.GroupName
+import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AccountId
 import dev.danielgilchrist.knockoff.ui.AppDiscovery
 import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 import dev.danielgilchrist.knockoff.ui.GroupNoun
 import dev.danielgilchrist.knockoff.ui.HeldPhrase
+import dev.danielgilchrist.knockoff.ui.HeldPhrases
 import dev.danielgilchrist.knockoff.ui.SeenChatsState
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
@@ -35,6 +39,7 @@ internal fun IncludeChoice(
     seen: SeenChatsState,
     available: Int,
     discovery: AppDiscovery,
+    offer: AddressOffer,
     onDraftChange: (AppDraft) -> Unit,
 ) {
     val narrowed = draft.mode == AppMode.Narrowed
@@ -59,7 +64,7 @@ internal fun IncludeChoice(
             enter = expandVertically(),
             exit = shrinkVertically(),
         ) {
-            Column(modifier = Modifier.padding(start = NESTED_INDENT)) {
+            Column(modifier = Modifier.padding(start = NESTED_INDENT, bottom = 16.dp)) {
                 val hint: @Composable () -> Unit = {
                     if (draft.leavesNothingChosen(app)) {
                         Caption(
@@ -69,10 +74,12 @@ internal fun IncludeChoice(
                     }
                 }
 
-                AccountSection(label, kind, accounts, draft, discovery, onDraftChange)
+                val facts = AccountSectionFacts(label, kind, accounts, offer)
+
+                AccountSection(facts, draft, discovery, onDraftChange)
                 when {
                     kind.hasChats -> {
-                        if (kind.hasAccounts) ChatsHeading()
+                        if (facts.listsAnything) ChatsHeading()
                         ChatRows(
                             app = app,
                             label = label,
@@ -95,18 +102,63 @@ internal fun IncludeChoice(
 
 @Composable
 private fun AccountSection(
-    label: String,
-    kind: AppKind,
-    accounts: AccountChoices,
+    facts: AccountSectionFacts,
     draft: AppDraft,
     discovery: AppDiscovery,
     onDraftChange: (AppDraft) -> Unit,
 ) {
-    if (kind.hasAccounts) {
-        if (kind.hasChats) AccountsHeading(label = label, noun = accounts.noun)
-        AccountRows(accounts = accounts, draft = draft, discovery = discovery, onDraftChange = onDraftChange)
+    val rows: @Composable (Map<AccountId, GroupName>) -> Unit = { offered ->
+        AccountRows(offered, facts.accounts, draft, discovery, onDraftChange)
+    }
+
+    Column {
+        if (facts.listsAccounts) {
+            if (facts.headed) GroupHeading(label = facts.label, noun = GroupNoun.Accounts)
+            rows(facts.accountItems)
+            when (facts.offer) {
+                AddressOffer.Shown -> {
+                    AddressEntry(
+                        offered = facts.accounts.offered,
+                        draft = draft,
+                        onDraftChange = onDraftChange,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+
+                AddressOffer.Hidden -> {}
+            }
+            BuzzCaption(label = facts.label, draft = draft)
+        }
+        if (facts.categories.isNotEmpty()) {
+            if (facts.listsAccounts) Spacer(modifier = Modifier.height(8.dp))
+            if (facts.headed) GroupHeading(label = facts.label, noun = GroupNoun.Categories)
+            rows(facts.categories)
+        }
     }
 }
+
+@Composable
+private fun BuzzCaption(
+    label: String,
+    draft: AppDraft,
+) {
+    val addresses = draft.pickedAddresses
+
+    if (addresses.isNotEmpty()) {
+        Caption(
+            text = buzzCaption(label, addresses.first(), addresses.drop(1)),
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
+    }
+}
+
+internal fun buzzCaption(
+    label: String,
+    first: AccountAddress,
+    rest: List<AccountAddress>,
+): String =
+    "$label only says which account a notification is for once it arrives, so notifications to " +
+        "${HeldPhrases.listed(first.value, rest.map { it.value })} may buzz once before they're held."
 
 @Composable
 private fun ChatsHeading() {
@@ -115,12 +167,12 @@ private fun ChatsHeading() {
 }
 
 @Composable
-private fun AccountsHeading(
+private fun GroupHeading(
     label: String,
     noun: GroupNoun,
 ) {
     when (noun) {
-        GroupNoun.Accounts -> {
+        GroupNoun.Accounts, GroupNoun.AccountsAndCategories -> {
             SubHeading(text = "Accounts")
         }
 
@@ -142,7 +194,7 @@ internal fun narrowedSupporting(
     val choose =
         when {
             !selected && kind.hasAccounts && accounts.offered.isNotEmpty() -> {
-                "Choose from ${accounts.noun.counted(accounts.offered.size)}. "
+                "Choose from ${accounts.list.choosing}. "
             }
 
             else -> {

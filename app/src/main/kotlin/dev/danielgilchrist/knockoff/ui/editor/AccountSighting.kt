@@ -5,4 +5,5 @@ enum class AccountSighting {
     NotChecked,
     CouldNotCheck,
     NotOnPhone,
+    NotNotified,
 }

@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.COLLEAGUE
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
+import dev.danielgilchrist.knockoff.domain.address
 import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.shouldBe
@@ -22,7 +23,14 @@ class NotificationSnapshotTest {
         snapshot(SLACK, "messages").parse() shouldBe
             PostedNotification.Snoozable(
                 key,
-                Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None, OriginGroup.Unknown),
+                Origin(
+                    SLACK,
+                    Channel.Named(ChannelId("messages")),
+                    Conversation.None,
+                    OriginGroup.Unknown,
+                    OriginAddress.Unaddressed,
+                    NotificationCategory.Other,
+                ),
             )
     }
 
@@ -36,6 +44,8 @@ class NotificationSnapshotTest {
                     Channel.Named(ChannelId("^nc_1_mail_dan@work.example")),
                     Conversation.None,
                     OriginGroup.Unknown,
+                    OriginAddress.Unaddressed,
+                    NotificationCategory.Other,
                 ),
             )
     }
@@ -51,7 +61,17 @@ class NotificationSnapshotTest {
     @Test
     fun `a notification without a channel is unnamed`() {
         snapshot(SLACK, channelId = null).parse() shouldBe
-            PostedNotification.Snoozable(key, Origin(SLACK, Channel.Unnamed, Conversation.None, OriginGroup.Unknown))
+            PostedNotification.Snoozable(
+                key,
+                Origin(
+                    SLACK,
+                    Channel.Unnamed,
+                    Conversation.None,
+                    OriginGroup.Unknown,
+                    OriginAddress.Unaddressed,
+                    NotificationCategory.Other,
+                ),
+            )
     }
 
     @Test
@@ -101,7 +121,14 @@ class NotificationSnapshotTest {
         snapshot(SLACK, "messages", setOf(trait)).parse() shouldBe
             PostedNotification.Unsnoozable(
                 key,
-                Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None, OriginGroup.Unknown),
+                Origin(
+                    SLACK,
+                    Channel.Named(ChannelId("messages")),
+                    Conversation.None,
+                    OriginGroup.Unknown,
+                    OriginAddress.Unaddressed,
+                    NotificationCategory.Other,
+                ),
                 traits(trait),
             )
     }
@@ -113,9 +140,25 @@ class NotificationSnapshotTest {
         snapshot(SLACK, "media", traits.values).parse() shouldBe
             PostedNotification.Unsnoozable(
                 key,
-                Origin(SLACK, Channel.Named(ChannelId("media")), Conversation.None, OriginGroup.Unknown),
+                Origin(
+                    SLACK,
+                    Channel.Named(ChannelId("media")),
+                    Conversation.None,
+                    OriginGroup.Unknown,
+                    OriginAddress.Unaddressed,
+                    NotificationCategory.Other,
+                ),
                 traits,
             )
+    }
+
+    @Test
+    fun `an address in the sub text is carried on the origin`() {
+        snapshot(SLACK, "messages", subText = " Dan@Work.Example ").parse().origin.address shouldBe
+            OriginAddress.Addressed(address("dan@work.example"))
+        snapshot(SLACK, "messages", subText = "#general").parse().origin.address shouldBe OriginAddress.Unaddressed
+        snapshot(SLACK, "messages", category = NotificationCategory.Email).parse().origin.category shouldBe
+            NotificationCategory.Email
     }
 
     private fun snapshot(
@@ -126,6 +169,8 @@ class NotificationSnapshotTest {
         titles: List<String> = listOf("Colleague"),
         style: NotificationStyle = NotificationStyle.Messaging,
         group: OriginGroup = OriginGroup.Unknown,
+        subText: String? = null,
+        category: NotificationCategory = NotificationCategory.Other,
     ): NotificationSnapshot =
-        NotificationSnapshot(key, packageName, channelId, group, style, shortcutId, titles, traits)
+        NotificationSnapshot(key, packageName, channelId, group, subText, category, style, shortcutId, titles, traits)
 }

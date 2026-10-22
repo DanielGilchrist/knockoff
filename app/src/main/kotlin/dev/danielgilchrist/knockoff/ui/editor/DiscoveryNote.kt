@@ -83,11 +83,11 @@ sealed interface DiscoveryNote {
 
         private fun unnamed(facts: DiscoveryFacts): LinkNeeded =
             LinkNeeded(
-                title = "Link a device to see ${facts.accounts.noun.one} names",
+                title = "Link a device to see ${facts.accounts.list.groupNoun.one} names",
                 body =
                     "Knockoff knows some of ${possessive(
                         facts.label,
-                    )} ${facts.accounts.noun.many} only by ID, because reading their " +
+                    )} ${facts.accounts.list.groupNoun.many} only by ID, because reading their " +
                         "names needs the device link. Set it up in Settings, under Silent holds.",
             )
 

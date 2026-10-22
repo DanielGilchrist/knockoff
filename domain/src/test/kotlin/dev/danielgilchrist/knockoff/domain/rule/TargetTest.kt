@@ -6,12 +6,15 @@ import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
 import dev.danielgilchrist.knockoff.domain.COLLEAGUE_KIND
 import dev.danielgilchrist.knockoff.domain.FRIEND
 import dev.danielgilchrist.knockoff.domain.PERSONAL_GMAIL_ORIGIN
+import dev.danielgilchrist.knockoff.domain.PROTON
+import dev.danielgilchrist.knockoff.domain.PROTON_MAIL
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WHATSAPP_CHATS
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
+import dev.danielgilchrist.knockoff.domain.address
 import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
@@ -25,9 +28,12 @@ import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
+import dev.danielgilchrist.knockoff.domain.notification.NotificationCategory
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginAddress
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.protonOrigin
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.textPattern
 import dev.danielgilchrist.knockoff.domain.whatsappOrigin
@@ -37,7 +43,19 @@ class TargetTest {
     @Test
     fun `app target matches only its own package`() {
         Target.App(SLACK).matches(SLACK_ORIGIN) shouldBe true
-        Target.App(SLACK).matches(Origin(WHATSAPP, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe
+        Target
+            .App(
+                SLACK,
+            ).matches(
+                Origin(
+                    WHATSAPP,
+                    Channel.Unnamed,
+                    Conversation.None,
+                    OriginGroup.Unknown,
+                    OriginAddress.Unaddressed,
+                    NotificationCategory.Other,
+                ),
+            ) shouldBe
             false
         Target.App(SLACK).matches(WORK_GMAIL_ORIGIN) shouldBe false
     }
@@ -48,7 +66,17 @@ class TargetTest {
 
         gmail.matches(WORK_GMAIL_ORIGIN) shouldBe true
         gmail.matches(PERSONAL_GMAIL_ORIGIN) shouldBe true
-        gmail.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe true
+        gmail.matches(
+            Origin(
+                PackageName.GMAIL,
+                Channel.Unnamed,
+                Conversation.None,
+                OriginGroup.Unknown,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
+            ),
+        ) shouldBe
+            true
         gmail.matches(SLACK_ORIGIN) shouldBe false
     }
 
@@ -61,11 +89,22 @@ class TargetTest {
                 Channel.Named(ChannelId("^nc_1_mail_dan@work.example")),
                 Conversation.None,
                 OriginGroup.Known(gmailGroup("dan@work.example")),
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
             )
 
         account.matches(WORK_GMAIL_ORIGIN) shouldBe true
         account.matches(PERSONAL_GMAIL_ORIGIN) shouldBe false
-        account.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe
+        account.matches(
+            Origin(
+                PackageName.GMAIL,
+                Channel.Unnamed,
+                Conversation.None,
+                OriginGroup.Unknown,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
+            ),
+        ) shouldBe
             false
         account.matches(WORK_GMAIL_ORIGIN.copy(group = OriginGroup.Known(ChannelGrouping.Ungrouped))) shouldBe false
         account.matches(lookalike) shouldBe false
@@ -79,14 +118,29 @@ class TargetTest {
         COLLEAGUE_CHAT.matches(whatsappOrigin(Conversation.Routed(COLLEAGUE))) shouldBe true
         COLLEAGUE_CHAT.matches(whatsappOrigin(Conversation.Routed(FRIEND))) shouldBe false
         COLLEAGUE_CHAT.matches(
-            Origin(SLACK, Channel.Named(WHATSAPP_CHATS), known(COLLEAGUE), OriginGroup.Unknown),
+            Origin(
+                SLACK,
+                Channel.Named(WHATSAPP_CHATS),
+                known(COLLEAGUE),
+                OriginGroup.Unknown,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
+            ),
         ) shouldBe
             false
     }
 
     @Test
     fun `chat target ignores which channel the conversation arrives on`() {
-        val elsewhere = Origin(WHATSAPP, Channel.Unnamed, known(COLLEAGUE), OriginGroup.Unknown)
+        val elsewhere =
+            Origin(
+                WHATSAPP,
+                Channel.Unnamed,
+                known(COLLEAGUE),
+                OriginGroup.Unknown,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
+            )
 
         COLLEAGUE_CHAT.matches(elsewhere) shouldBe true
     }
@@ -167,7 +221,16 @@ class TargetTest {
 
         accounts.matches(WORK_GMAIL_ORIGIN) shouldBe true
         accounts.matches(PERSONAL_GMAIL_ORIGIN) shouldBe false
-        accounts.matches(Origin(PackageName.GMAIL, Channel.Unnamed, Conversation.None, OriginGroup.Unknown)) shouldBe
+        accounts.matches(
+            Origin(
+                PackageName.GMAIL,
+                Channel.Unnamed,
+                Conversation.None,
+                OriginGroup.Unknown,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
+            ),
+        ) shouldBe
             false
         accounts.matches(
             Origin(
@@ -175,6 +238,8 @@ class TargetTest {
                 Channel.Named(ChannelId("^nc_1_mail_dan@work.example")),
                 Conversation.None,
                 OriginGroup.Unknown,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
             ),
         ) shouldBe
             false
@@ -221,7 +286,14 @@ class TargetTest {
         work.matches(whatsappOrigin(Conversation.Routed(COLLEAGUE))) shouldBe false
         work.matches(whatsappOrigin(Conversation.Known(COLLEAGUE, ConversationTitle.Untitled))) shouldBe false
         work.matches(
-            Origin(SLACK, Channel.Named(WHATSAPP_CHATS), known(COLLEAGUE, "Work"), OriginGroup.Unknown),
+            Origin(
+                SLACK,
+                Channel.Named(WHATSAPP_CHATS),
+                known(COLLEAGUE, "Work"),
+                OriginGroup.Unknown,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
+            ),
         ) shouldBe
             false
     }
@@ -242,5 +314,23 @@ class TargetTest {
         Target.ChatNamePattern(WHATSAPP, textPattern("^Work")).expandsTo(COLLEAGUE_CHAT) shouldBe false
         Target.ChatNamePattern(SLACK, textPattern("^Work")).expandsTo(named) shouldBe false
         Target.App(WHATSAPP).expandsTo(named) shouldBe false
+    }
+
+    @Test
+    fun `a sub text account matches its app's notifications carrying its address`() {
+        val work = Target.SubTextAccount(PROTON, address("dan@work.example"))
+
+        work.matches(protonOrigin("Dan@Work.Example")) shouldBe true
+        work.matches(protonOrigin("dan@home.example")) shouldBe false
+        work.matches(protonOrigin(null)) shouldBe false
+        work.matches(protonOrigin("dan@work.example").copy(packageName = SLACK)) shouldBe false
+    }
+
+    @Test
+    fun `a sub text account covers no channel and claims no chat`() {
+        val work = Target.SubTextAccount(PROTON, address("dan@work.example"))
+
+        work.covers(ChannelKey(PROTON, PROTON_MAIL), ChannelKind.Shared, ChannelGrouping.Ungrouped) shouldBe false
+        work.holds(COLLEAGUE_CHAT.copy(packageName = PROTON), ChannelGrouping.Ungrouped) shouldBe false
     }
 }

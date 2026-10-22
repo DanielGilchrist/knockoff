@@ -92,7 +92,11 @@ private fun LazyListScope.status(link: DeviceLink) {
                     ListItem(
                         headlineContent = { Text(text = "Linked to ${link.device}") },
                         supportingContent = {
-                            Text(text = "Held notifications stay quiet, apart from a chat Knockoff hasn't seen before.")
+                            Text(
+                                text =
+                                    "Held notifications stay quiet, apart from a chat Knockoff hasn't seen before " +
+                                        "or an account an app only names in the notification.",
+                            )
                         },
                         leadingContent = { IconBadge(icon = R.drawable.ic_bluetooth) },
                         trailingContent = {

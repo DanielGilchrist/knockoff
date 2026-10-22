@@ -21,8 +21,8 @@ internal data class StoredRuleV6(
         private const val GMAIL_ACCOUNT_GROUP = "^ncg_1_account_"
     }
 
-    fun upgraded(): StoredRule =
-        StoredRule(
+    fun upgraded(): StoredRuleV7 =
+        StoredRuleV7(
             name,
             state,
             policy,
@@ -33,8 +33,8 @@ internal data class StoredRuleV6(
                 .distinct()
                 .map { app ->
                     when (app) {
-                        in apps -> StoredApp(app, StoredAppScope.Everything)
-                        else -> StoredApp(app, narrowed(app))
+                        in apps -> StoredAppV7(app, StoredAppScopeV7.Everything)
+                        else -> StoredAppV7(app, narrowed(app))
                     }
                 },
         )
@@ -45,8 +45,8 @@ internal data class StoredRuleV6(
             else -> listOf(PackageName.GMAIL.value)
         }
 
-    private fun narrowed(app: String): StoredAppScope.Narrowed =
-        StoredAppScope.Narrowed(
+    private fun narrowed(app: String): StoredAppScopeV7.Narrowed =
+        StoredAppScopeV7.Narrowed(
             accounts =
                 when (app) {
                     PackageName.GMAIL.value -> gmailAccounts.map { StoredAccount(GMAIL_ACCOUNT_GROUP + it, it) }

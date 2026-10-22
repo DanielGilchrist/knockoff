@@ -20,7 +20,14 @@ class PostedNotificationTest {
         PostedNotification
             .Unsnoozable(
                 key,
-                Origin(SLACK, Channel.Unnamed, Conversation.None, OriginGroup.Unknown),
+                Origin(
+                    SLACK,
+                    Channel.Unnamed,
+                    Conversation.None,
+                    OriginGroup.Unknown,
+                    OriginAddress.Unaddressed,
+                    NotificationCategory.Other,
+                ),
                 traits(NotificationTrait.Ongoing),
             ).describe() shouldBe "key=0|com.google.android.gm|7|gig|10206 package=com.Slack channel=(none)"
     }

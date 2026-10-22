@@ -28,7 +28,7 @@ class CommandReceiver : BroadcastReceiver() {
             }
 
             is Command.Mail -> {
-                FakeMail(context).post(command.account, command.from, command.subject)
+                FakeMail(context).post(command.account, command.from, command.subject, command.style)
             }
 
             Command.Clear -> {

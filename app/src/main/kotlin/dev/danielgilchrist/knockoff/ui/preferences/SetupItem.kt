@@ -30,7 +30,7 @@ data class SetupItem(
                 is DeviceLink.Linked -> {
                     SetupItem(
                         SetupAction.Link,
-                        "On. Linked to ${link.device}. Held notifications stay quiet.",
+                        "On. Linked to ${link.device}. Most held notifications stay quiet.",
                         SetupStatus.Explained,
                     )
                 }

@@ -14,7 +14,7 @@ internal data class StoredSettings(
     private val rules: List<StoredRule>,
 ) : StoredSettingsDocument {
     companion object {
-        const val CURRENT_VERSION = 7
+        const val CURRENT_VERSION = 8
 
         fun from(settings: Settings): StoredSettings =
             StoredSettings(

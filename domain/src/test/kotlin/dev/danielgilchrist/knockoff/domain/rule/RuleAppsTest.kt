@@ -1,11 +1,14 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
 import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.PROTON
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
+import dev.danielgilchrist.knockoff.domain.address
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
 import dev.danielgilchrist.knockoff.domain.gmailAccount
+import dev.danielgilchrist.knockoff.domain.group.GroupName
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
@@ -57,7 +60,7 @@ class RuleAppsTest {
         val apps = ruleApps(setOf(COLLEAGUE_CHAT, account, Target.App(SLACK)), setOf(WHATSAPP))
 
         apps.chatsOf(WHATSAPP).keys shouldBe setOf(COLLEAGUE_CHAT.id)
-        apps.accountsOf(account.packageName) shouldBe mapOf(account.group to account.label)
+        apps.accountsOf(account.packageName) shouldBe mapOf(AccountId.Group(account.group) to account.label)
         apps.chatsOf(SLACK) shouldBe emptyMap()
         apps.accountsOf(SLACK) shouldBe emptyMap()
         apps.chatsOf(PackageName("org.signal")) shouldBe emptyMap()
@@ -126,8 +129,12 @@ class RuleAppsTest {
             .parse(emptyMap(), emptyList(), emptySet(), NewChatsAsking.Ask)
             .shouldBeInstanceOf<NarrowedParse.Valid>()
         AppScope.Narrowed
-            .parse(mapOf(account.group to account.label), emptyList(), emptySet(), NewChatsAsking.DontAsk)
-            .shouldBeInstanceOf<NarrowedParse.Valid>()
+            .parse(
+                mapOf(AccountId.Group(account.group) to account.label),
+                emptyList(),
+                emptySet(),
+                NewChatsAsking.DontAsk,
+            ).shouldBeInstanceOf<NarrowedParse.Valid>()
         AppScope.Narrowed
             .parse(emptyMap(), listOf(ChatPick.of(COLLEAGUE_CHAT)), emptySet(), NewChatsAsking.DontAsk)
             .shouldBeInstanceOf<NarrowedParse.Valid>()
@@ -142,5 +149,27 @@ class RuleAppsTest {
         PatternPick.of(pattern).inApp(WHATSAPP) shouldBe pattern
         val channels = Target.ChannelPattern(WHATSAPP, textPattern("^individual"))
         PatternPick.of(channels).inApp(WHATSAPP) shouldBe channels
+    }
+
+    @Test
+    fun `an app narrowed to an address holds it as a sub text account`() {
+        val work = address("dan@work.example")
+        val apps =
+            RuleApps.of(
+                mapOf(
+                    PROTON to
+                        AppScope.Narrowed
+                            .parse(
+                                mapOf(AccountId.Address(work) to GroupName.of(work)),
+                                emptyList(),
+                                emptySet(),
+                                NewChatsAsking.DontAsk,
+                            ).shouldBeInstanceOf<NarrowedParse.Valid>()
+                            .scope,
+                ),
+            )
+
+        apps.targets shouldBe setOf(Target.SubTextAccount(PROTON, work))
+        apps.accountsOf(PROTON) shouldBe mapOf(AccountId.Address(work) to GroupName.of(work))
     }
 }

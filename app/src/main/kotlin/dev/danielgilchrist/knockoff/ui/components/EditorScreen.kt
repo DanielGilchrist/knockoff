@@ -5,7 +5,10 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,7 +42,7 @@ internal fun EditorScreen(
 
     Scaffold(
         modifier = modifier.nestedScroll(scroll.nestedScrollConnection),
-        contentWindowInsets = WindowInsets.safeDrawing,
+        contentWindowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout),
         topBar = {
             TopAppBar(
                 title = { Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
@@ -54,6 +57,7 @@ internal fun EditorScreen(
         },
     ) { padding ->
         LazyColumn(
+            modifier = Modifier.imePadding(),
             contentPadding =
                 PaddingValues(
                     start = padding.calculateStartPadding(direction) + 16.dp,

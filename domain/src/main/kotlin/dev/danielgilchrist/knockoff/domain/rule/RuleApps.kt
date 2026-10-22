@@ -2,7 +2,6 @@ package dev.danielgilchrist.knockoff.domain.rule
 
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
 import dev.danielgilchrist.knockoff.domain.group.GroupName
-import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 
@@ -26,7 +25,7 @@ data class RuleApps private constructor(
                         }
 
                         is AppScope.Narrowed -> {
-                            scope.accounts.map { (group, label) -> Target.Account(packageName, group, label) } +
+                            scope.accounts.map { (id, label) -> accountTarget(packageName, id, label) } +
                                 scope.chats.values.map { it.inApp(packageName) } +
                                 scope.patterns.map { it.inApp(packageName) }
                         }
@@ -42,7 +41,7 @@ data class RuleApps private constructor(
             is AppScope.Narrowed -> scope.asking == NewChatsAsking.Ask
         }
 
-    fun accountsOf(packageName: PackageName): Map<ChannelGroupId, GroupName> =
+    fun accountsOf(packageName: PackageName): Map<AccountId, GroupName> =
         when (val scope = scopes[packageName]) {
             null, AppScope.Everything -> emptyMap()
             is AppScope.Narrowed -> scope.accounts
@@ -91,6 +90,16 @@ data class RuleApps private constructor(
             } + gained,
         )
     }
+
+    private fun accountTarget(
+        packageName: PackageName,
+        id: AccountId,
+        label: GroupName,
+    ): Target =
+        when (id) {
+            is AccountId.Group -> Target.Account(packageName, id.id, label)
+            is AccountId.Address -> Target.SubTextAccount(packageName, id.address)
+        }
 
     internal fun expanded(seen: SeenChats): RuleApps =
         RuleApps(

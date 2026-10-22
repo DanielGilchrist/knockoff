@@ -22,9 +22,9 @@ internal object AppSummary {
     ): String =
         when (kind) {
             AppKind.Plain -> "No patterns added"
-            AppKind.Accounts -> "No ${noun.many} picked"
+            AppKind.Accounts -> "No ${noun.manyOr()} picked"
             AppKind.Chats -> "No chats picked"
-            AppKind.AccountsAndChats -> "No ${noun.many} or chats picked"
+            AppKind.AccountsAndChats -> "No ${noun.manyOr("chats")} picked"
         }
 
     private fun narrowed(
@@ -44,7 +44,7 @@ internal object AppSummary {
                 }
 
                 else -> {
-                    listOf(choices.noun.counted(draft.accounts.size))
+                    choices.list.counted(draft.accounts.keys)
                 }
             }
         val chats =

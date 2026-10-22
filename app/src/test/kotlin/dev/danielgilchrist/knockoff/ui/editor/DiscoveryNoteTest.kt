@@ -80,5 +80,6 @@ class DiscoveryNoteTest {
         label: String,
         kind: AppKind,
         known: List<KnownGroup>,
-    ): DiscoveryFacts = DiscoveryFacts(label, kind, AccountChoices.of(known, emptyMap(), AppDraft.EVERYTHING))
+    ): DiscoveryFacts =
+        DiscoveryFacts(label, kind, AccountChoices.of(known, emptyList(), emptyMap(), AppDraft.EVERYTHING))
 }

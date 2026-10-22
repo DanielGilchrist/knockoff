@@ -4,10 +4,13 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.json.VersionedDecode
 import dev.danielgilchrist.knockoff.domain.json.VersionedJson
+import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
+import dev.danielgilchrist.knockoff.domain.notification.NotificationCategory
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginAddress
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Target
@@ -26,9 +29,12 @@ data class KnownGroups private constructor(
         fun fromJson(text: String): KnownGroupsDecode =
             when (
                 val decode =
-                    VersionedJson.decode(
+                    VersionedJson.decode<StoredKnownGroupsDocument>(
                         text,
-                        mapOf(StoredKnownGroups.CURRENT_VERSION to StoredKnownGroups.serializer()),
+                        mapOf(
+                            StoredKnownGroupsV1.VERSION to StoredKnownGroupsV1.serializer(),
+                            StoredKnownGroups.CURRENT_VERSION to StoredKnownGroups.serializer(),
+                        ),
                     )
             ) {
                 is VersionedDecode.Decoded -> decode.value.toKnownGroups()
@@ -37,7 +43,33 @@ data class KnownGroups private constructor(
             }
     }
 
-    fun sighted(origin: Origin): KnownGroups =
+    fun sighted(origin: Origin): KnownGroups = sightedGroup(origin).sightedAddress(origin)
+
+    private fun sightedAddress(origin: Origin): KnownGroups =
+        when (val address = origin.address) {
+            OriginAddress.Unaddressed -> {
+                this
+            }
+
+            is OriginAddress.Addressed -> {
+                val current = appOf(origin.packageName)
+
+                when (origin.category) {
+                    NotificationCategory.Email -> {
+                        when (val learned = current.withAddress(address.address)) {
+                            current -> this
+                            else -> of(listOf(learned) + apps)
+                        }
+                    }
+
+                    NotificationCategory.Other -> {
+                        this
+                    }
+                }
+            }
+        }
+
+    private fun sightedGroup(origin: Origin): KnownGroups =
         when (val channel = origin.channel) {
             Channel.Unnamed -> {
                 this
@@ -74,7 +106,7 @@ data class KnownGroups private constructor(
         names: Map<ChannelGroupId, GroupName>,
     ): KnownGroups {
         val current = appOf(packageName)
-        val learned = KnownApp(packageName, current.channels + channels, names)
+        val learned = KnownApp.of(packageName, current.channels + channels, names, current.addresses)
 
         return when (learned) {
             current -> this
@@ -96,8 +128,11 @@ data class KnownGroups private constructor(
 
     fun groupsOf(packageName: PackageName): List<KnownGroup> = appOf(packageName).groups
 
+    fun addressesOf(packageName: PackageName): List<AccountAddress> = appOf(packageName).addresses
+
     fun toJson(): String = VersionedJson.json.encodeToString(StoredKnownGroups.from(this))
 
     private fun appOf(packageName: PackageName): KnownApp =
-        apps.firstOrNull { it.packageName == packageName } ?: KnownApp(packageName, emptyMap(), emptyMap())
+        apps.firstOrNull { it.packageName == packageName }
+            ?: KnownApp.of(packageName, emptyMap(), emptyMap(), emptyList())
 }

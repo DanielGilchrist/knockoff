@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.listener
 
 import android.app.Notification
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
+import dev.danielgilchrist.knockoff.domain.notification.NotificationCategory
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import dev.danielgilchrist.knockoff.domain.notification.NotificationSnapshot
 import dev.danielgilchrist.knockoff.domain.notification.NotificationStyle
@@ -104,6 +105,8 @@ class GroupEntryTest {
                 PackageName("com.whatsapp"),
                 channelId = null,
                 group = OriginGroup.Unknown,
+                subText = null,
+                category = NotificationCategory.Other,
                 style = NotificationStyle.Other,
                 shortcutId = null,
                 titles = emptyList(),

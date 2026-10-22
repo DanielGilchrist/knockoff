@@ -7,6 +7,7 @@ import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AccountId
 import dev.danielgilchrist.knockoff.domain.rule.ChatPick
 import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
 import dev.danielgilchrist.knockoff.domain.rule.PatternPick
@@ -34,7 +35,7 @@ class RuleDraftTest {
     private val workMail =
         AppDraft(
             AppMode.Narrowed,
-            mapOf(ChannelGroupId("^ncg_1_account_dan@work.example") to groupName("dan@work.example")),
+            mapOf(AccountId.Group(ChannelGroupId("^ncg_1_account_dan@work.example")) to groupName("dan@work.example")),
             emptyMap(),
             emptyList(),
             NewChatsAsking.DontAsk,
@@ -194,7 +195,7 @@ class RuleDraftTest {
     @Test
     fun `saving names accounts by what was learned for their app`() {
         val id = ChannelGroupId("^ncg_1_account_dan@work.example")
-        val bare = workMail.copy(accounts = mapOf(id to GroupName.of(id)))
+        val bare = workMail.copy(accounts = mapOf(AccountId.Group(id) to GroupName.of(id)))
         val groups = KnownGroups.NONE.read(whatsapp, emptyMap(), mapOf(id to groupName("dan@work.example")))
         val draft = RuleDraft.NEW.copy(apps = mapOf(whatsapp to bare, slack to bare))
 

@@ -7,6 +7,8 @@ import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.group.GroupName
 import dev.danielgilchrist.knockoff.domain.group.GroupNameParse
+import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
+import dev.danielgilchrist.knockoff.domain.notification.AccountAddressParse
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
@@ -14,10 +16,12 @@ import dev.danielgilchrist.knockoff.domain.notification.Conversation
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.ConversationTitle
+import dev.danielgilchrist.knockoff.domain.notification.NotificationCategory
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTrait
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTraits
 import dev.danielgilchrist.knockoff.domain.notification.NotificationTraitsParse
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginAddress
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
@@ -109,6 +113,29 @@ fun groupName(raw: String): GroupName =
         GroupNameParse.Blank -> error("Fixture group name is blank")
     }
 
+fun address(raw: String): AccountAddress =
+    when (val parse = AccountAddress.parse(raw)) {
+        is AccountAddressParse.Valid -> parse.address
+        AccountAddressParse.NotAnAddress -> error("Fixture address isn't an address")
+    }
+
+val PROTON = PackageName("ch.protonmail.android")
+
+val PROTON_MAIL = ChannelId("emails")
+
+fun protonOrigin(
+    subText: String?,
+    category: NotificationCategory = NotificationCategory.Email,
+): Origin =
+    Origin(
+        PROTON,
+        Channel.Named(PROTON_MAIL),
+        Conversation.None,
+        OriginGroup.Unknown,
+        OriginAddress.of(subText),
+        category,
+    )
+
 fun rule(
     name: String,
     policy: Policy,
@@ -137,6 +164,8 @@ fun gmailOrigin(channelId: String): Origin =
         Channel.Named(ChannelId(channelId)),
         Conversation.None,
         OriginGroup.Known(gmailGroup(channelId.removePrefix("^nc_1_mail_"))),
+        OriginAddress.Unaddressed,
+        NotificationCategory.Other,
     )
 
 fun gmailGroup(address: String): ChannelGrouping = ChannelGrouping.Grouped(ChannelGroupId("^ncg_1_account_$address"))
@@ -145,7 +174,15 @@ val SLACK = PackageName("com.Slack")
 
 val WORK_ADDRESS = groupName("dan@work.example")
 
-val SLACK_ORIGIN = Origin(SLACK, Channel.Named(ChannelId("messages")), Conversation.None, OriginGroup.Unknown)
+val SLACK_ORIGIN =
+    Origin(
+        SLACK,
+        Channel.Named(ChannelId("messages")),
+        Conversation.None,
+        OriginGroup.Unknown,
+        OriginAddress.Unaddressed,
+        NotificationCategory.Other,
+    )
 
 val WORK_GMAIL_ORIGIN = gmailOrigin("^nc_1_mail_dan@work.example")
 
@@ -166,7 +203,14 @@ val COLLEAGUE_CHANNEL = ChannelKey(WHATSAPP, ChannelId("7c0ffee0-conversation"))
 val COLLEAGUE_KIND = ChannelKind.ConversationOf(WHATSAPP_CHATS, COLLEAGUE)
 
 fun whatsappOrigin(conversation: Conversation): Origin =
-    Origin(WHATSAPP, Channel.Named(WHATSAPP_CHATS), conversation, OriginGroup.Unknown)
+    Origin(
+        WHATSAPP,
+        Channel.Named(WHATSAPP_CHATS),
+        conversation,
+        OriginGroup.Unknown,
+        OriginAddress.Unaddressed,
+        NotificationCategory.Other,
+    )
 
 fun traits(vararg traits: NotificationTrait): NotificationTraits =
     when (val parse = NotificationTraits.parse(traits.toSet())) {

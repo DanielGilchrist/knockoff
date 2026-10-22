@@ -29,7 +29,7 @@ data class Rule(
             targets.flatMap { target ->
                 when (target) {
                     is Target.Chat -> listOf(target)
-                    is Target.App, is Target.Account, is Target.Pattern -> emptyList()
+                    is Target.App, is Target.Account, is Target.SubTextAccount, is Target.Pattern -> emptyList()
                 }
             }
 

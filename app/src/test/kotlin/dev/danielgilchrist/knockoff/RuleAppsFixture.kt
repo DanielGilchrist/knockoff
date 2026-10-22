@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff
 
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AccountId
 import dev.danielgilchrist.knockoff.domain.rule.AppScope
 import dev.danielgilchrist.knockoff.domain.rule.ChatPick
 import dev.danielgilchrist.knockoff.domain.rule.NarrowedParse
@@ -33,7 +34,12 @@ private fun narrowed(
     when (
         val parse =
             AppScope.Narrowed.parse(
-                accounts = targets.filterIsInstance<Target.Account>().associate { it.group to it.label },
+                accounts =
+                    targets.filterIsInstance<Target.Account>().associate {
+                        AccountId.Group(
+                            it.group,
+                        ) to it.label
+                    },
                 chats = targets.filterIsInstance<Target.Chat>().map(ChatPick::of),
                 patterns = targets.filterIsInstance<Target.Pattern>().map(PatternPick::of).toSet(),
                 asking =

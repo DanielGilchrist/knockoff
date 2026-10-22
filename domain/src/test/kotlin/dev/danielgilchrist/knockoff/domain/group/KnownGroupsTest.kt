@@ -1,15 +1,21 @@
 package dev.danielgilchrist.knockoff.domain.group
 
 import dev.danielgilchrist.knockoff.domain.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.PROTON
+import dev.danielgilchrist.knockoff.domain.PROTON_MAIL
+import dev.danielgilchrist.knockoff.domain.address
 import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.notification.Channel
 import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
+import dev.danielgilchrist.knockoff.domain.notification.NotificationCategory
 import dev.danielgilchrist.knockoff.domain.notification.Origin
+import dev.danielgilchrist.knockoff.domain.notification.OriginAddress
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.protonOrigin
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
 import org.junit.jupiter.api.Test
@@ -52,9 +58,33 @@ class KnownGroupsTest {
         val known = OriginGroup.Known(ChannelGrouping.Grouped(work))
         val named = Channel.Named(workMail.channelId)
 
-        KnownGroups.NONE.sighted(Origin(gmail, named, Conversation.None, known)).groupOf(workMail) shouldBe known
-        KnownGroups.NONE.sighted(Origin(gmail, named, Conversation.None, OriginGroup.Unknown)) shouldBe KnownGroups.NONE
-        KnownGroups.NONE.sighted(Origin(gmail, Channel.Unnamed, Conversation.None, known)) shouldBe KnownGroups.NONE
+        KnownGroups.NONE
+            .sighted(
+                Origin(gmail, named, Conversation.None, known, OriginAddress.Unaddressed, NotificationCategory.Other),
+            ).groupOf(workMail) shouldBe
+            known
+        KnownGroups.NONE.sighted(
+            Origin(
+                gmail,
+                named,
+                Conversation.None,
+                OriginGroup.Unknown,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
+            ),
+        ) shouldBe
+            KnownGroups.NONE
+        KnownGroups.NONE.sighted(
+            Origin(
+                gmail,
+                Channel.Unnamed,
+                Conversation.None,
+                known,
+                OriginAddress.Unaddressed,
+                NotificationCategory.Other,
+            ),
+        ) shouldBe
+            KnownGroups.NONE
     }
 
     @Test
@@ -167,15 +197,15 @@ class KnownGroupsTest {
 
     @Test
     fun `other versions and unreadable text fail`() {
-        KnownGroups.fromJson("""{"version":2,"apps":[]}""") shouldBe KnownGroupsDecode.UnsupportedVersion(2)
+        KnownGroups.fromJson("""{"version":3,"apps":[]}""") shouldBe KnownGroupsDecode.UnsupportedVersion(3)
         KnownGroups
             .fromJson("nope")
             .shouldBeInstanceOf<KnownGroupsDecode.Unreadable>()
             .detail
             .isNotBlank() shouldBe
             true
-        KnownGroupsDecode.UnsupportedVersion(2).version shouldBe 2
-        KnownGroupsDecode.UnsupportedVersion(2).detail shouldBe "Unsupported known groups version 2"
+        KnownGroupsDecode.UnsupportedVersion(3).version shouldBe 3
+        KnownGroupsDecode.UnsupportedVersion(3).detail shouldBe "Unsupported known groups version 3"
     }
 
     @Test
@@ -187,5 +217,79 @@ class KnownGroupsTest {
     fun `group names are trimmed and blank ones refused`() {
         GroupName.parse("  dan@work.example ") shouldBe GroupNameParse.Valid(name("dan@work.example"))
         GroupName.parse(" ") shouldBe GroupNameParse.Blank
+    }
+
+    @Test
+    fun `addresses from posts are learned per app, newest first`() {
+        val known =
+            KnownGroups.NONE
+                .sighted(protonOrigin("dan@work.example"))
+                .sighted(protonOrigin("Dan@Home.Example"))
+                .sighted(protonOrigin("3 new messages"))
+
+        known.addressesOf(PROTON) shouldBe listOf(address("dan@home.example"), address("dan@work.example"))
+        known.addressesOf(gmail) shouldBe emptyList()
+    }
+
+    @Test
+    fun `seeing a known address again changes nothing, not even the order`() {
+        val known =
+            KnownGroups.NONE
+                .sighted(protonOrigin("dan@work.example"))
+                .sighted(protonOrigin("dan@home.example"))
+                .sighted(ChannelKey(gmail, ChannelId("mail")), ChannelGrouping.Grouped(work))
+
+        known.sighted(protonOrigin("dan@home.example").copy(channel = Channel.Unnamed)) shouldBe known
+        known.sighted(protonOrigin("dan@work.example").copy(channel = Channel.Unnamed)) shouldBe known
+    }
+
+    @Test
+    fun `only email notifications teach an address`() {
+        KnownGroups.NONE.sighted(protonOrigin("dan@work.example", NotificationCategory.Other)) shouldBe KnownGroups.NONE
+        KnownGroups.NONE
+            .sighted(protonOrigin("dan@work.example", NotificationCategory.Email))
+            .addressesOf(PROTON) shouldBe listOf(address("dan@work.example"))
+    }
+
+    @Test
+    fun `only the latest 20 addresses are kept for an app`() {
+        val known = (1..21).fold(KnownGroups.NONE) { groups, n -> groups.sighted(protonOrigin("dan$n@work.example")) }
+
+        known.addressesOf(PROTON).size shouldBe 20
+        known.addressesOf(PROTON).first() shouldBe address("dan21@work.example")
+        known.addressesOf(PROTON).last() shouldBe address("dan2@work.example")
+    }
+
+    @Test
+    fun `a read keeps the app's addresses`() {
+        KnownGroups.NONE
+            .sighted(protonOrigin("dan@work.example"))
+            .read(PROTON, mapOf(PROTON_MAIL to work), emptyMap())
+            .addressesOf(PROTON) shouldBe listOf(address("dan@work.example"))
+    }
+
+    @Test
+    fun `addresses round-trip and stored values that aren't addresses are dropped`() {
+        val known = KnownGroups.NONE.sighted(protonOrigin("dan@work.example"))
+        val text =
+            """{"version":2,"apps":[{"app":"a","channels":{},"names":{},"addresses":["x","dan@work.example","DAN@work.example"]}]}"""
+
+        KnownGroups.fromJson(known.toJson()) shouldBe KnownGroupsDecode.Decoded(known)
+        KnownGroups
+            .fromJson(text)
+            .shouldBeInstanceOf<KnownGroupsDecode.Decoded>()
+            .groups
+            .addressesOf(PackageName("a")) shouldBe listOf(address("dan@work.example"))
+    }
+
+    @Test
+    fun `version 1 documents read with no addresses`() {
+        val text = """{"version":1,"apps":[{"app":"a","channels":{"c":"g"},"names":{"g":"Work"}}]}"""
+
+        val groups = KnownGroups.fromJson(text).shouldBeInstanceOf<KnownGroupsDecode.Decoded>().groups
+
+        groups.groupsOf(PackageName("a")) shouldBe
+            listOf(KnownGroup(ChannelGroupId("g"), GroupLabel.Named(name("Work"))))
+        groups.addressesOf(PackageName("a")) shouldBe emptyList()
     }
 }

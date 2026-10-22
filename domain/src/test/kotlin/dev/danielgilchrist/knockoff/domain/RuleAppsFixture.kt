@@ -1,8 +1,8 @@
 package dev.danielgilchrist.knockoff.domain
 
 import dev.danielgilchrist.knockoff.domain.group.GroupName
-import dev.danielgilchrist.knockoff.domain.notification.ChannelGroupId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
+import dev.danielgilchrist.knockoff.domain.rule.AccountId
 import dev.danielgilchrist.knockoff.domain.rule.AppScope
 import dev.danielgilchrist.knockoff.domain.rule.ChatPick
 import dev.danielgilchrist.knockoff.domain.rule.NewChatsAsking
@@ -42,20 +42,21 @@ private fun narrowed(
             },
     )
 
-private fun accountOf(target: Target): List<Pair<ChannelGroupId, GroupName>> =
+private fun accountOf(target: Target): List<Pair<AccountId, GroupName>> =
     when (target) {
-        is Target.Account -> listOf(target.group to target.label)
+        is Target.Account -> listOf(AccountId.Group(target.group) to target.label)
+        is Target.SubTextAccount -> listOf(AccountId.Address(target.address) to GroupName.of(target.address))
         is Target.App, is Target.Chat, is Target.Pattern -> emptyList()
     }
 
 private fun chatOf(target: Target): List<ChatPick> =
     when (target) {
         is Target.Chat -> listOf(ChatPick.of(target))
-        is Target.App, is Target.Account, is Target.Pattern -> emptyList()
+        is Target.App, is Target.Account, is Target.SubTextAccount, is Target.Pattern -> emptyList()
     }
 
 private fun patternOf(target: Target): List<PatternPick> =
     when (target) {
         is Target.Pattern -> listOf(PatternPick.of(target))
-        is Target.App, is Target.Account, is Target.Chat -> emptyList()
+        is Target.App, is Target.Account, is Target.SubTextAccount, is Target.Chat -> emptyList()
     }

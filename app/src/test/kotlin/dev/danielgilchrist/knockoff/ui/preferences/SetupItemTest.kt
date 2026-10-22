@@ -27,7 +27,7 @@ class SetupItemTest {
         val setup = Setup(ListenerAccess.Granted, DeviceLink.Linked("Pixel Buds"), NotificationPermission.Granted)
 
         assertEquals(
-            "On. Linked to Pixel Buds. Held notifications stay quiet.",
+            "On. Linked to Pixel Buds. Most held notifications stay quiet.",
             SetupItem.of(setup).single { it.action == SetupAction.Link }.supporting,
         )
     }
