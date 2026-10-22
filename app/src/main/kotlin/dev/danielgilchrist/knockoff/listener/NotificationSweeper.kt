@@ -21,6 +21,7 @@ internal class NotificationSweeper(
     private val knownGroups: suspend () -> KnownGroups,
 ) {
     private val snoozer = Snoozer(listener)
+    private val holder = NotificationHolder(snoozer, SummaryDismisser(listener), ::activeGroups)
 
     fun sweep(evaluation: Evaluation) {
         when (val read = listener.read(NotificationList.Active)) {
@@ -29,7 +30,7 @@ internal class NotificationSweeper(
                 val active = ActiveGroups.Read(entriesOf(read.notifications))
 
                 read.notifications.zip(active.entries).forEach { (sbn, entry) ->
-                    scope.launch { decide(sbn, entry.posted, entry.role { active }, evaluation) }
+                    scope.launch { decide(sbn, entry, entry.role { active }, evaluation) }
                 }
             }
 
@@ -66,22 +67,31 @@ internal class NotificationSweeper(
         posted: PostedNotification,
         evaluation: Evaluation,
     ) {
-        decide(sbn, posted, GroupEntry.of(sbn, posted).role(::activeGroups), evaluation)
+        val entry = GroupEntry.of(sbn, posted)
+
+        decide(sbn, entry, entry.role(::activeGroups), evaluation)
     }
 
     fun revisitSummaries(
         removed: StatusBarNotification,
+        revisit: SummaryRevisit,
         evaluation: Evaluation,
     ) {
-        when (val group = removed.notification.group) {
-            null -> {}
+        when {
+            !removed.isGroup -> {}
 
             else -> {
-                when (GroupEntry.positionOf(group, removed.notification.flags)) {
-                    GroupPosition.Summary -> {}
+                when (GroupEntry.positionOf(removed.notification.group, removed.notification.flags)) {
+                    GroupPosition.Summary, GroupPosition.AutogroupSummary -> {}
 
                     GroupPosition.Member -> {
-                        scope.launch { revisitSummariesOf(GroupEntry.of(removed, OriginGroup.Unknown), evaluation) }
+                        scope.launch {
+                            revisitSummariesOf(
+                                GroupEntry.of(removed, OriginGroup.Unknown),
+                                revisit,
+                                evaluation,
+                            )
+                        }
                     }
                 }
             }
@@ -90,14 +100,17 @@ internal class NotificationSweeper(
 
     private fun revisitSummariesOf(
         gone: GroupEntry,
+        revisit: SummaryRevisit,
         evaluation: Evaluation,
     ) {
         when (val read = listener.read(NotificationList.Active)) {
             is NotificationRead.Read -> {
                 read.notifications
                     .zip(entriesOf(read.notifications))
-                    .filter { (_, entry) -> entry.position == GroupPosition.Summary && entry.sharesGroupWith(gone) }
-                    .forEach { (sbn, entry) -> scope.launch { evaluate(sbn, entry.posted, evaluation) } }
+                    .filter { (_, entry) -> revisit.covers(entry.position) && entry.sharesGroupWith(gone) }
+                    .forEach { (sbn, entry) ->
+                        scope.launch { decide(sbn, entry, entry.role(::activeGroups), evaluation) }
+                    }
             }
 
             is NotificationRead.Failure -> {
@@ -108,36 +121,36 @@ internal class NotificationSweeper(
 
     private suspend fun decide(
         sbn: StatusBarNotification,
-        posted: PostedNotification,
+        entry: GroupEntry,
         lookup: GroupRoleLookup,
         evaluation: Evaluation,
     ) {
         when (lookup) {
             is GroupRoleLookup.Found -> {
-                decide(sbn, posted, lookup.role, evaluation)
+                decide(sbn, entry, lookup.role, evaluation)
             }
 
             is GroupRoleLookup.Unknown -> {
-                Log.w(LOG_TAG, "${sbn.describe(posted)} -> leave: its group couldn't be read: ${lookup.detail}")
+                Log.w(LOG_TAG, "${sbn.describe(entry.posted)} -> leave: its group couldn't be read: ${lookup.detail}")
             }
         }
     }
 
     private suspend fun decide(
         sbn: StatusBarNotification,
-        posted: PostedNotification,
+        entry: GroupEntry,
         role: GroupRole,
         evaluation: Evaluation,
     ) {
-        val decision = evaluation.decide(posted, role, Instant.now())
+        val decision = evaluation.decide(entry.posted, role, Instant.now())
 
-        Log.i(LOG_TAG, "${sbn.describe(posted)} -> ${decision.describe()}")
+        Log.i(LOG_TAG, "${sbn.describe(entry.posted)} -> ${decision.describe()}")
 
         when (decision) {
             is Decision.Leave -> {}
 
             is Decision.Snooze -> {
-                snoozer.snooze(posted.key, decision.duration)
+                holder.hold(entry, decision)
             }
         }
     }

@@ -152,21 +152,17 @@ class KnockoffListener : NotificationListenerService() {
         rankingMap: RankingMap,
         reason: Int,
     ) {
-        when (reason) {
-            REASON_SNOOZED -> {}
+        val revisit = SummaryRevisit.afterRemoval(reason)
 
-            else -> {
-                when (val change = applied) {
-                    Change.Pending -> {}
+        when (val change = applied) {
+            Change.Pending -> {}
 
-                    is Change.Initial -> {
-                        sweeper.revisitSummaries(sbn, change.value)
-                    }
+            is Change.Initial -> {
+                sweeper.revisitSummaries(sbn, revisit, change.value)
+            }
 
-                    is Change.Changed -> {
-                        sweeper.revisitSummaries(sbn, change.after)
-                    }
-                }
+            is Change.Changed -> {
+                sweeper.revisitSummaries(sbn, revisit, change.after)
             }
         }
     }

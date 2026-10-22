@@ -6,6 +6,9 @@ import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.OriginGroup
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 
+// Notification.FLAG_AUTOGROUP_SUMMARY is @hide, so its value is copied from AOSP.
+internal const val FLAG_AUTOGROUP_SUMMARY = 0x00000400
+
 internal data class GroupEntry(
     val key: String,
     val packageName: String,
@@ -19,12 +22,18 @@ internal data class GroupEntry(
                 GroupRoleLookup.Found(GroupRole.Member)
             }
 
-            GroupPosition.Summary -> {
+            GroupPosition.Summary, GroupPosition.AutogroupSummary -> {
                 when (val read = groups()) {
                     is ActiveGroups.Read -> GroupRoleLookup.Found(GroupRole.Summary(showingUnder(read.entries)))
                     is ActiveGroups.Unavailable -> GroupRoleLookup.Unknown(read.detail)
                 }
             }
+        }
+
+    fun dismissCheck(active: List<GroupEntry>): DismissCheck =
+        when (val under = showingUnder(active).size) {
+            0 -> DismissCheck.Alone
+            else -> DismissCheck.Occupied(under)
         }
 
     fun sharesGroupWith(other: GroupEntry): Boolean =
@@ -56,8 +65,9 @@ internal data class GroupEntry(
             flags: Int,
         ): GroupPosition =
             when {
-                group != null && flags and Notification.FLAG_GROUP_SUMMARY != 0 -> GroupPosition.Summary
-                else -> GroupPosition.Member
+                group == null || flags and Notification.FLAG_GROUP_SUMMARY == 0 -> GroupPosition.Member
+                flags and FLAG_AUTOGROUP_SUMMARY != 0 -> GroupPosition.AutogroupSummary
+                else -> GroupPosition.Summary
             }
     }
 }

@@ -54,6 +54,33 @@ class GroupEntryTest {
     }
 
     @Test
+    fun `a summary Android made for ungrouped notifications is an autogroup summary`() {
+        val autogroup = Notification.FLAG_GROUP_SUMMARY or FLAG_AUTOGROUP_SUMMARY
+
+        assertEquals(GroupPosition.AutogroupSummary, GroupEntry.positionOf("g:Aggregate_AlertingSection", autogroup))
+        assertEquals(GroupPosition.Member, GroupEntry.positionOf(null, autogroup))
+        assertEquals(GroupPosition.Member, GroupEntry.positionOf("g:Aggregate_AlertingSection", FLAG_AUTOGROUP_SUMMARY))
+    }
+
+    @Test
+    fun `an autogroup summary sees what shows under it`() {
+        val autogroup = entry("autogroup", "chats", GroupPosition.AutogroupSummary)
+
+        assertEquals(
+            GroupRoleLookup.Found(GroupRole.Summary(listOf(boss.posted))),
+            autogroup.role { ActiveGroups.Read(listOf(autogroup, boss, elsewhere)) },
+        )
+    }
+
+    @Test
+    fun `a summary can be dismissed only when nothing in its group is active`() {
+        val autogroup = entry("autogroup", "chats", GroupPosition.AutogroupSummary)
+
+        assertEquals(DismissCheck.Alone, autogroup.dismissCheck(listOf(autogroup, elsewhere, otherSummary, otherApp)))
+        assertEquals(DismissCheck.Occupied(2), autogroup.dismissCheck(listOf(autogroup, boss, mum, elsewhere)))
+    }
+
+    @Test
     fun `a group is shared only within one app`() {
         assertEquals(true, summary.sharesGroupWith(boss))
         assertEquals(false, summary.sharesGroupWith(summary))

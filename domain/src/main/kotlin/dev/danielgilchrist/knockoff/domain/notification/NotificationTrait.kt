@@ -5,5 +5,4 @@ enum class NotificationTrait {
     ForegroundService,
     NoClear,
     MediaSession,
-    AutogroupSummary,
 }

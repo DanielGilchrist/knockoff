@@ -22,7 +22,14 @@ class NotificationTraitsTest {
             notificationTraits(Notification.FLAG_FOREGROUND_SERVICE, emptySet()),
         )
         assertEquals(setOf(NotificationTrait.NoClear), notificationTraits(Notification.FLAG_NO_CLEAR, emptySet()))
-        assertEquals(setOf(NotificationTrait.AutogroupSummary), notificationTraits(FLAG_AUTOGROUP_SUMMARY, emptySet()))
+    }
+
+    @Test
+    fun `an autogroup summary has no traits`() {
+        assertEquals(
+            emptySet<NotificationTrait>(),
+            notificationTraits(Notification.FLAG_GROUP_SUMMARY or FLAG_AUTOGROUP_SUMMARY, emptySet()),
+        )
     }
 
     @Test
