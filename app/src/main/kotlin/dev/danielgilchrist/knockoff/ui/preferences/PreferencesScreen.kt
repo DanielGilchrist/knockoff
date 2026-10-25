@@ -35,6 +35,14 @@ internal fun PreferencesScreen(
         saveProblem(saveStatus)
         item { SectionHeader(text = "Setup") }
         item { SetupGroup(setup = setup, actions = actions) }
+        item {
+            Caption(
+                text =
+                    "Clearing all your notifications at once also removes ones Knockoff is holding, " +
+                        "and they won't come back.",
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        }
         item { SectionHeader(text = "General") }
         item {
             ZoneRow(
