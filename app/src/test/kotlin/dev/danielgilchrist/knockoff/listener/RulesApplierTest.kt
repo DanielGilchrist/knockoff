@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.listener
 
 import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.domain.rule.Policy
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
@@ -34,10 +35,10 @@ class RulesApplierTest {
 
             applier.apply(applying(s))
 
-            assertEquals(listOf(s.evaluation(SeenChats.NONE)), held.swept)
+            assertEquals(listOf(s.evaluation(SeenChats.NONE, Holidays.NONE)), held.swept)
             assertEquals(emptyList<Pair<Baseline.Known<Evaluation>, Evaluation>>(), held.rechecked)
             assertEquals(listOf(Baseline.Known.of(s)), keeper.saved)
-            assertEquals(Applied.Active(s.evaluation(SeenChats.NONE)), applier.applied)
+            assertEquals(Applied.Active(s.evaluation(SeenChats.NONE, Holidays.NONE)), applier.applied)
         }
 
     @Test
@@ -152,9 +153,9 @@ class RulesApplierTest {
             assertEquals(listOf(Baseline.Known.of(s)), keeper.saved)
         }
 
-    private fun applying(rules: AppliedRules) = Applying(rules, SeenChats.NONE)
+    private fun applying(rules: AppliedRules) = Applying(rules, SeenChats.NONE, Holidays.NONE)
 
-    private fun ev(rules: AppliedRules): Evaluation = rules.evaluation(SeenChats.NONE)
+    private fun ev(rules: AppliedRules): Evaluation = rules.evaluation(SeenChats.NONE, Holidays.NONE)
 
     private fun completed(): CompletableJob = Job().also { it.complete() }
 

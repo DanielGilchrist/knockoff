@@ -20,7 +20,7 @@ class PairedDevicesTest {
 
     @Test
     fun `a refused permission can be asked again until Android blocks it`() {
-        assertEquals(PairedDevices.NotAllowed, PairedDevices.refused(NearbyAsk.Askable))
-        assertEquals(PairedDevices.Blocked, PairedDevices.refused(NearbyAsk.Blocked))
+        assertEquals(PairedDevices.NotAllowed, PairedDevices.refused(PermissionAsk.Askable))
+        assertEquals(PairedDevices.Blocked, PairedDevices.refused(PermissionAsk.Blocked))
     }
 }

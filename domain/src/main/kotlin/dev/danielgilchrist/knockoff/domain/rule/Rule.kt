@@ -4,6 +4,9 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelGrouping
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.dayoff.DayOff
+import dev.danielgilchrist.knockoff.domain.dayoff.DaysOff
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.notification.Origin
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.schedule.Coverage
@@ -19,6 +22,7 @@ data class Rule(
     val schedule: Schedule,
     val apps: RuleApps,
     val zone: RuleZone,
+    val daysOff: DaysOff,
 ) {
     val targets: Set<Target> = apps.targets
 
@@ -49,11 +53,18 @@ data class Rule(
         zones: ZoneContext,
     ): ZonedDateTime = at.withZoneSameInstant(zones.zoneFor(zone))
 
+    fun dayOffAt(
+        at: ZonedDateTime,
+        zones: ZoneContext,
+        holidays: Holidays,
+    ): DayOff = daysOff.offOn(localised(at, zones).toLocalDate(), holidays)
+
     fun verdictFor(
         origin: Origin,
         at: ZonedDateTime,
         zones: ZoneContext,
-    ): RuleVerdict = verdictWhere(at, zones) { it.matches(origin) }
+        holidays: Holidays,
+    ): RuleVerdict = verdictWhere(at, zones, holidays) { it.matches(origin) }
 
     fun verdictFor(
         channel: ChannelKey,
@@ -61,11 +72,19 @@ data class Rule(
         grouping: ChannelGrouping,
         at: ZonedDateTime,
         zones: ZoneContext,
-    ): RuleVerdict = verdictWhere(at, zones) { it.covers(channel, kind, grouping) }
+        holidays: Holidays,
+    ): RuleVerdict = verdictWhere(at, zones, holidays) { it.covers(channel, kind, grouping) }
+
+    internal fun coverageAt(
+        at: ZonedDateTime,
+        zones: ZoneContext,
+        holidays: Holidays,
+    ): Coverage = schedule.coverageAt(localised(at, zones), daysOff.dates(holidays))
 
     private fun verdictWhere(
         at: ZonedDateTime,
         zones: ZoneContext,
+        holidays: Holidays,
         targeted: (Target) -> Boolean,
     ): RuleVerdict =
         when (state) {
@@ -76,13 +95,13 @@ data class Rule(
             RuleState.Enabled -> {
                 when {
                     targets.none(targeted) -> RuleVerdict.Abstains
-                    else -> scheduledVerdictAt(localised(at, zones))
+                    else -> scheduledVerdict(coverageAt(at, zones, holidays))
                 }
             }
         }
 
-    private fun scheduledVerdictAt(at: ZonedDateTime): RuleVerdict =
-        when (val coverage = schedule.coverageAt(at)) {
+    private fun scheduledVerdict(coverage: Coverage): RuleVerdict =
+        when (coverage) {
             is Coverage.Inside -> {
                 when (policy) {
                     Policy.DeliverOnlyDuring -> RuleVerdict.Permits

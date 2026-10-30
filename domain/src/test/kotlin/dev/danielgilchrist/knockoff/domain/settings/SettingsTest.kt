@@ -8,6 +8,7 @@ import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.address
 import dev.danielgilchrist.knockoff.domain.breakNamed
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.group.GroupName
@@ -134,6 +135,7 @@ class SettingsTest {
                     ),
                 ).withDefaultZone(ZoneChoice.Fixed(ZoneId.of("Europe/London"))),
                 Theme.Dark,
+                HolidayCalendar.None,
             )
 
         Settings.fromJson(settings.toJson()) shouldBe SettingsDecode.Decoded(settings)
@@ -141,7 +143,7 @@ class SettingsTest {
 
     @Test
     fun `no rules round-trips`() {
-        val empty = Settings(ruleSet(), Theme.Light)
+        val empty = Settings(ruleSet(), Theme.Light, HolidayCalendar.None)
 
         Settings.fromJson(empty.toJson()) shouldBe SettingsDecode.Decoded(empty)
     }
@@ -151,9 +153,12 @@ class SettingsTest {
         Settings.DEFAULT.toJson() shouldBe
             """
             {
-                "version": 8,
+                "version": 9,
                 "defaultZone": "device",
                 "theme": "System",
+                "holidayCalendar": {
+                    "type": "none"
+                },
                 "rules": [
                     {
                         "name": "Work",
@@ -174,7 +179,9 @@ class SettingsTest {
                         ],
                         "breaks": [],
                         "zone": "default",
-                        "apps": []
+                        "apps": [],
+                        "daysOff": [],
+                        "publicHolidays": "AsUsual"
                     }
                 ]
             }
@@ -197,6 +204,7 @@ class SettingsTest {
                         ),
                     ),
                     Theme.System,
+                    HolidayCalendar.None,
                 ),
             )
     }
@@ -232,6 +240,7 @@ class SettingsTest {
                         ),
                     ),
                     Theme.System,
+                    HolidayCalendar.None,
                 ),
             )
     }
@@ -286,6 +295,7 @@ class SettingsTest {
                         ),
                     ),
                     Theme.Dark,
+                    HolidayCalendar.None,
                 ),
             )
     }
@@ -307,6 +317,7 @@ class SettingsTest {
                         ),
                     ),
                     Theme.Dark,
+                    HolidayCalendar.None,
                 ),
             )
     }
@@ -349,6 +360,7 @@ class SettingsTest {
                         ),
                     ),
                     Theme.Dark,
+                    HolidayCalendar.None,
                 ),
             )
     }
@@ -381,6 +393,7 @@ class SettingsTest {
                         ),
                     ),
                     Theme.Dark,
+                    HolidayCalendar.None,
                 ),
             )
     }
@@ -527,14 +540,14 @@ class SettingsTest {
     }
 
     @Test
-    fun `a migrated document saves as version 8`() {
+    fun `a migrated document saves as version 9`() {
         val migrated =
             Settings
                 .fromJson(
                     """{"version": 1, "rules": [${ruleJson("{}")}]}""",
                 ).shouldBeInstanceOf<SettingsDecode.Decoded>()
 
-        migrated.settings.toJson().startsWith("{\n    \"version\": 8,") shouldBe true
+        migrated.settings.toJson().startsWith("{\n    \"version\": 9,") shouldBe true
         Settings.fromJson(migrated.settings.toJson()) shouldBe migrated
     }
 
@@ -570,10 +583,10 @@ class SettingsTest {
 
     @Test
     fun `other versions are unsupported whatever their shape`() {
-        val decode = Settings.fromJson("""{"version": 9, "profiles": [], "schedules": {}}""")
+        val decode = Settings.fromJson("""{"version": 10, "profiles": [], "schedules": {}}""")
 
-        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 9
-        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 9"
+        decode.shouldBeInstanceOf<SettingsDecode.UnsupportedVersion>().version shouldBe 10
+        decode.shouldBeInstanceOf<SettingsDecode.Failure>().detail shouldBe "Unsupported settings version 10"
     }
 
     @ParameterizedTest(name = "{0}")

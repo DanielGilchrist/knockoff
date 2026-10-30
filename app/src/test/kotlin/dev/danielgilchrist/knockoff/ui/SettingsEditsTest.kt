@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
@@ -48,7 +49,12 @@ class SettingsEditsTest {
 
     @Test
     fun `renaming a rule onto another rule's name is a duplicate`() {
-        val settings = Settings(valid(Settings.DEFAULT.withSaved(Editing.Guided.START, evenings)), Theme.System)
+        val settings =
+            Settings(
+                valid(Settings.DEFAULT.withSaved(Editing.Guided.START, evenings)),
+                Theme.System,
+                HolidayCalendar.None,
+            )
 
         val duplicates =
             assertInstanceOf(
@@ -66,7 +72,12 @@ class SettingsEditsTest {
 
     @Test
     fun `changing state touches only the named rule`() {
-        val settings = Settings(valid(Settings.DEFAULT.withSaved(Editing.Guided.START, evenings)), Theme.System)
+        val settings =
+            Settings(
+                valid(Settings.DEFAULT.withSaved(Editing.Guided.START, evenings)),
+                Theme.System,
+                HolidayCalendar.None,
+            )
 
         assertEquals(
             listOf(work.copy(state = RuleState.Disabled), evenings),
@@ -79,7 +90,12 @@ class SettingsEditsTest {
         val renamed = COLLEAGUE_CHAT.copy(name = ConversationName("Renamed"))
         val held = valid(Settings.DEFAULT.withRuleChanged(work.name, RuleChange.AddChat(COLLEAGUE_CHAT)))
 
-        val again = Settings(held, Theme.System).withRuleChanged(work.name, RuleChange.AddChat(renamed))
+        val again =
+            Settings(
+                held,
+                Theme.System,
+                HolidayCalendar.None,
+            ).withRuleChanged(work.name, RuleChange.AddChat(renamed))
 
         assertEquals(listOf(renamed), rulesOf(again).single().chats)
     }
@@ -94,7 +110,7 @@ class SettingsEditsTest {
     @Test
     fun `edits keep the default zone`() {
         val tokyo = ZoneChoice.Fixed(ZoneId.of("Asia/Tokyo"))
-        val settings = Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.System)
+        val settings = Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.System, HolidayCalendar.None)
         val work = settings.rules.rules.single()
 
         assertEquals(tokyo, valid(settings.withSaved(Editing.Guided.START, evenings)).defaultZone)

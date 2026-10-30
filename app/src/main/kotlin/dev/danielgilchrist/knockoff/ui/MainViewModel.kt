@@ -8,7 +8,10 @@ import dev.danielgilchrist.knockoff.chat.ChatDecisionSave
 import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.holiday.HolidaysState
+import dev.danielgilchrist.knockoff.ui.preferences.CalendarChoices
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesEditor
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +29,9 @@ class MainViewModel(
     application: Application,
 ) : AndroidViewModel(application) {
     private val mutableSetup = MutableStateFlow(Setup.of(application))
-    private var nearbyAsk = NearbyAsk.Askable
+    private var nearbyAsk = PermissionAsk.Askable
+    private var calendarAsk = PermissionAsk.Askable
+    private val mutableCalendars = MutableStateFlow<CalendarChoices>(CalendarChoices.Loading)
     private val mutablePaired = MutableStateFlow(PairedDevices.of(application, nearbyAsk))
 
     private val knockoff = application as KnockoffApplication
@@ -36,6 +41,8 @@ class MainViewModel(
     val preferences = PreferencesEditor(store, viewModelScope)
     val setup: StateFlow<Setup> = mutableSetup.asStateFlow()
     val paired: StateFlow<PairedDevices> = mutablePaired.asStateFlow()
+    val calendars: StateFlow<CalendarChoices> = mutableCalendars.asStateFlow()
+    val holidays: StateFlow<HolidaysState> = knockoff.holidayWatch.state
     private val discoveries = MutableStateFlow(GroupDiscoveries.NONE)
 
     val choices: StateFlow<TargetChoices> =
@@ -140,9 +147,21 @@ class MainViewModel(
         mutablePaired.value = PairedDevices.of(getApplication(), nearbyAsk)
     }
 
-    fun nearbyDevicesAnswered(ask: NearbyAsk) {
+    fun nearbyDevicesAnswered(ask: PermissionAsk) {
         nearbyAsk = ask
         refreshPaired()
+    }
+
+    fun refreshCalendars() {
+        viewModelScope.launch(Dispatchers.IO) {
+            mutableCalendars.value = CalendarChoices.of(knockoff.calendarAccess.calendars(), calendarAsk)
+        }
+    }
+
+    fun calendarAnswered(ask: PermissionAsk) {
+        calendarAsk = ask
+        refreshCalendars()
+        knockoff.holidayWatch.refresh()
     }
 
     fun refreshSetup() {
@@ -150,5 +169,7 @@ class MainViewModel(
         refreshPaired()
         getApplication<KnockoffApplication>().requestSilencing()
         getApplication<KnockoffApplication>().refreshNotificationPermission()
+        knockoff.holidayWatch.refresh()
+        refreshCalendars()
     }
 }

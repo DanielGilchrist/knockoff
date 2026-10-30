@@ -21,7 +21,7 @@ sealed interface PairedDevices {
     companion object {
         fun of(
             context: Context,
-            ask: NearbyAsk,
+            ask: PermissionAsk,
         ): PairedDevices {
             val adapter = context.getSystemService(BluetoothManager::class.java)?.adapter
 
@@ -45,10 +45,10 @@ sealed interface PairedDevices {
             }
         }
 
-        fun refused(ask: NearbyAsk): PairedDevices =
+        fun refused(ask: PermissionAsk): PairedDevices =
             when (ask) {
-                NearbyAsk.Askable -> NotAllowed
-                NearbyAsk.Blocked -> Blocked
+                PermissionAsk.Askable -> NotAllowed
+                PermissionAsk.Blocked -> Blocked
             }
 
         fun listed(devices: List<PairedDevice>): Listed =

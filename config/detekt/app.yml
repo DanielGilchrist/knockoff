@@ -10,8 +10,9 @@ knockoff:
   UnapprovedCatch:
     active: true
     allowedExceptions:
-      # Listener calls refuse an unapproved or unlinked listener, and exact alarms refuse without permission;
-      # converted to sealed outcomes (SnoozeOutcome, ChannelFetch, ChannelUpdate, AlarmSchedule).
+      # Listener calls refuse an unapproved or unlinked listener, exact alarms and the calendar provider refuse
+      # without permission; converted to sealed outcomes (SnoozeOutcome, ChannelFetch, ChannelUpdate, AlarmSchedule,
+      # CalendarQuery, CalendarWatching).
       - SecurityException
       # Updating a channel the app deleted since it was read; converted to ChannelUpdate.Missing.
       - IllegalArgumentException

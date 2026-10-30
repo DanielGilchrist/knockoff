@@ -1,6 +1,6 @@
 package dev.danielgilchrist.knockoff.ui
 
-enum class NearbyAsk {
+enum class PermissionAsk {
     Askable,
     Blocked,
     ;
@@ -9,7 +9,7 @@ enum class NearbyAsk {
         fun after(
             granted: Boolean,
             rationale: Boolean,
-        ): NearbyAsk =
+        ): PermissionAsk =
             when {
                 granted || rationale -> Askable
                 else -> Blocked

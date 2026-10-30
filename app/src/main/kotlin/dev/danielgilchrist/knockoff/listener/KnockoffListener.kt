@@ -67,6 +67,7 @@ class KnockoffListener : NotificationListenerService() {
             knockoff.silencedChannelsStore,
             knockoff.seenChatsStore,
             learning,
+            knockoff.holidayWatch,
         )
     }
 
@@ -117,8 +118,13 @@ class KnockoffListener : NotificationListenerService() {
                                 }
                             }.drop(1)
 
-                    combine(rules, seen, deviceZones(this@KnockoffListener)) { ruleSet, chats, zone ->
-                        Applying(AppliedRules(ruleSet, zone), chats)
+                    combine(
+                        rules,
+                        seen,
+                        deviceZones(this@KnockoffListener),
+                        knockoff.holidayWatch.holidays,
+                    ) { ruleSet, chats, zone, holidays ->
+                        Applying(AppliedRules(ruleSet, zone), chats, holidays)
                     }.distinctUntilChangedBy(Applying::evaluation)
                         .collect { applying ->
                             applier.apply(applying)
@@ -174,7 +180,11 @@ class KnockoffListener : NotificationListenerService() {
                 sweeper.evaluate(
                     sbn,
                     posted,
-                    Evaluation(currentSeen().expand(load.settings.rules), ZoneId.systemDefault()),
+                    Evaluation(
+                        currentSeen().expand(load.settings.rules),
+                        ZoneId.systemDefault(),
+                        knockoff.holidayWatch.current(),
+                    ),
                 )
             }
 

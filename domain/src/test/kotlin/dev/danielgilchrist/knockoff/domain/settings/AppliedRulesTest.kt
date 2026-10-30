@@ -2,6 +2,8 @@ package dev.danielgilchrist.knockoff.domain.settings
 
 import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.shouldBeInstanceOf
@@ -13,7 +15,10 @@ class AppliedRulesTest {
     private val london = ZoneId.of("Europe/London")
     private val paris = ZoneId.of("Europe/Paris")
     private val applied = AppliedRules(Settings.DEFAULT.rules, london)
-    private val settings = JsonPrimitive(Settings(Settings.DEFAULT.rules, Theme.System).toJson()).toString()
+    private val settings =
+        JsonPrimitive(
+            Settings(Settings.DEFAULT.rules, Theme.System, HolidayCalendar.None).toJson(),
+        ).toString()
 
     @Test
     fun `a baseline round-trips with the rules applied since it`() {
@@ -30,7 +35,8 @@ class AppliedRulesTest {
 
     @Test
     fun `applied rules evaluate in their own zone`() {
-        applied.evaluation(SeenChats.NONE) shouldBe Evaluation(Settings.DEFAULT.rules, london)
+        applied.evaluation(SeenChats.NONE, Holidays.NONE) shouldBe
+            Evaluation(Settings.DEFAULT.rules, london, Holidays.NONE)
     }
 
     @Test

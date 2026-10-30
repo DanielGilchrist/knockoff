@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
@@ -96,6 +97,7 @@ class SilencedChannelsStoreTest {
                 mapOf(messages to ReadChannel(Importance.High, ChannelKind.Shared, ChannelGrouping.Ungrouped)),
                 SilencedChannels.NONE,
                 ZonedDateTime.parse("2026-10-14T10:00+01:00[Europe/London]"),
+                Holidays.NONE,
             ).silenced
     }
 

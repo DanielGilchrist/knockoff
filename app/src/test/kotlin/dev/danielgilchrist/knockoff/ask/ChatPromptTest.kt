@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
 import dev.danielgilchrist.knockoff.domain.chat.ChatDecisions
 import dev.danielgilchrist.knockoff.domain.chat.ChatQuestion
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
@@ -30,6 +31,7 @@ class ChatPromptTest {
             Settings(
                 assertInstanceOf(RuleSetParse.Valid::class.java, Settings.DEFAULT.rules.withRules(listOf(work))).rules,
                 Settings.DEFAULT.theme,
+                HolidayCalendar.None,
             ),
         )
     private val groups = KnownGroupsLoad.Loaded(KnownGroups.NONE)

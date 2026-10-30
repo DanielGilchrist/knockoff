@@ -1,5 +1,8 @@
 package dev.danielgilchrist.knockoff.ui
 
+import dev.danielgilchrist.knockoff.holiday.HolidaysState
+import dev.danielgilchrist.knockoff.ui.preferences.CalendarChoices
+
 internal data class ClosedState(
     val setup: Setup,
     val paired: PairedDevices,
@@ -8,4 +11,6 @@ internal data class ClosedState(
     val preferencesStatus: SaveStatus,
     val newChats: NewChatsView,
     val apps: InstalledApps,
+    val calendars: CalendarChoices,
+    val holidays: HolidaysState,
 )

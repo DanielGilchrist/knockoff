@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.settings
 
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.rule.Rule
 import dev.danielgilchrist.knockoff.domain.rule.RuleName
 import dev.danielgilchrist.knockoff.domain.rule.RuleNameParse
@@ -45,9 +46,9 @@ class SettingsStoreTest {
     @Test
     fun `a corrupt file loads as corrupt with its decode failure`() =
         runTest {
-            settingsFile().writeText("""{"version": 9, "rules": []}""")
+            settingsFile().writeText("""{"version": 10, "rules": []}""")
 
-            assertEquals(SettingsLoad.Corrupt(SettingsDecode.UnsupportedVersion(9)), store().loads.first())
+            assertEquals(SettingsLoad.Corrupt(SettingsDecode.UnsupportedVersion(10)), store().loads.first())
         }
 
     @Test
@@ -78,7 +79,7 @@ class SettingsStoreTest {
     fun `a collector sees each saved change`() =
         runTest {
             val store = store()
-            val evenings = Settings(ruleSet(work(), evenings()), Theme.System)
+            val evenings = Settings(ruleSet(work(), evenings()), Theme.System, HolidayCalendar.None)
             val loads = collect(store)
 
             assertEquals(SettingsLoad.Empty, loads.receive())
@@ -94,7 +95,7 @@ class SettingsStoreTest {
             settingsFile().writeText(Settings.DEFAULT.toJson())
             settingsFile().setReadable(false)
             val store = store()
-            val evenings = Settings(ruleSet(work(), evenings()), Theme.System)
+            val evenings = Settings(ruleSet(work(), evenings()), Theme.System, HolidayCalendar.None)
             val loads = collect(store)
 
             assertInstanceOf(SettingsLoad.ReadFailed::class.java, loads.receive())
@@ -154,7 +155,10 @@ class SettingsStoreTest {
                 SettingsUpdate.Saved,
                 store.update { it.rules.withRules(it.rules.rules + evenings()) },
             )
-            assertEquals(SettingsLoad.Loaded(Settings(ruleSet(work(), evenings()), Theme.System)), store.loads.first())
+            assertEquals(
+                SettingsLoad.Loaded(Settings(ruleSet(work(), evenings()), Theme.System, HolidayCalendar.None)),
+                store.loads.first(),
+            )
         }
 
     @Test
@@ -173,7 +177,10 @@ class SettingsStoreTest {
                 },
             )
 
-            assertEquals(SettingsLoad.Loaded(Settings(ruleSet(evenings()), Theme.System)), store.loads.first())
+            assertEquals(
+                SettingsLoad.Loaded(Settings(ruleSet(evenings()), Theme.System, HolidayCalendar.None)),
+                store.loads.first(),
+            )
         }
 
     @Test
@@ -247,7 +254,7 @@ class SettingsStoreTest {
         runTest {
             val tokyo = ZoneChoice.Fixed(ZoneId.of("Asia/Tokyo"))
             val store = store()
-            store.save(Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.Dark))
+            store.save(Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.Dark, HolidayCalendar.None))
 
             store.update { it.rules.withRules(it.rules.rules + evenings()) }
 
@@ -262,7 +269,10 @@ class SettingsStoreTest {
             val store = store()
 
             assertEquals(SettingsChange.Saved, store.modify { it.copy(theme = Theme.Light) })
-            assertEquals(SettingsLoad.Loaded(Settings(Settings.DEFAULT.rules, Theme.Light)), store.loads.first())
+            assertEquals(
+                SettingsLoad.Loaded(Settings(Settings.DEFAULT.rules, Theme.Light, HolidayCalendar.None)),
+                store.loads.first(),
+            )
         }
 
     @Test
@@ -279,11 +289,11 @@ class SettingsStoreTest {
         runTest {
             val store = store()
             val rules = ruleSet(work(), evenings())
-            store.save(Settings(rules, Theme.System))
+            store.save(Settings(rules, Theme.System, HolidayCalendar.None))
 
             store.modify { it.copy(theme = Theme.Dark) }
 
-            assertEquals(SettingsLoad.Loaded(Settings(rules, Theme.Dark)), store.loads.first())
+            assertEquals(SettingsLoad.Loaded(Settings(rules, Theme.Dark, HolidayCalendar.None)), store.loads.first())
         }
 
     @Test

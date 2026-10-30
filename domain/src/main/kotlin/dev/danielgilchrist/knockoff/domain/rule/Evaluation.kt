@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.domain.rule
 
 import dev.danielgilchrist.knockoff.domain.change.Baseline
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
 import dev.danielgilchrist.knockoff.domain.notification.PostedNotification
 import java.time.Instant
@@ -9,6 +10,7 @@ import java.time.ZoneId
 data class Evaluation(
     val rules: RuleSet,
     val zone: ZoneId,
+    val holidays: Holidays,
 ) {
     fun decide(
         notification: PostedNotification,
@@ -56,7 +58,7 @@ data class Evaluation(
     private fun decide(
         notification: PostedNotification,
         at: Instant,
-    ): Decision = rules.decide(notification, at.atZone(zone))
+    ): Decision = rules.decide(notification, at.atZone(zone), holidays)
 
     private fun held(
         own: Decision.Snooze,

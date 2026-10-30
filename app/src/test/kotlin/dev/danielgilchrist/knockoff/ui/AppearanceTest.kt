@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.ui
 
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.Theme
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -13,7 +14,11 @@ class AppearanceTest {
 
     @Test
     fun `loaded settings choose the theme`() {
-        val dark = SettingsState.Ready(Settings(Settings.DEFAULT.rules, Theme.Dark), SettingsOrigin.Saved)
+        val dark =
+            SettingsState.Ready(
+                Settings(Settings.DEFAULT.rules, Theme.Dark, HolidayCalendar.None),
+                SettingsOrigin.Saved,
+            )
 
         assertEquals(Appearance.Themed(Theme.Dark), Appearance.of(dark))
     }

@@ -24,13 +24,12 @@ import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
 import dev.danielgilchrist.knockoff.ui.components.EditorScreen
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
-import dev.danielgilchrist.knockoff.ui.zone.DefaultZone
 
 @Composable
 internal fun RuleSectionScreen(
     editing: Editing.Section,
     choices: TargetChoices,
-    defaultZone: DefaultZone,
+    facts: SectionFacts,
     actions: RuleSectionActions,
     modifier: Modifier = Modifier,
 ) {
@@ -39,7 +38,7 @@ internal fun RuleSectionScreen(
             SectionEditor(
                 editing = editing,
                 choices = choices,
-                defaultZone = defaultZone,
+                facts = facts,
                 actions = actions,
                 modifier = modifier,
             )
@@ -63,7 +62,7 @@ internal fun RuleSectionScreen(
 private fun SectionEditor(
     editing: Editing.Section,
     choices: TargetChoices,
-    defaultZone: DefaultZone,
+    facts: SectionFacts,
     actions: RuleSectionActions,
     modifier: Modifier = Modifier,
 ) {
@@ -83,7 +82,7 @@ private fun SectionEditor(
                 )
             }
         }
-        section(editing.section, editing.draft, editing.rule.apps, choices, defaultZone, actions)
+        section(editing.section, editing.draft, editing.rule.apps, choices, facts, actions)
     }
 
     if (discarding) {
@@ -109,7 +108,7 @@ private fun LazyListScope.section(
     draft: RuleDraft,
     stored: RuleApps,
     choices: TargetChoices,
-    defaultZone: DefaultZone,
+    facts: SectionFacts,
     actions: RuleSectionActions,
 ) {
     val change = actions.onDraftChange
@@ -133,8 +132,20 @@ private fun LazyListScope.section(
             hoursItems(draft = draft, onDraftChange = change)
             breakItems(draft = draft, onDraftChange = change)
             item {
-                ZoneEditor(zone = draft.zone, default = defaultZone, onZoneChange = { change(draft.copy(zone = it)) })
+                ZoneEditor(
+                    zone = draft.zone,
+                    default = facts.defaultZone,
+                    onZoneChange = { change(draft.copy(zone = it)) },
+                )
             }
+        }
+
+        RuleSection.DaysOff -> {
+            daysOffItems(
+                draft = draft,
+                facts = facts,
+                onDraftChange = change,
+            )
         }
     }
 }
@@ -171,4 +182,5 @@ private fun title(section: RuleSection): String =
     when (section) {
         RuleSection.Apps -> "Apps"
         RuleSection.Hours -> "Hours"
+        RuleSection.DaysOff -> "Days off"
     }

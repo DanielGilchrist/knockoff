@@ -12,7 +12,7 @@ knockoff:
     allowedExceptions:
       # Settings.fromJson parses untrusted JSON into SettingsDecode.
       - SerializationException
-      # StoredWindow parses stored times into Parsed.
+      # StoredWindow and StoredLeave parse stored times and dates into Parsed.
       - DateTimeParseException
       # ZoneChoice.parse turns an unknown zone id into ZoneChoiceParse.Unknown.
       - DateTimeException
@@ -20,9 +20,6 @@ knockoff:
       - PatternSyntaxException
   UnapprovedThrow:
     active: true
-    allowedDeclarations:
-      # A schedule that isn't always covered has a boundary within the generated fortnight. Types can't prove that,
-      # so running past it is a bug that must crash loudly.
-      - dev.danielgilchrist.knockoff.domain.schedule.Schedule.coverageAt(ZonedDateTime)
+    allowedDeclarations: []
   UntypedResult:
     active: true

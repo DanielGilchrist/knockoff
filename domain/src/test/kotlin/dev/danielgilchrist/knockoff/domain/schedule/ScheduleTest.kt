@@ -49,7 +49,7 @@ class ScheduleTest {
         now: String,
         endsAt: String,
     ) {
-        WORK_HOURS.coverageAt(london(now)) shouldBe Coverage.Inside(london(endsAt))
+        WORK_HOURS.coverageAt(london(now), emptySet()) shouldBe Coverage.Inside(london(endsAt))
     }
 
     @ParameterizedTest(name = "{0} is outside work hours until {1}")
@@ -68,17 +68,19 @@ class ScheduleTest {
         now: String,
         startsAt: String,
     ) {
-        WORK_HOURS.coverageAt(london(now)) shouldBe Coverage.Outside(london(startsAt))
+        WORK_HOURS.coverageAt(london(now), emptySet()) shouldBe Coverage.Outside(london(startsAt))
     }
 
     @Test
     fun `friday evening across the autumn change waits for monday in winter time`() {
-        WORK_HOURS.coverageAt(london("2026-10-23T18:00")) shouldBe Coverage.Outside(london("2026-10-26T08:00"))
+        WORK_HOURS.coverageAt(london("2026-10-23T18:00"), emptySet()) shouldBe
+            Coverage.Outside(london("2026-10-26T08:00"))
     }
 
     @Test
     fun `friday evening across the spring change waits for monday in summer time`() {
-        WORK_HOURS.coverageAt(london("2026-03-27T18:00")) shouldBe Coverage.Outside(london("2026-03-30T08:00"))
+        WORK_HOURS.coverageAt(london("2026-03-27T18:00"), emptySet()) shouldBe
+            Coverage.Outside(london("2026-03-30T08:00"))
     }
 
     @ParameterizedTest(name = "{0} is inside friday overnight hours until {1}")
@@ -90,7 +92,7 @@ class ScheduleTest {
         now: String,
         endsAt: String,
     ) {
-        fridayNights.coverageAt(london(now)) shouldBe Coverage.Inside(london(endsAt))
+        fridayNights.coverageAt(london(now), emptySet()) shouldBe Coverage.Inside(london(endsAt))
     }
 
     @ParameterizedTest(name = "{0} is outside friday overnight hours until {1}")
@@ -104,43 +106,44 @@ class ScheduleTest {
         now: String,
         startsAt: String,
     ) {
-        fridayNights.coverageAt(london(now)) shouldBe Coverage.Outside(london(startsAt))
+        fridayNights.coverageAt(london(now), emptySet()) shouldBe Coverage.Outside(london(startsAt))
     }
 
     @Test
     fun `consecutive full days merge into one stretch`() {
         val weekend = schedule(window(days(SATURDAY, SUNDAY), "00:00", "00:00"))
 
-        weekend.coverageAt(london("2026-10-17T10:00")) shouldBe Coverage.Inside(london("2026-10-19T00:00"))
-        weekend.coverageAt(london("2026-10-16T23:00")) shouldBe Coverage.Outside(london("2026-10-17T00:00"))
+        weekend.coverageAt(london("2026-10-17T10:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-19T00:00"))
+        weekend.coverageAt(london("2026-10-16T23:00"), emptySet()) shouldBe Coverage.Outside(london("2026-10-17T00:00"))
     }
 
     @Test
     fun `adjacent windows merge`() {
         val split = schedule(window(EVERY_DAY, "08:00", "12:00"), window(EVERY_DAY, "12:00", "17:00"))
 
-        split.coverageAt(london("2026-10-14T10:00")) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
+        split.coverageAt(london("2026-10-14T10:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
     }
 
     @Test
     fun `overlapping windows merge regardless of order`() {
         val overlapping = schedule(window(EVERY_DAY, "12:00", "17:00"), window(EVERY_DAY, "08:00", "13:00"))
 
-        overlapping.coverageAt(london("2026-10-14T10:00")) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
+        overlapping.coverageAt(london("2026-10-14T10:00"), emptySet()) shouldBe
+            Coverage.Inside(london("2026-10-14T17:00"))
     }
 
     @Test
     fun `a window contained in another does not shorten it`() {
         val nested = schedule(window(EVERY_DAY, "08:00", "17:00"), window(EVERY_DAY, "10:00", "11:00"))
 
-        nested.coverageAt(london("2026-10-14T10:30")) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
+        nested.coverageAt(london("2026-10-14T10:30"), emptySet()) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
     }
 
     @Test
     fun `a gap between windows is outside until the next window`() {
         val gapped = schedule(window(EVERY_DAY, "08:00", "12:00"), window(EVERY_DAY, "13:00", "17:00"))
 
-        gapped.coverageAt(london("2026-10-14T12:30")) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
+        gapped.coverageAt(london("2026-10-14T12:30"), emptySet()) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
     }
 
     @Test
@@ -163,7 +166,7 @@ class ScheduleTest {
                 window(days(TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY), "00:00", "00:00"),
             )
 
-        wrapped.coverageAt(london("2026-10-14T12:00")) shouldBe Coverage.Always
+        wrapped.coverageAt(london("2026-10-14T12:00"), emptySet()) shouldBe Coverage.Always
     }
 
     @Test
@@ -176,14 +179,16 @@ class ScheduleTest {
                 window(days(TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY), "00:00", "00:00"),
             )
 
-        wrappedThenGap.coverageAt(london("2026-10-18T12:00")) shouldBe Coverage.Inside(london("2026-10-19T08:00"))
+        wrappedThenGap.coverageAt(london("2026-10-18T12:00"), emptySet()) shouldBe
+            Coverage.Inside(london("2026-10-19T08:00"))
     }
 
     @Test
     fun `a half-second gap in the week is not always covered`() {
         val halfSecondApart = schedule(window(EVERY_DAY, "00:00", "12:00"), window(EVERY_DAY, "12:00:00.5", "00:00"))
 
-        halfSecondApart.coverageAt(london("2026-10-14T11:00")) shouldBe Coverage.Inside(london("2026-10-14T12:00"))
+        halfSecondApart.coverageAt(london("2026-10-14T11:00"), emptySet()) shouldBe
+            Coverage.Inside(london("2026-10-14T12:00"))
     }
 
     @Test
@@ -194,17 +199,20 @@ class ScheduleTest {
                 window(days(SUNDAY), "00:00", "23:59:59"),
             )
 
-        almost.coverageAt(london("2026-10-14T12:00")) shouldBe Coverage.Inside(london("2026-10-18T23:59:59"))
+        almost.coverageAt(london("2026-10-14T12:00"), emptySet()) shouldBe
+            Coverage.Inside(london("2026-10-18T23:59:59"))
     }
 
     @Test
     fun `every day in full is always covered`() {
-        schedule(window(EVERY_DAY, "00:00", "00:00")).coverageAt(london("2026-10-14T12:00")) shouldBe Coverage.Always
+        schedule(window(EVERY_DAY, "00:00", "00:00")).coverageAt(london("2026-10-14T12:00"), emptySet()) shouldBe
+            Coverage.Always
     }
 
     @Test
     fun `every day in full from a non-midnight start is always covered`() {
-        schedule(window(EVERY_DAY, "09:00", "09:00")).coverageAt(london("2026-10-14T08:00")) shouldBe Coverage.Always
+        schedule(window(EVERY_DAY, "09:00", "09:00")).coverageAt(london("2026-10-14T08:00"), emptySet()) shouldBe
+            Coverage.Always
     }
 
     @Test
@@ -215,7 +223,7 @@ class ScheduleTest {
                 window(days(THURSDAY), "00:00", "18:00"),
             )
 
-        allButThursdayEvening.coverageAt(london("2026-10-14T12:00")) shouldBe
+        allButThursdayEvening.coverageAt(london("2026-10-14T12:00"), emptySet()) shouldBe
             Coverage.Inside(london("2026-10-15T18:00"))
     }
 
@@ -223,22 +231,24 @@ class ScheduleTest {
     fun `a nightly one-minute gap ends each stretch`() {
         val nearlyAlways = schedule(window(EVERY_DAY, "00:00", "23:59"))
 
-        nearlyAlways.coverageAt(london("2026-10-14T00:00")) shouldBe Coverage.Inside(london("2026-10-14T23:59"))
+        nearlyAlways.coverageAt(london("2026-10-14T00:00"), emptySet()) shouldBe
+            Coverage.Inside(london("2026-10-14T23:59"))
     }
 
     @Test
     fun `next start is found a week ahead`() {
         val wednesdays = schedule(window(days(WEDNESDAY), "08:00", "09:00"))
 
-        wednesdays.coverageAt(london("2026-10-14T09:00")) shouldBe Coverage.Outside(london("2026-10-21T08:00"))
+        wednesdays.coverageAt(london("2026-10-14T09:00"), emptySet()) shouldBe
+            Coverage.Outside(london("2026-10-21T08:00"))
     }
 
     @Test
     fun `hours wholly inside the spring gap wait for the following week`() {
         val skipped = schedule(window(days(SUNDAY), "01:15", "01:45"))
 
-        skipped.coverageAt(london("2026-03-29T00:00")) shouldBe Coverage.Outside(london("2026-04-05T01:15"))
-        skipped.coverageAt(london("2026-03-28T12:00")) shouldBe Coverage.Outside(london("2026-04-05T01:15"))
+        skipped.coverageAt(london("2026-03-29T00:00"), emptySet()) shouldBe Coverage.Outside(london("2026-04-05T01:15"))
+        skipped.coverageAt(london("2026-03-28T12:00"), emptySet()) shouldBe Coverage.Outside(london("2026-04-05T01:15"))
     }
 
     @Test
@@ -250,7 +260,8 @@ class ScheduleTest {
                 window(days(SUNDAY), "01:30", "00:00"),
             )
 
-        gapOnlyInWinter.coverageAt(london("2026-03-28T12:00")) shouldBe Coverage.Inside(london("2026-04-05T01:00"))
+        gapOnlyInWinter.coverageAt(london("2026-03-28T12:00"), emptySet()) shouldBe
+            Coverage.Inside(london("2026-04-05T01:00"))
     }
 
     @Test
@@ -262,15 +273,16 @@ class ScheduleTest {
                 window(days(SUNDAY), "01:45", "00:00"),
             )
 
-        overlapOnlyInAutumn.coverageAt(london("2026-10-24T12:00")) shouldBe Coverage.Inside(london("2026-11-01T01:30"))
+        overlapOnlyInAutumn.coverageAt(london("2026-10-24T12:00"), emptySet()) shouldBe
+            Coverage.Inside(london("2026-11-01T01:30"))
     }
 
     @Test
     fun `hours starting in the spring gap cover the wall clock after the jump`() {
         val early = schedule(window(EVERY_DAY, "01:30", "09:00"))
 
-        early.coverageAt(london("2026-03-29T00:30")) shouldBe Coverage.Outside(london("2026-03-29T02:00"))
-        early.coverageAt(london("2026-03-29T02:15")) shouldBe Coverage.Inside(london("2026-03-29T09:00"))
+        early.coverageAt(london("2026-03-29T00:30"), emptySet()) shouldBe Coverage.Outside(london("2026-03-29T02:00"))
+        early.coverageAt(london("2026-03-29T02:15"), emptySet()) shouldBe Coverage.Inside(london("2026-03-29T09:00"))
     }
 
     @Test
@@ -278,8 +290,8 @@ class ScheduleTest {
         val repeated = schedule(window(EVERY_DAY, "01:30", "02:30"))
         val inside = Coverage.Inside(london("2026-10-25T02:30"))
 
-        repeated.coverageAt(londonWithOffset("2026-10-25T01:45", ZoneOffset.ofHours(1))) shouldBe inside
-        repeated.coverageAt(londonWithOffset("2026-10-25T01:45", ZoneOffset.UTC)) shouldBe inside
+        repeated.coverageAt(londonWithOffset("2026-10-25T01:45", ZoneOffset.ofHours(1)), emptySet()) shouldBe inside
+        repeated.coverageAt(londonWithOffset("2026-10-25T01:45", ZoneOffset.UTC), emptySet()) shouldBe inside
     }
 
     @Test
@@ -287,16 +299,17 @@ class ScheduleTest {
         val lateNight = schedule(window(EVERY_DAY, "00:00", "01:30"))
         val secondPass = Coverage.Inside(londonWithOffset("2026-10-25T01:30", ZoneOffset.UTC))
 
-        lateNight.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.ofHours(1))) shouldBe secondPass
-        lateNight.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.UTC)) shouldBe secondPass
+        lateNight.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.ofHours(1)), emptySet()) shouldBe
+            secondPass
+        lateNight.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.UTC), emptySet()) shouldBe secondPass
     }
 
     @Test
     fun `a break ends the hours early and they resume after it`() {
-        lunch.coverageAt(london("2026-10-14T09:00")) shouldBe Coverage.Inside(london("2026-10-14T12:00"))
-        lunch.coverageAt(london("2026-10-14T12:00")) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
-        lunch.coverageAt(london("2026-10-14T12:30")) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
-        lunch.coverageAt(london("2026-10-14T13:00")) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
+        lunch.coverageAt(london("2026-10-14T09:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-14T12:00"))
+        lunch.coverageAt(london("2026-10-14T12:00"), emptySet()) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
+        lunch.coverageAt(london("2026-10-14T12:30"), emptySet()) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
+        lunch.coverageAt(london("2026-10-14T13:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
     }
 
     @Test
@@ -307,8 +320,8 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("Focus", window(days(WEDNESDAY), "14:00", "16:00"))),
             )
 
-        focus.coverageAt(london("2026-10-14T15:00")) shouldBe Coverage.Outside(london("2026-10-14T16:00"))
-        focus.coverageAt(london("2026-10-15T15:00")) shouldBe Coverage.Inside(london("2026-10-15T17:00"))
+        focus.coverageAt(london("2026-10-14T15:00"), emptySet()) shouldBe Coverage.Outside(london("2026-10-14T16:00"))
+        focus.coverageAt(london("2026-10-15T15:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-15T17:00"))
     }
 
     @Test
@@ -319,7 +332,7 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("Dinner", window(EVERY_DAY, "18:00", "19:00"))),
             )
 
-        evening.coverageAt(london("2026-10-14T12:00")) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
+        evening.coverageAt(london("2026-10-14T12:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-14T17:00"))
     }
 
     @Test
@@ -330,8 +343,8 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("Late", window(EVERY_DAY, "23:00", "01:00"))),
             )
 
-        nights.coverageAt(london("2026-10-14T21:00")) shouldBe Coverage.Inside(london("2026-10-14T23:00"))
-        nights.coverageAt(london("2026-10-15T00:30")) shouldBe Coverage.Outside(london("2026-10-15T01:00"))
+        nights.coverageAt(london("2026-10-14T21:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-14T23:00"))
+        nights.coverageAt(london("2026-10-15T00:30"), emptySet()) shouldBe Coverage.Outside(london("2026-10-15T01:00"))
     }
 
     @Test
@@ -342,8 +355,8 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("Lunch", window(EVERY_DAY, "12:00", "13:00"))),
             )
 
-        allDay.coverageAt(london("2026-10-14T09:00")) shouldBe Coverage.Inside(london("2026-10-14T12:00"))
-        allDay.coverageAt(london("2026-10-14T12:30")) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
+        allDay.coverageAt(london("2026-10-14T09:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-14T12:00"))
+        allDay.coverageAt(london("2026-10-14T12:30"), emptySet()) shouldBe Coverage.Outside(london("2026-10-14T13:00"))
     }
 
     @Test
@@ -382,7 +395,7 @@ class ScheduleTest {
                     ),
             )
 
-        long.coverageAt(london("2026-10-14T12:15")) shouldBe Coverage.Outside(london("2026-10-14T14:00"))
+        long.coverageAt(london("2026-10-14T12:15"), emptySet()) shouldBe Coverage.Outside(london("2026-10-14T14:00"))
     }
 
     @Test
@@ -393,8 +406,8 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("Early", window(EVERY_DAY, "16:00", "17:00"))),
             )
 
-        early.coverageAt(london("2026-10-14T15:00")) shouldBe Coverage.Inside(london("2026-10-14T16:00"))
-        early.coverageAt(london("2026-10-14T16:30")) shouldBe Coverage.Outside(london("2026-10-15T08:00"))
+        early.coverageAt(london("2026-10-14T15:00"), emptySet()) shouldBe Coverage.Inside(london("2026-10-14T16:00"))
+        early.coverageAt(london("2026-10-14T16:30"), emptySet()) shouldBe Coverage.Outside(london("2026-10-15T08:00"))
     }
 
     @Test
@@ -405,8 +418,8 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("School run", window(EVERY_DAY, "07:00", "09:00"))),
             )
 
-        late.coverageAt(london("2026-10-14T06:00")) shouldBe Coverage.Outside(london("2026-10-14T09:00"))
-        late.coverageAt(london("2026-10-14T08:30")) shouldBe Coverage.Outside(london("2026-10-14T09:00"))
+        late.coverageAt(london("2026-10-14T06:00"), emptySet()) shouldBe Coverage.Outside(london("2026-10-14T09:00"))
+        late.coverageAt(london("2026-10-14T08:30"), emptySet()) shouldBe Coverage.Outside(london("2026-10-14T09:00"))
     }
 
     @Test
@@ -417,9 +430,9 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("Lie in", window(days(SUNDAY), "23:00", "09:00"))),
             )
 
-        mondays.coverageAt(london("2026-10-16T17:00")) shouldBe Coverage.Outside(london("2026-10-19T09:00"))
-        mondays.coverageAt(london("2026-10-19T08:30")) shouldBe Coverage.Outside(london("2026-10-19T09:00"))
-        mondays.coverageAt(london("2026-10-20T08:30")) shouldBe Coverage.Inside(london("2026-10-20T17:00"))
+        mondays.coverageAt(london("2026-10-16T17:00"), emptySet()) shouldBe Coverage.Outside(london("2026-10-19T09:00"))
+        mondays.coverageAt(london("2026-10-19T08:30"), emptySet()) shouldBe Coverage.Outside(london("2026-10-19T09:00"))
+        mondays.coverageAt(london("2026-10-20T08:30"), emptySet()) shouldBe Coverage.Inside(london("2026-10-20T17:00"))
     }
 
     @Test
@@ -430,9 +443,12 @@ class ScheduleTest {
         val fridayMorning =
             schedule(weeknights, breaks = listOf(breakNamed("Late", window(days(FRIDAY), "02:00", "03:00"))))
 
-        saturdayMorning.coverageAt(london("2026-10-17T02:30")) shouldBe Coverage.Outside(london("2026-10-17T03:00"))
-        fridayMorning.coverageAt(london("2026-10-17T02:30")) shouldBe Coverage.Inside(london("2026-10-17T06:00"))
-        fridayMorning.coverageAt(london("2026-10-16T02:30")) shouldBe Coverage.Outside(london("2026-10-16T03:00"))
+        saturdayMorning.coverageAt(london("2026-10-17T02:30"), emptySet()) shouldBe
+            Coverage.Outside(london("2026-10-17T03:00"))
+        fridayMorning.coverageAt(london("2026-10-17T02:30"), emptySet()) shouldBe
+            Coverage.Inside(london("2026-10-17T06:00"))
+        fridayMorning.coverageAt(london("2026-10-16T02:30"), emptySet()) shouldBe
+            Coverage.Outside(london("2026-10-16T03:00"))
     }
 
     @Test
@@ -443,7 +459,7 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("Gap", window(days(SUNDAY), "01:00", "01:30"))),
             )
 
-        sundays.coverageAt(london("2027-03-28T00:30")) shouldBe Coverage.Inside(london("2027-04-04T01:00"))
+        sundays.coverageAt(london("2027-03-28T00:30"), emptySet()) shouldBe Coverage.Inside(london("2027-04-04T01:00"))
     }
 
     @Test
@@ -454,9 +470,9 @@ class ScheduleTest {
                 breaks = listOf(breakNamed("Night", window(EVERY_DAY, "01:00", "01:30"))),
             )
 
-        nightly.coverageAt(london("2026-10-25T00:30")) shouldBe
+        nightly.coverageAt(london("2026-10-25T00:30"), emptySet()) shouldBe
             Coverage.Inside(londonWithOffset("2026-10-25T01:00", ZoneOffset.ofHours(1)))
-        nightly.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.UTC)) shouldBe
+        nightly.coverageAt(londonWithOffset("2026-10-25T01:15", ZoneOffset.UTC), emptySet()) shouldBe
             Coverage.Outside(londonWithOffset("2026-10-25T01:30", ZoneOffset.UTC))
     }
 }

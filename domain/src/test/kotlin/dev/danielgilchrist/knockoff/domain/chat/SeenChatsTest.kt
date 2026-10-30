@@ -19,6 +19,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.group.GroupName
 import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.known
@@ -149,8 +150,9 @@ class SeenChatsTest {
         Evaluation(
             seen.expand(rules),
             LONDON,
+            Holidays.NONE,
         ).decide(post, GroupRole.Member, evening.toInstant()).shouldBeInstanceOf<Decision.Snooze>()
-        Evaluation(rules, LONDON).decide(post, GroupRole.Member, evening.toInstant()) shouldBe
+        Evaluation(rules, LONDON, Holidays.NONE).decide(post, GroupRole.Member, evening.toInstant()) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
 
@@ -169,11 +171,13 @@ class SeenChatsTest {
             Evaluation(
                 SeenChats.NONE.seen(COLLEAGUE_CHAT.copy(name = ConversationName("Work chat"))).expand(rules),
                 LONDON,
+                Holidays.NONE,
             )
         val after =
             Evaluation(
                 SeenChats.NONE.seen(COLLEAGUE_CHAT.copy(name = ConversationName("Family"))).expand(rules),
                 LONDON,
+                Holidays.NONE,
             )
         val snoozed = PostedNotification.Snoozable(NotificationKey("k"), whatsappOrigin(known(COLLEAGUE, "Family")))
 
@@ -304,8 +308,8 @@ class SeenChatsTest {
         val working = SeenChats.NONE.seen(COLLEAGUE_CHAT.copy(name = ConversationName("Work chat")))
         val renamed = SeenChats.NONE.seen(COLLEAGUE_CHAT.copy(name = ConversationName("Family")))
 
-        working.expand(rules).planChannels(read, silenced, evening).restore shouldBe emptyList()
-        renamed.expand(rules).planChannels(read, silenced, evening).restore shouldBe
+        working.expand(rules).planChannels(read, silenced, evening, Holidays.NONE).restore shouldBe emptyList()
+        renamed.expand(rules).planChannels(read, silenced, evening, Holidays.NONE).restore shouldBe
             listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.Low, Importance.High))
     }
 

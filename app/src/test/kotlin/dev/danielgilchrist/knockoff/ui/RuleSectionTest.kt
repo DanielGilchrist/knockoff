@@ -1,6 +1,9 @@
 package dev.danielgilchrist.knockoff.ui
 
 import dev.danielgilchrist.knockoff.COLLEAGUE_CHAT
+import dev.danielgilchrist.knockoff.domain.dayoff.DaysOff
+import dev.danielgilchrist.knockoff.domain.dayoff.Leave
+import dev.danielgilchrist.knockoff.domain.dayoff.PublicHolidays
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
@@ -22,6 +25,7 @@ import dev.danielgilchrist.knockoff.ui.editor.AppMode
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 
 class RuleSectionTest {
     private val pattern = Target.ChatNamePattern(COLLEAGUE_CHAT.packageName, textPattern("^Work"))
@@ -37,6 +41,7 @@ class RuleSectionTest {
             policy = Policy.HoldDuring,
             apps = ruleApps(setOf(slack), setOf(COLLEAGUE_CHAT.packageName)),
             zone = RuleZone.Chosen(ZoneChoice.Device),
+            daysOff = DaysOff(listOf(Leave.day(LocalDate.parse("2026-10-30"))), PublicHolidays.Off),
         )
 
     @Test
@@ -46,6 +51,7 @@ class RuleSectionTest {
             current.copy(policy = Policy.HoldDuring, zone = edited.zone),
             RuleSection.Hours.merge(current, current, edited),
         )
+        assertEquals(current.copy(daysOff = edited.daysOff), RuleSection.DaysOff.merge(current, current, edited))
     }
 
     @Test

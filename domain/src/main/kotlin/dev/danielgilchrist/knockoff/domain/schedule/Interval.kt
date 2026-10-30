@@ -1,6 +1,8 @@
 package dev.danielgilchrist.knockoff.domain.schedule
 
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 @ConsistentCopyVisibility
 internal data class Interval private constructor(
@@ -16,6 +18,11 @@ internal data class Interval private constructor(
                 start < end -> IntervalParse.Valid(Interval(start, end))
                 else -> IntervalParse.Empty
             }
+
+        fun wholeDay(
+            date: LocalDate,
+            zone: ZoneId,
+        ): Interval = Interval(date.atStartOfDay(zone).toInstant(), date.plusDays(1).atStartOfDay(zone).toInstant())
     }
 
     operator fun contains(instant: Instant): Boolean = instant >= start && instant < end

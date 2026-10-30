@@ -9,6 +9,7 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelChange
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.ChannelId
@@ -49,7 +50,11 @@ class ZoneEvaluationTest {
 
     @Test
     fun `the release search keeps device-zone rules in the device zone`() {
-        val decision = ruleSet(tokyoAfternoonHold, localWork).decide(snoozable, london("2026-10-14T08:30"))
+        val decision =
+            ruleSet(
+                tokyoAfternoonHold,
+                localWork,
+            ).decide(snoozable, london("2026-10-14T08:30"), Holidays.NONE)
 
         decision.shouldBeInstanceOf<Decision.Snooze>().until shouldBe london("2026-10-14T09:00")
     }
@@ -58,34 +63,42 @@ class ZoneEvaluationTest {
     fun `release times are given in the device zone`() {
         ruleSet(
             tokyoAfternoonHold,
-        ).decide(snoozable, london("2026-10-14T02:00")).shouldBeInstanceOf<Decision.Snooze>().until shouldBe
+        ).decide(
+            snoozable,
+            london("2026-10-14T02:00"),
+            Holidays.NONE,
+        ).shouldBeInstanceOf<Decision.Snooze>()
+            .until shouldBe
             london("2026-10-14T09:00")
     }
 
     @Test
     fun `the default zone applies to rules that follow it`() {
-        val decision = ruleSet(localWork).withDefaultZone(tokyo).decide(snoozable, london("2026-10-14T20:00"))
+        val decision =
+            ruleSet(
+                localWork,
+            ).withDefaultZone(tokyo).decide(snoozable, london("2026-10-14T20:00"), Holidays.NONE)
 
         decision.shouldBeInstanceOf<Decision.Snooze>().until shouldBe london("2026-10-15T00:00")
     }
 
     @Test
     fun `the next boundary is the earliest instant across zones, in the device zone`() {
-        ruleSet(tokyoAfternoonHold, localWork).nextBoundary(london("2026-10-14T07:00")) shouldBe
+        ruleSet(tokyoAfternoonHold, localWork).nextBoundary(london("2026-10-14T07:00"), Holidays.NONE) shouldBe
             Boundary.At(london("2026-10-14T08:00"))
-        ruleSet(tokyoAfternoonHold, localWork).nextBoundary(london("2026-10-14T00:30")) shouldBe
+        ruleSet(tokyoAfternoonHold, localWork).nextBoundary(london("2026-10-14T00:30"), Holidays.NONE) shouldBe
             Boundary.At(london("2026-10-14T01:00"))
     }
 
     @Test
     fun `moving a hold to another zone with the same offset is unchanged`() {
         val at = london("2026-10-14T02:00").toInstant()
-        val inSeoul = Evaluation(ruleSet(tokyoAfternoonHold.copy(zone = RuleZone.Chosen(seoul))), LONDON)
+        val inSeoul = Evaluation(ruleSet(tokyoAfternoonHold.copy(zone = RuleZone.Chosen(seoul))), LONDON, Holidays.NONE)
 
         inSeoul.recheck(
             snoozable,
             GroupRole.Member,
-            Baseline.Known.of(Evaluation(ruleSet(tokyoAfternoonHold), LONDON)),
+            Baseline.Known.of(Evaluation(ruleSet(tokyoAfternoonHold), LONDON, Holidays.NONE)),
             at,
         ) shouldBe
             Recheck.Unchanged
@@ -98,11 +111,11 @@ class ZoneEvaluationTest {
 
         ruleSet(
             tokyoAfternoonHold,
-        ).planChannels(read, SilencedChannels.NONE, london("2026-10-14T02:00")).silence shouldBe
+        ).planChannels(read, SilencedChannels.NONE, london("2026-10-14T02:00"), Holidays.NONE).silence shouldBe
             listOf(ChannelChange(messages, Importance.Default, Importance.Low))
         ruleSet(
             tokyoAfternoonHold,
-        ).planChannels(read, SilencedChannels.NONE, london("2026-10-14T12:00")).silence shouldBe
+        ).planChannels(read, SilencedChannels.NONE, london("2026-10-14T12:00"), Holidays.NONE).silence shouldBe
             emptyList()
     }
 
@@ -114,7 +127,13 @@ class ZoneEvaluationTest {
         Evaluation(
             ruleSet(localWork),
             tokyoZone,
-        ).recheck(snoozable, GroupRole.Member, Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)), at) shouldBe
+            Holidays.NONE,
+        ).recheck(
+            snoozable,
+            GroupRole.Member,
+            Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON, Holidays.NONE)),
+            at,
+        ) shouldBe
             Recheck.Resnooze(
                 Decision.Snooze(
                     at.atZone(tokyoZone),
@@ -132,7 +151,13 @@ class ZoneEvaluationTest {
         Evaluation(
             ruleSet(localWork),
             NEW_YORK,
-        ).recheck(snoozable, GroupRole.Member, Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)), at) shouldBe
+            Holidays.NONE,
+        ).recheck(
+            snoozable,
+            GroupRole.Member,
+            Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON, Holidays.NONE)),
+            at,
+        ) shouldBe
             Recheck.Release(Decision.Leave(LeaveReason.Permitted(setOf(localWork.name))))
     }
 
@@ -140,9 +165,13 @@ class ZoneEvaluationTest {
     fun `moving the device out of hours holds a notification it had let through`() {
         val at = london("2026-10-14T13:00").toInstant()
 
-        Evaluation(ruleSet(localWork), ZoneId.of("Asia/Tokyo"))
-            .recheck(snoozable, GroupRole.Member, Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)), at)
-            .shouldBeInstanceOf<Recheck.Resnooze>()
+        Evaluation(ruleSet(localWork), ZoneId.of("Asia/Tokyo"), Holidays.NONE)
+            .recheck(
+                snoozable,
+                GroupRole.Member,
+                Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON, Holidays.NONE)),
+                at,
+            ).shouldBeInstanceOf<Recheck.Resnooze>()
     }
 
     @Test
@@ -152,7 +181,13 @@ class ZoneEvaluationTest {
         Evaluation(
             ruleSet(localWork),
             NEW_YORK,
-        ).recheck(snoozable, GroupRole.Member, Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)), at) shouldBe
+            Holidays.NONE,
+        ).recheck(
+            snoozable,
+            GroupRole.Member,
+            Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON, Holidays.NONE)),
+            at,
+        ) shouldBe
             Recheck.Unchanged
     }
 
@@ -160,11 +195,11 @@ class ZoneEvaluationTest {
     fun `moving a device-zone hold to a zone naming the same instant is unchanged`() {
         val winterEvening = london("2026-11-04T20:00").toInstant()
 
-        Evaluation(ruleSet(localWork), ZoneId.of("Europe/Lisbon"))
+        Evaluation(ruleSet(localWork), ZoneId.of("Europe/Lisbon"), Holidays.NONE)
             .recheck(
                 snoozable,
                 GroupRole.Member,
-                Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON)),
+                Baseline.Known.of(Evaluation(ruleSet(localWork), LONDON, Holidays.NONE)),
                 winterEvening,
             ) shouldBe
             Recheck.Unchanged
@@ -174,11 +209,11 @@ class ZoneEvaluationTest {
     fun `moving the device leaves fixed-zone holds alone`() {
         val at = london("2026-10-14T02:00").toInstant()
 
-        Evaluation(ruleSet(tokyoAfternoonHold), NEW_YORK)
+        Evaluation(ruleSet(tokyoAfternoonHold), NEW_YORK, Holidays.NONE)
             .recheck(
                 snoozable,
                 GroupRole.Member,
-                Baseline.Known.of(Evaluation(ruleSet(tokyoAfternoonHold), LONDON)),
+                Baseline.Known.of(Evaluation(ruleSet(tokyoAfternoonHold), LONDON, Holidays.NONE)),
                 at,
             ) shouldBe
             Recheck.Unchanged

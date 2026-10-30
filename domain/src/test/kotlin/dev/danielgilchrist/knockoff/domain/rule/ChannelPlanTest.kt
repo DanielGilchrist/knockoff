@@ -21,6 +21,10 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelPlan
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
 import dev.danielgilchrist.knockoff.domain.channel.SilencedChannels
+import dev.danielgilchrist.knockoff.domain.dayoff.DaysOff
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
+import dev.danielgilchrist.knockoff.domain.dayoff.Leave
+import dev.danielgilchrist.knockoff.domain.dayoff.PublicHolidays
 import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.gmailGroup
 import dev.danielgilchrist.knockoff.domain.london
@@ -34,6 +38,7 @@ import dev.danielgilchrist.knockoff.domain.shouldBe
 import dev.danielgilchrist.knockoff.domain.textPattern
 import dev.danielgilchrist.knockoff.domain.window
 import org.junit.jupiter.api.Test
+import java.time.LocalDate
 
 class ChannelPlanTest {
     private val evening = london("2026-10-14T20:00")
@@ -51,7 +56,12 @@ class ChannelPlanTest {
 
     @Test
     fun `a held channel that alerts is silenced and its importance saved`() {
-        work.planChannels(slack(Importance.Default, Importance.High), SilencedChannels.NONE, evening) shouldBe
+        work.planChannels(
+            slack(Importance.Default, Importance.High),
+            SilencedChannels.NONE,
+            evening,
+            Holidays.NONE,
+        ) shouldBe
             ChannelPlan(
                 silence =
                     listOf(
@@ -73,7 +83,7 @@ class ChannelPlanTest {
                 COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND, ChannelGrouping.Ungrouped),
             )
 
-        chatOnly.planChannels(read, SilencedChannels.NONE, evening) shouldBe
+        chatOnly.planChannels(read, SilencedChannels.NONE, evening, Holidays.NONE) shouldBe
             ChannelPlan(
                 silence = listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.High, Importance.Low)),
                 restore = emptyList(),
@@ -86,7 +96,7 @@ class ChannelPlanTest {
         val app = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(Target.App(WHATSAPP))))
         val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND, ChannelGrouping.Ungrouped))
 
-        app.planChannels(read, SilencedChannels.NONE, evening).silence shouldBe
+        app.planChannels(read, SilencedChannels.NONE, evening, Holidays.NONE).silence shouldBe
             listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.High, Importance.Low))
     }
 
@@ -95,7 +105,12 @@ class ChannelPlanTest {
         val chatOnly = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
         val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.Low, COLLEAGUE_KIND, ChannelGrouping.Ungrouped))
 
-        chatOnly.planChannels(read, saved(COLLEAGUE_CHANNEL to AlertingImportance.High), morning) shouldBe
+        chatOnly.planChannels(
+            read,
+            saved(COLLEAGUE_CHANNEL to AlertingImportance.High),
+            morning,
+            Holidays.NONE,
+        ) shouldBe
             ChannelPlan(
                 silence = emptyList(),
                 restore = listOf(ChannelChange(COLLEAGUE_CHANNEL, Importance.Low, Importance.High)),
@@ -109,7 +124,8 @@ class ChannelPlanTest {
             ruleSet(rule("Off", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT), RuleState.Disabled))
         val read = mapOf(COLLEAGUE_CHANNEL to ReadChannel(Importance.High, COLLEAGUE_KIND, ChannelGrouping.Ungrouped))
 
-        disabled.planChannels(read, SilencedChannels.NONE, evening) shouldBe nothing(SilencedChannels.NONE)
+        disabled.planChannels(read, SilencedChannels.NONE, evening, Holidays.NONE) shouldBe
+            nothing(SilencedChannels.NONE)
     }
 
     @Test
@@ -129,13 +145,14 @@ class ChannelPlanTest {
                 slack(Importance.Default, Importance.High),
                 SilencedChannels.NONE,
                 evening,
+                Holidays.NONE,
             ).silence shouldBe
             listOf(ChannelChange(messages, Importance.Default, Importance.Low))
     }
 
     @Test
     fun `a held channel that is already quiet is left alone and not saved`() {
-        work.planChannels(slack(Importance.Low, Importance.Min), SilencedChannels.NONE, evening) shouldBe
+        work.planChannels(slack(Importance.Low, Importance.Min), SilencedChannels.NONE, evening, Holidays.NONE) shouldBe
             nothing(SilencedChannels.NONE)
     }
 
@@ -143,14 +160,15 @@ class ChannelPlanTest {
     fun `a silenced channel stays saved while it stays held`() {
         val silenced = saved(messages to AlertingImportance.Default)
 
-        work.planChannels(slack(Importance.Low, Importance.Low), silenced, evening) shouldBe nothing(silenced)
+        work.planChannels(slack(Importance.Low, Importance.Low), silenced, evening, Holidays.NONE) shouldBe
+            nothing(silenced)
     }
 
     @Test
     fun `a held channel the user made louder is silenced again and saved at the user's importance`() {
         val silenced = saved(messages to AlertingImportance.Default)
 
-        work.planChannels(slack(Importance.High, Importance.Low), silenced, evening) shouldBe
+        work.planChannels(slack(Importance.High, Importance.Low), silenced, evening, Holidays.NONE) shouldBe
             ChannelPlan(
                 silence = listOf(ChannelChange(messages, Importance.High, Importance.Low)),
                 restore = emptyList(),
@@ -162,19 +180,19 @@ class ChannelPlanTest {
     fun `a held channel the user made quieter is forgotten`() {
         val silenced = saved(messages to AlertingImportance.Default, calls to AlertingImportance.High)
 
-        work.planChannels(slack(Importance.None, Importance.Min), silenced, evening) shouldBe
+        work.planChannels(slack(Importance.None, Importance.Min), silenced, evening, Holidays.NONE) shouldBe
             nothing(SilencedChannels.NONE)
     }
 
     @Test
     fun `a permitted silenced channel is restored and stays saved until the restore is seen`() {
         val silenced = saved(messages to AlertingImportance.High)
-        val restoring = work.planChannels(slack(Importance.Low, Importance.Low), silenced, morning)
+        val restoring = work.planChannels(slack(Importance.Low, Importance.Low), silenced, morning, Holidays.NONE)
 
         restoring.restore shouldBe listOf(ChannelChange(messages, Importance.Low, Importance.High))
         restoring.silence shouldBe emptyList()
         restoring.silenced shouldBe silenced
-        work.planChannels(slack(Importance.High, Importance.Low), restoring.silenced, morning) shouldBe
+        work.planChannels(slack(Importance.High, Importance.Low), restoring.silenced, morning, Holidays.NONE) shouldBe
             nothing(SilencedChannels.NONE)
     }
 
@@ -184,13 +202,19 @@ class ChannelPlanTest {
             (slack(Importance.None, Importance.Low)),
             saved(messages to AlertingImportance.High),
             morning,
+            Holidays.NONE,
         ) shouldBe
             nothing(SilencedChannels.NONE)
     }
 
     @Test
     fun `a permitted channel that was never silenced is left alone`() {
-        work.planChannels(slack(Importance.Default, Importance.High), SilencedChannels.NONE, morning) shouldBe
+        work.planChannels(
+            slack(Importance.Default, Importance.High),
+            SilencedChannels.NONE,
+            morning,
+            Holidays.NONE,
+        ) shouldBe
             nothing(SilencedChannels.NONE)
     }
 
@@ -202,7 +226,7 @@ class ChannelPlanTest {
                 personalMail to ReadChannel(Importance.Default, ChannelKind.Shared, gmailGroup("dan@home.example")),
             )
 
-        work.planChannels(gmail, SilencedChannels.NONE, evening) shouldBe
+        work.planChannels(gmail, SilencedChannels.NONE, evening, Holidays.NONE) shouldBe
             ChannelPlan(
                 silence = listOf(ChannelChange(workMail, Importance.Default, Importance.Low)),
                 restore = emptyList(),
@@ -216,6 +240,7 @@ class ChannelPlanTest {
             sharedChannels(chats to Importance.High),
             SilencedChannels.NONE,
             evening,
+            Holidays.NONE,
         ) shouldBe
             nothing(SilencedChannels.NONE)
     }
@@ -229,6 +254,7 @@ class ChannelPlanTest {
                 (slack(Importance.Default, Importance.Low)),
                 SilencedChannels.NONE,
                 london("2026-10-14T12:30"),
+                Holidays.NONE,
             ).silence shouldBe listOf(ChannelChange(messages, Importance.Default, Importance.Low))
     }
 
@@ -241,6 +267,7 @@ class ChannelPlanTest {
                 (slack(Importance.Low, Importance.Default)),
                 saved(messages to AlertingImportance.Default),
                 evening,
+                Holidays.NONE,
             ).restore shouldBe
             listOf(ChannelChange(messages, Importance.Low, Importance.Default))
     }
@@ -249,7 +276,7 @@ class ChannelPlanTest {
     fun `saved channels missing from a read or in unread packages are kept`() {
         val silenced = saved(chats to AlertingImportance.High, calls to AlertingImportance.Default)
 
-        work.planChannels(emptyMap(), silenced, evening) shouldBe nothing(silenced)
+        work.planChannels(emptyMap(), silenced, evening, Holidays.NONE) shouldBe nothing(silenced)
     }
 
     @Test
@@ -273,6 +300,39 @@ class ChannelPlanTest {
         ChannelPlan(silence = emptyList(), restore = emptyList(), silenced = silenced)
 
     @Test
+    fun `on a day off a channel is silenced during the hours it's usually let through`() {
+        val sick =
+            ruleSet(
+                rule(
+                    "Work",
+                    Policy.DeliverOnlyDuring,
+                    WORK_HOURS,
+                    slackTarget,
+                    daysOff = DaysOff(listOf(Leave.day(LocalDate.parse("2026-10-15"))), PublicHolidays.AsUsual),
+                ),
+            )
+
+        sick.planChannels(
+            slack(Importance.Default, Importance.Low),
+            SilencedChannels.NONE,
+            morning,
+            Holidays.NONE,
+        ) shouldBe
+            ChannelPlan(
+                silence = listOf(ChannelChange(messages, Importance.Default, Importance.Low)),
+                restore = emptyList(),
+                silenced = saved(messages to AlertingImportance.Default),
+            )
+        work.planChannels(
+            slack(Importance.Default, Importance.Low),
+            SilencedChannels.NONE,
+            morning,
+            Holidays.NONE,
+        ) shouldBe
+            nothing(SilencedChannels.NONE)
+    }
+
+    @Test
     fun `a sub text account silences no channel, so its app keeps alerting`() {
         val proton =
             ruleSet(
@@ -289,6 +349,6 @@ class ChannelPlanTest {
                     ReadChannel(Importance.High, ChannelKind.Shared, ChannelGrouping.Ungrouped),
             )
 
-        proton.planChannels(read, SilencedChannels.NONE, evening) shouldBe nothing(SilencedChannels.NONE)
+        proton.planChannels(read, SilencedChannels.NONE, evening, Holidays.NONE) shouldBe nothing(SilencedChannels.NONE)
     }
 }

@@ -12,5 +12,6 @@ internal data class StoredRuleV7(
     private val zone: String,
     private val apps: List<StoredAppV7>,
 ) {
-    fun upgraded(): StoredRule = StoredRule(name, state, policy, windows, breaks, zone, apps.map(StoredAppV7::upgraded))
+    fun upgraded(): StoredRuleV8 =
+        StoredRuleV8(name, state, policy, windows, breaks, zone, apps.map(StoredAppV7::upgraded))
 }

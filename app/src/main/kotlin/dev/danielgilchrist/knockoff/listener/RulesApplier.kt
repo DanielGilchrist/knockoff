@@ -4,6 +4,7 @@ import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.change.Step
 import dev.danielgilchrist.knockoff.domain.change.stepTo
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.settings.AppliedRulesKeeper
 import dev.danielgilchrist.knockoff.settings.AppliedRulesLoad
@@ -23,7 +24,7 @@ internal class RulesApplier(
 
     suspend fun apply(applying: Applying) {
         applied = Applied.Active(applying.evaluation)
-        val baseline = baselineFor(applying.chats)
+        val baseline = baselineFor(applying.chats, applying.holidays)
 
         when (val step = baseline.stepTo(applying)) {
             is Step.First -> {
@@ -60,7 +61,10 @@ internal class RulesApplier(
         requestSilencing()
     }
 
-    private suspend fun baselineFor(chats: SeenChats): Baseline<Applying> =
+    private suspend fun baselineFor(
+        chats: SeenChats,
+        holidays: Holidays,
+    ): Baseline<Applying> =
         when (val current = state) {
             BaselineState.NotLoaded -> {
                 val load = keeper.load()
@@ -68,7 +72,7 @@ internal class RulesApplier(
 
                 when (val stored = load.baseline) {
                     Baseline.Unknown -> Baseline.Unknown
-                    is Baseline.Known -> stored.map { Applying(it, chats) }
+                    is Baseline.Known -> stored.map { Applying(it, chats, holidays) }
                 }
             }
 

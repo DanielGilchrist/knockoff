@@ -1,5 +1,7 @@
 package dev.danielgilchrist.knockoff.ui.preferences
 
+import dev.danielgilchrist.knockoff.domain.dayoff.CalendarId
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.Theme
 import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
@@ -25,13 +27,27 @@ class PreferencesEditorTest {
             val editor = editor(store)
             val tokyo = ZoneChoice.Fixed(ZoneId.of("Asia/Tokyo"))
 
-            val expected = SettingsLoad.Loaded(Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.Dark))
+            val expected =
+                SettingsLoad.Loaded(
+                    Settings(Settings.DEFAULT.rules.withDefaultZone(tokyo), Theme.Dark, HolidayCalendar.None),
+                )
 
             editor.setTheme(Theme.Dark)
             store.loads.first { it is SettingsLoad.Loaded && it.settings.theme == Theme.Dark }
             editor.setDefaultZone(tokyo)
 
             store.loads.first { it == expected }
+        }
+
+    @Test
+    fun `the holiday calendar is saved`() =
+        runTest {
+            val store = SettingsStore(settingsFile())
+            val chosen = HolidayCalendar.Chosen(CalendarId(3), emptySet())
+
+            editor(store).setHolidays(chosen)
+
+            store.loads.first { it is SettingsLoad.Loaded && it.settings.holidayCalendar == chosen }
         }
 
     @Test

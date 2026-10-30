@@ -5,17 +5,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.Theme
 import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
+import dev.danielgilchrist.knockoff.holiday.HolidaysState
 import dev.danielgilchrist.knockoff.ui.SaveStatus
 import dev.danielgilchrist.knockoff.ui.Setup
 import dev.danielgilchrist.knockoff.ui.components.Caption
 import dev.danielgilchrist.knockoff.ui.components.ChoiceSegments
 import dev.danielgilchrist.knockoff.ui.components.ListGroup
 import dev.danielgilchrist.knockoff.ui.components.ListScreen
+import dev.danielgilchrist.knockoff.ui.components.NavigationListItem
 import dev.danielgilchrist.knockoff.ui.components.ScreenNavigation
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
+import dev.danielgilchrist.knockoff.ui.describeCalendar
 import dev.danielgilchrist.knockoff.ui.saveProblem
 import dev.danielgilchrist.knockoff.ui.zone.DEVICE_ZONE
 import dev.danielgilchrist.knockoff.ui.zone.ZoneRow
@@ -24,6 +28,7 @@ import dev.danielgilchrist.knockoff.ui.zone.label
 @Composable
 internal fun PreferencesScreen(
     settings: Settings,
+    holidays: HolidaysState,
     setup: Setup,
     saveStatus: SaveStatus,
     actions: PreferencesActions,
@@ -59,6 +64,16 @@ internal fun PreferencesScreen(
                 text = "Rules set to Default follow this.",
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
+        }
+        item {
+            ListGroup {
+                NavigationListItem(
+                    icon = R.drawable.ic_event,
+                    headline = "Public holidays",
+                    supporting = holidays.describeCalendar(),
+                    onClick = actions.onOpenHolidays,
+                )
+            }
         }
         item { SectionHeader(text = "Theme") }
         item {

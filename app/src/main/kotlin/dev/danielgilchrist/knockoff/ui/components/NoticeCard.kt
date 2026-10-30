@@ -41,11 +41,19 @@ internal fun NoticeCard(
                     contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 )
             }
+
+            NoticeTone.Status -> {
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
         }
     val icon =
         when (tone) {
             NoticeTone.Nudge -> R.drawable.ic_notifications
             NoticeTone.Problem -> R.drawable.ic_error
+            NoticeTone.Status -> R.drawable.ic_event
         }
 
     Card(modifier = modifier.fillMaxWidth(), colors = colors) {

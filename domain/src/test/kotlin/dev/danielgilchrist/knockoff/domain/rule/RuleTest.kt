@@ -9,6 +9,7 @@ import dev.danielgilchrist.knockoff.domain.WHATSAPP
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.breakNamed
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.ConversationName
 import dev.danielgilchrist.knockoff.domain.rule
@@ -38,7 +39,7 @@ class RuleTest {
     @Test
     fun `disabled rule abstains`() {
         rule("r", Policy.DeliverOnlyDuring, WORK_HOURS, slack, RuleState.Disabled)
-            .verdictFor(SLACK_ORIGIN, outside, local) shouldBe RuleVerdict.Abstains
+            .verdictFor(SLACK_ORIGIN, outside, local, Holidays.NONE) shouldBe RuleVerdict.Abstains
     }
 
     @Test
@@ -48,7 +49,7 @@ class RuleTest {
             Policy.DeliverOnlyDuring,
             WORK_HOURS,
             slack,
-        ).verdictFor(WORK_GMAIL_ORIGIN, outside, local) shouldBe
+        ).verdictFor(WORK_GMAIL_ORIGIN, outside, local, Holidays.NONE) shouldBe
             RuleVerdict.Abstains
     }
 
@@ -59,7 +60,7 @@ class RuleTest {
             Policy.HoldDuring,
             WORK_HOURS,
             emptySet(),
-        ).verdictFor(SLACK_ORIGIN, during, local) shouldBe
+        ).verdictFor(SLACK_ORIGIN, during, local, Holidays.NONE) shouldBe
             RuleVerdict.Abstains
     }
 
@@ -70,7 +71,7 @@ class RuleTest {
             Policy.DeliverOnlyDuring,
             WORK_HOURS,
             slack,
-        ).verdictFor(SLACK_ORIGIN, during, local) shouldBe
+        ).verdictFor(SLACK_ORIGIN, during, local, Holidays.NONE) shouldBe
             RuleVerdict.Permits
     }
 
@@ -81,31 +82,36 @@ class RuleTest {
             Policy.DeliverOnlyDuring,
             WORK_HOURS,
             slack,
-        ).verdictFor(SLACK_ORIGIN, outside, local) shouldBe
+        ).verdictFor(SLACK_ORIGIN, outside, local, Holidays.NONE) shouldBe
             RuleVerdict.Holds(Release.At(london("2026-10-15T08:00")))
     }
 
     @Test
     fun `deliver only during an always-covered schedule always permits`() {
-        rule("r", Policy.DeliverOnlyDuring, always, slack).verdictFor(SLACK_ORIGIN, during, local) shouldBe
+        rule(
+            "r",
+            Policy.DeliverOnlyDuring,
+            always,
+            slack,
+        ).verdictFor(SLACK_ORIGIN, during, local, Holidays.NONE) shouldBe
             RuleVerdict.Permits
     }
 
     @Test
     fun `hold during holds inside the schedule until it ends`() {
-        rule("r", Policy.HoldDuring, WORK_HOURS, slack).verdictFor(SLACK_ORIGIN, during, local) shouldBe
+        rule("r", Policy.HoldDuring, WORK_HOURS, slack).verdictFor(SLACK_ORIGIN, during, local, Holidays.NONE) shouldBe
             RuleVerdict.Holds(Release.At(london("2026-10-14T17:00")))
     }
 
     @Test
     fun `hold during permits outside the schedule`() {
-        rule("r", Policy.HoldDuring, WORK_HOURS, slack).verdictFor(SLACK_ORIGIN, outside, local) shouldBe
+        rule("r", Policy.HoldDuring, WORK_HOURS, slack).verdictFor(SLACK_ORIGIN, outside, local, Holidays.NONE) shouldBe
             RuleVerdict.Permits
     }
 
     @Test
     fun `hold during an always-covered schedule never releases`() {
-        rule("r", Policy.HoldDuring, always, slack).verdictFor(SLACK_ORIGIN, during, local) shouldBe
+        rule("r", Policy.HoldDuring, always, slack).verdictFor(SLACK_ORIGIN, during, local, Holidays.NONE) shouldBe
             RuleVerdict.Holds(Release.Never)
     }
 
@@ -122,9 +128,14 @@ class RuleTest {
         workHours
             .copy(
                 zone = RuleZone.Chosen(ZoneChoice.Fixed(tokyo)),
-            ).verdictFor(SLACK_ORIGIN, londonEvening, local) shouldBe
+            ).verdictFor(SLACK_ORIGIN, londonEvening, local, Holidays.NONE) shouldBe
             untilTokyoMorning
-        workHours.verdictFor(SLACK_ORIGIN, londonEvening, ZoneContext(LONDON, ZoneChoice.Fixed(tokyo))) shouldBe
+        workHours.verdictFor(
+            SLACK_ORIGIN,
+            londonEvening,
+            ZoneContext(LONDON, ZoneChoice.Fixed(tokyo)),
+            Holidays.NONE,
+        ) shouldBe
             untilTokyoMorning
     }
 
@@ -133,7 +144,7 @@ class RuleTest {
         val tokyoDefault = ZoneContext(LONDON, ZoneChoice.Fixed(ZoneId.of("Asia/Tokyo")))
 
         rule("r", Policy.DeliverOnlyDuring, WORK_HOURS, slack, zone = RuleZone.Chosen(ZoneChoice.Device))
-            .verdictFor(SLACK_ORIGIN, london("2026-10-14T20:00"), tokyoDefault) shouldBe
+            .verdictFor(SLACK_ORIGIN, london("2026-10-14T20:00"), tokyoDefault, Holidays.NONE) shouldBe
             RuleVerdict.Holds(Release.At(london("2026-10-15T08:00")))
     }
 
@@ -148,7 +159,7 @@ class RuleTest {
             WORK_HOURS,
             slack,
             zone = tokyo,
-        ).verdictFor(SLACK_ORIGIN, tokyoWorkday, local) shouldBe
+        ).verdictFor(SLACK_ORIGIN, tokyoWorkday, local, Holidays.NONE) shouldBe
             RuleVerdict.Holds(
                 Release.At(ZonedDateTime.of(LocalDateTime.parse("2026-10-14T17:00"), ZoneId.of("Asia/Tokyo"))),
             )
@@ -158,9 +169,15 @@ class RuleTest {
             WORK_HOURS,
             slack,
             zone = tokyo,
-        ).verdictFor(SLACK_ORIGIN, london("2026-10-14T20:00"), local) shouldBe
+        ).verdictFor(SLACK_ORIGIN, london("2026-10-14T20:00"), local, Holidays.NONE) shouldBe
             RuleVerdict.Permits
-        rule("r", Policy.HoldDuring, always, slack, zone = tokyo).verdictFor(SLACK_ORIGIN, tokyoWorkday, local) shouldBe
+        rule(
+            "r",
+            Policy.HoldDuring,
+            always,
+            slack,
+            zone = tokyo,
+        ).verdictFor(SLACK_ORIGIN, tokyoWorkday, local, Holidays.NONE) shouldBe
             RuleVerdict.Holds(Release.Never)
     }
 
@@ -170,7 +187,7 @@ class RuleTest {
         val londonMorningAfterEuropeChanged = london("2026-10-27T11:00")
 
         rule("r", Policy.DeliverOnlyDuring, WORK_HOURS, slack, zone = newYork)
-            .verdictFor(SLACK_ORIGIN, londonMorningAfterEuropeChanged, local) shouldBe
+            .verdictFor(SLACK_ORIGIN, londonMorningAfterEuropeChanged, local, Holidays.NONE) shouldBe
             RuleVerdict.Holds(
                 Release.At(ZonedDateTime.of(LocalDateTime.parse("2026-10-27T08:00"), ZoneId.of("America/New_York"))),
             )
@@ -183,7 +200,7 @@ class RuleTest {
             Policy.DeliverOnlyDuring,
             lunchBreak,
             slack,
-        ).verdictFor(SLACK_ORIGIN, london("2026-10-14T12:30"), local) shouldBe
+        ).verdictFor(SLACK_ORIGIN, london("2026-10-14T12:30"), local, Holidays.NONE) shouldBe
             RuleVerdict.Holds(Release.At(london("2026-10-14T13:00")))
     }
 
@@ -191,8 +208,8 @@ class RuleTest {
     fun `hold during lets a break through and holds again after it`() {
         val holding = rule("r", Policy.HoldDuring, lunchBreak, slack)
 
-        holding.verdictFor(SLACK_ORIGIN, london("2026-10-14T12:30"), local) shouldBe RuleVerdict.Permits
-        holding.verdictFor(SLACK_ORIGIN, london("2026-10-14T11:00"), local) shouldBe
+        holding.verdictFor(SLACK_ORIGIN, london("2026-10-14T12:30"), local, Holidays.NONE) shouldBe RuleVerdict.Permits
+        holding.verdictFor(SLACK_ORIGIN, london("2026-10-14T11:00"), local, Holidays.NONE) shouldBe
             RuleVerdict.Holds(Release.At(london("2026-10-14T12:00")))
     }
 

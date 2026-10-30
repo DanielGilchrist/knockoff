@@ -22,10 +22,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.ask.AnswerLabels
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
+import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.ui.GrammaticalNumber
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.NewChats
 import dev.danielgilchrist.knockoff.ui.RuleChange
+import dev.danielgilchrist.knockoff.ui.RuleDay
 import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.SaveStatus
 import dev.danielgilchrist.knockoff.ui.SettingsOrigin
@@ -44,6 +48,8 @@ import dev.danielgilchrist.knockoff.ui.components.ScreenNavigation
 import dev.danielgilchrist.knockoff.ui.components.SectionHeader
 import dev.danielgilchrist.knockoff.ui.counted
 import dev.danielgilchrist.knockoff.ui.saveProblem
+import dev.danielgilchrist.knockoff.ui.summaryOn
+import java.time.ZonedDateTime
 
 @Composable
 internal fun HomeScreen(
@@ -52,6 +58,7 @@ internal fun HomeScreen(
     saveStatus: SaveStatus,
     newChats: NewChats,
     apps: InstalledApps,
+    holidays: Holidays,
     actions: HomeActions,
     modifier: Modifier = Modifier,
 ) {
@@ -86,7 +93,7 @@ internal fun HomeScreen(
             is SettingsState.Ready -> {
                 setupBanner(SetupNotice.of(setup, settings.settings.rules), actions.system)
                 newChatsCard(newChats, onOpen = actions.onOpenNewChats)
-                rules(settings, apps, actions)
+                rules(settings, apps, holidays, actions)
             }
         }
     }
@@ -172,9 +179,11 @@ private fun NewChatsCard(
 private fun LazyListScope.rules(
     settings: SettingsState.Ready,
     apps: InstalledApps,
+    holidays: Holidays,
     actions: HomeActions,
 ) {
     val rules = settings.settings.rules.rules
+    val now = ZonedDateTime.now()
 
     item { SectionHeader(text = "Rules") }
     when (settings.origin) {
@@ -195,7 +204,12 @@ private fun LazyListScope.rules(
                     rules.forEach { rule ->
                         RuleRow(
                             rule = rule,
-                            summary = RuleOverview.of(rule, apps::labelOf).sentence,
+                            summary =
+                                summaryOf(
+                                    rule,
+                                    RuleOverview.of(rule, apps::labelOf),
+                                    RuleDay.of(rule, now, settings.settings.rules.defaultZone, holidays),
+                                ),
                             onOpen = { actions.onEditRule(rule) },
                             onStateChange = { state -> actions.onRuleChange(rule.name, RuleChange.SetState(state)) },
                         )
@@ -205,6 +219,16 @@ private fun LazyListScope.rules(
         }
     }
 }
+
+private fun summaryOf(
+    rule: Rule,
+    overview: RuleOverview,
+    day: RuleDay,
+): String =
+    when (rule.state) {
+        RuleState.Enabled -> summaryOn(day.dayOff, rule.policy, overview)
+        RuleState.Disabled -> overview.sentence
+    }
 
 @Composable
 private fun EmptyRules(modifier: Modifier = Modifier) {

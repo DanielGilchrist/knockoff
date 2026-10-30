@@ -35,8 +35,8 @@ import dev.danielgilchrist.knockoff.listener.KnockoffListener
 import dev.danielgilchrist.knockoff.ui.Appearance
 import dev.danielgilchrist.knockoff.ui.KnockoffScreen
 import dev.danielgilchrist.knockoff.ui.MainViewModel
-import dev.danielgilchrist.knockoff.ui.NearbyAsk
 import dev.danielgilchrist.knockoff.ui.PairedDevice
+import dev.danielgilchrist.knockoff.ui.PermissionAsk
 import dev.danielgilchrist.knockoff.ui.SystemActions
 import dev.danielgilchrist.knockoff.ui.appicon.LocalAppIcons
 import dev.danielgilchrist.knockoff.ui.theme.KnockoffTheme
@@ -49,7 +49,16 @@ class MainActivity : ComponentActivity() {
     private val nearbyDevices =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             viewModel.nearbyDevicesAnswered(
-                NearbyAsk.after(granted, shouldShowRequestPermissionRationale(Manifest.permission.BLUETOOTH_CONNECT)),
+                PermissionAsk.after(
+                    granted,
+                    shouldShowRequestPermissionRationale(Manifest.permission.BLUETOOTH_CONNECT),
+                ),
+            )
+        }
+    private val calendar =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            viewModel.calendarAnswered(
+                PermissionAsk.after(granted, shouldShowRequestPermissionRationale(Manifest.permission.READ_CALENDAR)),
             )
         }
     private val bluetoothChanges =
@@ -88,6 +97,7 @@ class MainActivity : ComponentActivity() {
                                         onAllowNearbyDevices = {
                                             nearbyDevices.launch(Manifest.permission.BLUETOOTH_CONNECT)
                                         },
+                                        onAllowCalendar = { calendar.launch(Manifest.permission.READ_CALENDAR) },
                                         onOpenBluetoothSettings = {
                                             startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
                                         },

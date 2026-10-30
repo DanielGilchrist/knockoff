@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.ui.editor
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -19,7 +20,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.domain.rule.RuleState
 import dev.danielgilchrist.knockoff.ui.InstalledApps
+import dev.danielgilchrist.knockoff.ui.RuleDay
 import dev.danielgilchrist.knockoff.ui.RuleOverview
 import dev.danielgilchrist.knockoff.ui.RuleSection
 import dev.danielgilchrist.knockoff.ui.SaveStatus
@@ -30,11 +33,13 @@ import dev.danielgilchrist.knockoff.ui.components.MainSwitchBar
 import dev.danielgilchrist.knockoff.ui.components.NavigationListItem
 import dev.danielgilchrist.knockoff.ui.components.OverflowMenu
 import dev.danielgilchrist.knockoff.ui.components.ScreenNavigation
+import dev.danielgilchrist.knockoff.ui.describe
 import dev.danielgilchrist.knockoff.ui.saveProblem
 
 @Composable
 internal fun RuleOverviewScreen(
     rule: Rule,
+    day: RuleDay,
     apps: InstalledApps,
     saveStatus: SaveStatus,
     actions: RuleOverviewActions,
@@ -68,8 +73,15 @@ internal fun RuleOverviewScreen(
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
             )
         }
+        dayOffItem(rule, day, overview.apps, actions)
         saveProblem(saveStatus)
-        item { SectionRows(overview = overview, onEditSection = actions.onEditSection) }
+        item {
+            SectionRows(
+                overview = overview,
+                daysOff = rule.daysOff.describe(day.date),
+                onEditSection = actions.onEditSection,
+            )
+        }
     }
 
     overlay()
@@ -85,9 +97,32 @@ internal fun RuleOverviewScreen(
     }
 }
 
+private fun LazyListScope.dayOffItem(
+    rule: Rule,
+    day: RuleDay,
+    apps: String,
+    actions: RuleOverviewActions,
+) {
+    when (rule.state) {
+        RuleState.Enabled -> {
+            item {
+                DayOffCard(
+                    dayOff = day.dayOff,
+                    policy = rule.policy,
+                    apps = apps,
+                    actions = actions.dayOff,
+                )
+            }
+        }
+
+        RuleState.Disabled -> {}
+    }
+}
+
 @Composable
 private fun SectionRows(
     overview: RuleOverview,
+    daysOff: String,
     onEditSection: (RuleSection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -103,6 +138,12 @@ private fun SectionRows(
             headline = "Hours",
             supporting = overview.hours,
             onClick = { onEditSection(RuleSection.Hours) },
+        )
+        NavigationListItem(
+            icon = R.drawable.ic_event,
+            headline = "Days off",
+            supporting = daysOff,
+            onClick = { onEditSection(RuleSection.DaysOff) },
         )
     }
 }

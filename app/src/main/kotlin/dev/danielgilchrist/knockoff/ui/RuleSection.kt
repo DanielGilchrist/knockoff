@@ -5,6 +5,7 @@ import dev.danielgilchrist.knockoff.domain.rule.Rule
 enum class RuleSection {
     Apps,
     Hours,
+    DaysOff,
     ;
 
     fun merge(
@@ -15,5 +16,6 @@ enum class RuleSection {
         when (this) {
             Apps -> current.copy(apps = edited.apps.rebased(opened.apps, current.apps))
             Hours -> current.copy(policy = edited.policy, schedule = edited.schedule, zone = edited.zone)
+            DaysOff -> current.copy(daysOff = edited.daysOff)
         }
 }

@@ -12,6 +12,7 @@ import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Boundary
 import dev.danielgilchrist.knockoff.domain.rule.RuleSet
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.holiday.HolidayWatch
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import kotlinx.coroutines.channels.Channel
@@ -29,6 +30,7 @@ internal class ChannelSilencer(
     private val store: SilencedChannelsStore,
     private val seenChats: SeenChatsStore,
     private val learning: GroupLearning,
+    private val holidays: HolidayWatch,
 ) {
     companion object {
         private val RESTORE_GRACE = 5.seconds
@@ -54,7 +56,7 @@ internal class ChannelSilencer(
                 Log.w(LOG_TAG, "channels unchanged: ${first.detail}")
                 val now = ZonedDateTime.now()
 
-                alarm.schedule(first.rules.nextBoundary(now), now).report()
+                alarm.schedule(first.rules.nextBoundary(now, holidays.current()), now).report()
             }
 
             is Preparation.Failed -> {
@@ -93,11 +95,11 @@ internal class ChannelSilencer(
         }
     }
 
-    private fun schedule(
+    private suspend fun schedule(
         ready: Preparation.Ready,
         settlement: Settlement,
     ) {
-        val boundary = ready.rules.nextBoundary(ready.now)
+        val boundary = ready.rules.nextBoundary(ready.now, holidays.current())
         val alarmAt =
             when (settlement) {
                 Settlement.Settled -> {
@@ -185,7 +187,7 @@ internal class ChannelSilencer(
         waitingChats: Set<Target.Chat>,
     ): Preparation {
         val now = ZonedDateTime.now()
-        val plan = rules.planChannels(read, silenced, now)
+        val plan = rules.planChannels(read, silenced, now, holidays.current())
 
         return when {
             plan.silenced == silenced -> {

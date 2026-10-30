@@ -13,6 +13,7 @@ import dev.danielgilchrist.knockoff.domain.WORK_ADDRESS
 import dev.danielgilchrist.knockoff.domain.WORK_GMAIL_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.address
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.gmailAccount
 import dev.danielgilchrist.knockoff.domain.known
@@ -59,17 +60,17 @@ class RuleSetTest {
 
     @Test
     fun `work app outside hours snoozes until work starts`() {
-        ruleSet(workOnly).decide(post(SLACK_ORIGIN), evening) shouldBe untilMorning
+        ruleSet(workOnly).decide(post(SLACK_ORIGIN), evening, Holidays.NONE) shouldBe untilMorning
     }
 
     @Test
     fun `work gmail outside hours snoozes until work starts`() {
-        ruleSet(workOnly).decide(post(WORK_GMAIL_ORIGIN), evening) shouldBe untilMorning
+        ruleSet(workOnly).decide(post(WORK_GMAIL_ORIGIN), evening, Holidays.NONE) shouldBe untilMorning
     }
 
     @Test
     fun `personal gmail outside hours is left`() {
-        ruleSet(workOnly).decide(post(PERSONAL_GMAIL_ORIGIN), evening) shouldBe
+        ruleSet(workOnly).decide(post(PERSONAL_GMAIL_ORIGIN), evening, Holidays.NONE) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
 
@@ -89,6 +90,7 @@ class RuleSetTest {
                 ),
             ),
             evening,
+            Holidays.NONE,
         ) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
@@ -97,8 +99,8 @@ class RuleSetTest {
     fun `a held chat outside hours snoozes and other chats in the app are left`() {
         val chats = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT)))
 
-        chats.decide(post(whatsappOrigin(known(COLLEAGUE))), evening) shouldBe untilMorning
-        chats.decide(post(whatsappOrigin(known(FRIEND))), evening) shouldBe
+        chats.decide(post(whatsappOrigin(known(COLLEAGUE))), evening, Holidays.NONE) shouldBe untilMorning
+        chats.decide(post(whatsappOrigin(known(FRIEND))), evening, Holidays.NONE) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
 
@@ -114,8 +116,8 @@ class RuleSetTest {
                 ),
             )
 
-        named.decide(post(whatsappOrigin(known(FRIEND, "Work – Sydney"))), evening) shouldBe untilMorning
-        named.decide(post(whatsappOrigin(known(FRIEND, "Mum"))), evening) shouldBe
+        named.decide(post(whatsappOrigin(known(FRIEND, "Work – Sydney"))), evening, Holidays.NONE) shouldBe untilMorning
+        named.decide(post(whatsappOrigin(known(FRIEND, "Mum"))), evening, Holidays.NONE) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
     }
 
@@ -123,19 +125,21 @@ class RuleSetTest {
     fun `ongoing work notification is left with its traits`() {
         val traits = traits(NotificationTrait.Ongoing, NotificationTrait.ForegroundService)
 
-        ruleSet(workOnly).decide(PostedNotification.Unsnoozable(key, SLACK_ORIGIN, traits), evening) shouldBe
+        ruleSet(
+            workOnly,
+        ).decide(PostedNotification.Unsnoozable(key, SLACK_ORIGIN, traits), evening, Holidays.NONE) shouldBe
             Decision.Leave(LeaveReason.Unsnoozable(traits))
     }
 
     @Test
     fun `work app inside hours is permitted`() {
-        ruleSet(workOnly).decide(post(SLACK_ORIGIN), london("2026-10-14T10:00")) shouldBe
+        ruleSet(workOnly).decide(post(SLACK_ORIGIN), london("2026-10-14T10:00"), Holidays.NONE) shouldBe
             Decision.Leave(LeaveReason.Permitted(by = setOf(ruleName("Work"))))
     }
 
     @Test
     fun `no rules leaves everything`() {
-        ruleSet().decide(post(SLACK_ORIGIN), evening) shouldBe Decision.Leave(LeaveReason.NoRuleTargets)
+        ruleSet().decide(post(SLACK_ORIGIN), evening, Holidays.NONE) shouldBe Decision.Leave(LeaveReason.NoRuleTargets)
     }
 
     @Test
@@ -146,14 +150,14 @@ class RuleSetTest {
                 rule("Other", Policy.DeliverOnlyDuring, WORK_HOURS, emptySet()),
             )
 
-        rules.decide(post(SLACK_ORIGIN), evening) shouldBe Decision.Leave(LeaveReason.NoRuleTargets)
+        rules.decide(post(SLACK_ORIGIN), evening, Holidays.NONE) shouldBe Decision.Leave(LeaveReason.NoRuleTargets)
     }
 
     @Test
     fun `every permitting rule is named`() {
         val quietLunch = rule("Lunch", Policy.HoldDuring, lunch, work)
 
-        ruleSet(workOnly, quietLunch).decide(post(SLACK_ORIGIN), london("2026-10-14T10:00")) shouldBe
+        ruleSet(workOnly, quietLunch).decide(post(SLACK_ORIGIN), london("2026-10-14T10:00"), Holidays.NONE) shouldBe
             Decision.Leave(LeaveReason.Permitted(by = setOf(ruleName("Work"), ruleName("Lunch"))))
     }
 
@@ -162,7 +166,7 @@ class RuleSetTest {
         val quietLunch = rule("Lunch", Policy.HoldDuring, lunch, work)
         val now = london("2026-10-14T12:15")
 
-        ruleSet(workOnly, quietLunch).decide(post(SLACK_ORIGIN), now) shouldBe
+        ruleSet(workOnly, quietLunch).decide(post(SLACK_ORIGIN), now, Holidays.NONE) shouldBe
             Decision.Snooze(now, london("2026-10-14T13:00"), SnoozeEnd.RulesPermit, setOf(ruleName("Lunch")))
     }
 
@@ -177,7 +181,7 @@ class RuleSetTest {
             )
         val now = london("2026-10-14T05:00")
 
-        ruleSet(workOnly, earlyMeetings).decide(post(SLACK_ORIGIN), now) shouldBe
+        ruleSet(workOnly, earlyMeetings).decide(post(SLACK_ORIGIN), now, Holidays.NONE) shouldBe
             Decision.Snooze(
                 now,
                 london("2026-10-14T09:00"),
@@ -220,7 +224,7 @@ class RuleSetTest {
 
         given.clear()
 
-        parsed.decide(post(SLACK_ORIGIN), evening) shouldBe untilMorning
+        parsed.decide(post(SLACK_ORIGIN), evening, Holidays.NONE) shouldBe untilMorning
     }
 
     @Test
@@ -230,7 +234,7 @@ class RuleSetTest {
         val eightToNine = rule("C", Policy.HoldDuring, schedule(window(EVERY_DAY, "08:00", "09:00")), work)
         val now = london("2026-10-14T05:00")
 
-        ruleSet(untilEightThirty, untilTen, eightToNine).decide(post(SLACK_ORIGIN), now) shouldBe
+        ruleSet(untilEightThirty, untilTen, eightToNine).decide(post(SLACK_ORIGIN), now, Holidays.NONE) shouldBe
             Decision.Snooze(now, london("2026-10-14T10:00"), SnoozeEnd.RulesPermit, setOf(ruleName("B"), ruleName("A")))
     }
 
@@ -238,7 +242,7 @@ class RuleSetTest {
     fun `a rule that never releases is capped at the ceiling`() {
         val always = rule("Always", Policy.HoldDuring, schedule(window(EVERY_DAY, "00:00", "00:00")), work)
 
-        ruleSet(always).decide(post(SLACK_ORIGIN), evening) shouldBe
+        ruleSet(always).decide(post(SLACK_ORIGIN), evening, Holidays.NONE) shouldBe
             Decision.Snooze(
                 evening,
                 evening.plus(RuleSet.SNOOZE_CEILING),
@@ -254,7 +258,7 @@ class RuleSetTest {
             rule("Wednesday", Policy.DeliverOnlyDuring, schedule(window(days(WEDNESDAY), "20:00", "21:00")), work)
         val now = london("2026-10-14T19:30")
 
-        ruleSet(wednesdayNights, laterWednesday).decide(post(SLACK_ORIGIN), now) shouldBe
+        ruleSet(wednesdayNights, laterWednesday).decide(post(SLACK_ORIGIN), now, Holidays.NONE) shouldBe
             Decision.Snooze(
                 now,
                 now.plus(RuleSet.SNOOZE_CEILING),
@@ -271,20 +275,20 @@ class RuleSetTest {
             rule("Wednesday", Policy.DeliverOnlyDuring, schedule(window(days(WEDNESDAY), "11:00", "12:00")), work)
 
         now.plus(RuleSet.SNOOZE_CEILING) shouldBe ceiling
-        ruleSet(wednesdayHour).decide(post(SLACK_ORIGIN), now) shouldBe
+        ruleSet(wednesdayHour).decide(post(SLACK_ORIGIN), now, Holidays.NONE) shouldBe
             Decision.Snooze(now, ceiling, SnoozeEnd.RulesPermit, setOf(ruleName("Wednesday")))
     }
 
     @Test
     fun `snooze duration spans the spring clock change`() {
-        val decision = ruleSet(workOnly).decide(post(SLACK_ORIGIN), london("2026-03-27T18:00"))
+        val decision = ruleSet(workOnly).decide(post(SLACK_ORIGIN), london("2026-03-27T18:00"), Holidays.NONE)
 
         decision.shouldBeInstanceOf<Decision.Snooze>().duration shouldBe Duration.ofHours(61)
     }
 
     @Test
     fun `snooze duration spans the autumn clock change`() {
-        val decision = ruleSet(workOnly).decide(post(SLACK_ORIGIN), london("2026-10-23T18:00"))
+        val decision = ruleSet(workOnly).decide(post(SLACK_ORIGIN), london("2026-10-23T18:00"), Holidays.NONE)
 
         decision.shouldBeInstanceOf<Decision.Snooze>().duration shouldBe Duration.ofHours(63)
     }
@@ -303,9 +307,10 @@ class RuleSetTest {
                 ),
             )
 
-        proton.decide(post(protonOrigin("dan@work.example")), evening) shouldBe untilMorning
-        proton.decide(post(protonOrigin("dan@home.example")), evening) shouldBe
+        proton.decide(post(protonOrigin("dan@work.example")), evening, Holidays.NONE) shouldBe untilMorning
+        proton.decide(post(protonOrigin("dan@home.example")), evening, Holidays.NONE) shouldBe
             Decision.Leave(LeaveReason.NoRuleTargets)
-        proton.decide(post(protonOrigin(null)), evening) shouldBe Decision.Leave(LeaveReason.NoRuleTargets)
+        proton.decide(post(protonOrigin(null)), evening, Holidays.NONE) shouldBe
+            Decision.Leave(LeaveReason.NoRuleTargets)
     }
 }

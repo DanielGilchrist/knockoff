@@ -9,5 +9,6 @@ data class PreferencesActions(
     val onDefaultZoneChange: (ZoneChoice) -> Unit,
     val onThemeChange: (Theme) -> Unit,
     val onOpenLink: () -> Unit,
+    val onOpenHolidays: () -> Unit,
     val onBack: () -> Unit,
 )

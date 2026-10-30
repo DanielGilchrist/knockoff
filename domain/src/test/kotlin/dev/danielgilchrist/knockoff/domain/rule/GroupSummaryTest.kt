@@ -6,6 +6,7 @@ import dev.danielgilchrist.knockoff.domain.FRIEND
 import dev.danielgilchrist.knockoff.domain.LONDON
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.change.Baseline
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.known
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.Conversation
@@ -25,7 +26,11 @@ import java.time.ZoneId
 class GroupSummaryTest {
     private val evening = london("2026-10-14T20:00").toInstant()
     private val work =
-        Evaluation(ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT))), LONDON)
+        Evaluation(
+            ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, setOf(COLLEAGUE_CHAT))),
+            LONDON,
+            Holidays.NONE,
+        )
     private val summary = post("summary", Conversation.Routed(COLLEAGUE))
     private val colleague = post("colleague", known(COLLEAGUE))
     private val friend = post("friend", known(FRIEND))
@@ -75,7 +80,7 @@ class GroupSummaryTest {
 
     @Test
     fun `a summary is rechecked with what shows under it`() {
-        val none = Evaluation(ruleSet(), LONDON)
+        val none = Evaluation(ruleSet(), LONDON, Holidays.NONE)
 
         work
             .recheck(
@@ -110,7 +115,7 @@ class GroupSummaryTest {
 
     @Test
     fun `going back after a skipped change releases what only the skipped rules held`() {
-        val none = Evaluation(ruleSet(), LONDON)
+        val none = Evaluation(ruleSet(), LONDON, Holidays.NONE)
         val skipped = Baseline.Known.of(none).skipped(work)
 
         none.recheck(colleague, GroupRole.Member, skipped, evening).shouldBeInstanceOf<Recheck.Release>()
@@ -119,8 +124,8 @@ class GroupSummaryTest {
 
     @Test
     fun `a change after a skipped one treats what the skipped rules held as held`() {
-        val none = Evaluation(ruleSet(), LONDON)
-        val elsewhere = Evaluation(ruleSet(), ZoneId.of("Europe/Paris"))
+        val none = Evaluation(ruleSet(), LONDON, Holidays.NONE)
+        val elsewhere = Evaluation(ruleSet(), ZoneId.of("Europe/Paris"), Holidays.NONE)
         val skipped = Baseline.Known.of(none).skipped(work)
 
         elsewhere.recheck(colleague, GroupRole.Member, skipped, evening).shouldBeInstanceOf<Recheck.Release>()

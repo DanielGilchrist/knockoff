@@ -2,6 +2,7 @@ package dev.danielgilchrist.knockoff.domain.settings
 
 import dev.danielgilchrist.knockoff.domain.change.Baseline
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.json.VersionedDecode
 import dev.danielgilchrist.knockoff.domain.json.VersionedJson
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
@@ -33,5 +34,8 @@ data class AppliedRules(
             VersionedJson.json.encodeToString(StoredAppliedRules.from(baseline))
     }
 
-    fun evaluation(chats: SeenChats): Evaluation = Evaluation(chats.expand(rules), zone)
+    fun evaluation(
+        chats: SeenChats,
+        holidays: Holidays,
+    ): Evaluation = Evaluation(chats.expand(rules), zone, holidays)
 }

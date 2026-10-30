@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.ui.preferences
 
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.settings.Settings
 import dev.danielgilchrist.knockoff.domain.settings.Theme
 import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
@@ -22,6 +23,10 @@ class PreferencesEditor(
 
     fun setDefaultZone(zone: ZoneChoice) {
         change { it.copy(rules = it.rules.withDefaultZone(zone)) }
+    }
+
+    fun setHolidays(calendar: HolidayCalendar) {
+        change { it.copy(holidayCalendar = calendar) }
     }
 
     fun setTheme(theme: Theme) {

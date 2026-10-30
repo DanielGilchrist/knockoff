@@ -1,5 +1,7 @@
 package dev.danielgilchrist.knockoff.domain.settings
 
+import dev.danielgilchrist.knockoff.domain.dayoff.DaysOff
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.json.VersionedDecode
 import dev.danielgilchrist.knockoff.domain.json.VersionedJson
 import dev.danielgilchrist.knockoff.domain.rule.Policy
@@ -16,6 +18,7 @@ import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 data class Settings(
     val rules: RuleSet,
     val theme: Theme,
+    val holidayCalendar: HolidayCalendar,
 ) {
     companion object {
         val DEFAULT: Settings
@@ -29,10 +32,12 @@ data class Settings(
                             schedule = Schedule.of(Window.WORKING_HOURS),
                             apps = RuleApps.NONE,
                             zone = RuleZone.Default,
+                            daysOff = DaysOff.NONE,
                         ),
                         ZoneChoice.Device,
                     ),
                     Theme.System,
+                    HolidayCalendar.None,
                 )
 
         fun fromJson(text: String): SettingsDecode =
@@ -48,6 +53,7 @@ data class Settings(
                             StoredSettingsV5.VERSION to StoredSettingsV5.serializer(),
                             StoredSettingsV6.VERSION to StoredSettingsV6.serializer(),
                             StoredSettingsV7.VERSION to StoredSettingsV7.serializer(),
+                            StoredSettingsV8.VERSION to StoredSettingsV8.serializer(),
                             StoredSettings.CURRENT_VERSION to StoredSettings.serializer(),
                         ),
                     )

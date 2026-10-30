@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.domain.settings
 
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.zone.ZoneChoice
 import dev.danielgilchrist.knockoff.domain.zone.ZoneChoiceParse
 import kotlinx.serialization.Serializable
@@ -11,7 +12,7 @@ internal data class StoredAppliedEntry(
 ) {
     companion object {
         fun from(applied: AppliedRules): StoredAppliedEntry =
-            StoredAppliedEntry(Settings(applied.rules, Theme.System).toJson(), applied.zone.id)
+            StoredAppliedEntry(Settings(applied.rules, Theme.System, HolidayCalendar.None).toJson(), applied.zone.id)
     }
 
     fun toAppliedRules(): Parsed<AppliedRules> =

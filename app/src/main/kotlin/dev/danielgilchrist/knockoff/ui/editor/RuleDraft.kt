@@ -1,5 +1,6 @@
 package dev.danielgilchrist.knockoff.ui.editor
 
+import dev.danielgilchrist.knockoff.domain.dayoff.DaysOff
 import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Policy
@@ -21,6 +22,7 @@ data class RuleDraft(
     val breaks: List<BreakDraft>,
     val apps: Map<PackageName, AppDraft>,
     val zone: RuleZone,
+    val daysOff: DaysOff,
 ) {
     companion object {
         val NEW =
@@ -32,6 +34,7 @@ data class RuleDraft(
                 breaks = emptyList(),
                 apps = emptyMap(),
                 zone = RuleZone.Default,
+                daysOff = DaysOff.NONE,
             )
 
         fun from(rule: Rule): RuleDraft =
@@ -43,6 +46,7 @@ data class RuleDraft(
                 breaks = rule.schedule.breaks.map(BreakDraft::from),
                 apps = rule.apps.scopes.mapValues { (_, scope) -> AppDraft.from(scope) },
                 zone = rule.zone,
+                daysOff = rule.daysOff,
             )
     }
 
@@ -50,7 +54,7 @@ data class RuleDraft(
         ruleName()
             .and(schedule()) { ruleName, schedule -> ruleName to schedule }
             .and(ruleApps()) { (ruleName, schedule), ruleApps ->
-                Rule(ruleName, state, policy, schedule, ruleApps, zone)
+                Rule(ruleName, state, policy, schedule, ruleApps, zone, daysOff)
             }
 
     fun withApps(added: Set<PackageName>): RuleDraft =

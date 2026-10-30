@@ -5,6 +5,9 @@ import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.SLACK_ORIGIN
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
 import dev.danielgilchrist.knockoff.domain.change.Baseline
+import dev.danielgilchrist.knockoff.domain.dayoff.DaysOff
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
+import dev.danielgilchrist.knockoff.domain.dayoff.PublicHolidays
 import dev.danielgilchrist.knockoff.domain.days
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.notification.GroupRole
@@ -24,6 +27,7 @@ import java.time.DayOfWeek.MONDAY
 import java.time.DayOfWeek.THURSDAY
 import java.time.DayOfWeek.TUESDAY
 import java.time.DayOfWeek.WEDNESDAY
+import java.time.LocalDate
 import java.time.ZonedDateTime
 
 class RecheckTest {
@@ -43,6 +47,10 @@ class RecheckTest {
         )
     private val disabledWork = ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, slack, RuleState.Disabled))
     private val noRules = ruleSet()
+    private val takesHolidays = DaysOff(emptyList(), PublicHolidays.Off)
+    private val holidayWork =
+        ruleSet(rule("Work", Policy.DeliverOnlyDuring, WORK_HOURS, slack, daysOff = takesHolidays))
+    private val thursday = Holidays(setOf(LocalDate.parse("2026-10-15")))
 
     @Test
     fun `a hold with the same release is unchanged`() {
@@ -117,15 +125,47 @@ class RecheckTest {
         Recheck.Release(leave).describe() shouldBe "release now, ${leave.describe()}"
     }
 
+    @Test
+    fun `a public holiday appearing tomorrow moves the hold to the next working morning`() {
+        holidayWork.recheck(snoozed, before = holidayWork, evening, holidays = thursday) shouldBe
+            Recheck.Resnooze(
+                Decision.Snooze(evening, london("2026-10-16T08:00"), SnoozeEnd.RulesPermit, setOf(ruleName("Work"))),
+            )
+    }
+
+    @Test
+    fun `a public holiday disappearing brings the release back`() {
+        holidayWork.recheck(snoozed, before = holidayWork, evening, holidaysBefore = thursday) shouldBe
+            Recheck.Resnooze(
+                Decision.Snooze(evening, london("2026-10-15T08:00"), SnoozeEnd.RulesPermit, setOf(ruleName("Work"))),
+            )
+    }
+
+    @Test
+    fun `holidays change nothing for a rule that works them`() {
+        work.recheck(snoozed, before = work, evening, holidays = thursday) shouldBe Recheck.Unchanged
+    }
+
+    @Test
+    fun `a public holiday today releases a hold during its hours`() {
+        val holdingWork = ruleSet(rule("Focus", Policy.HoldDuring, WORK_HOURS, slack, daysOff = takesHolidays))
+        val noon = london("2026-10-15T12:00")
+
+        holdingWork.recheck(snoozed, before = holdingWork, noon, holidays = thursday) shouldBe
+            Recheck.Release(Decision.Leave(LeaveReason.Permitted(setOf(ruleName("Focus")))))
+    }
+
     private fun RuleSet.recheck(
         snoozed: PostedNotification,
         before: RuleSet,
         at: ZonedDateTime,
+        holidays: Holidays = Holidays.NONE,
+        holidaysBefore: Holidays = Holidays.NONE,
     ): Recheck =
-        Evaluation(this, at.zone).recheck(
+        Evaluation(this, at.zone, holidays).recheck(
             snoozed,
             GroupRole.Member,
-            Baseline.Known.of(Evaluation(before, at.zone)),
+            Baseline.Known.of(Evaluation(before, at.zone, holidaysBefore)),
             at.toInstant(),
         )
 }

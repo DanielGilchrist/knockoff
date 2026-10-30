@@ -3,6 +3,7 @@ package dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.EVERY_DAY
 import dev.danielgilchrist.knockoff.domain.SLACK
 import dev.danielgilchrist.knockoff.domain.WORK_HOURS
+import dev.danielgilchrist.knockoff.domain.dayoff.Holidays
 import dev.danielgilchrist.knockoff.domain.london
 import dev.danielgilchrist.knockoff.domain.rule
 import dev.danielgilchrist.knockoff.domain.ruleName
@@ -19,17 +20,20 @@ class BoundaryTest {
 
     @Test
     fun `outside a window the next boundary is its start`() {
-        ruleSet(work).nextBoundary(london("2026-10-14T20:00")) shouldBe Boundary.At(london("2026-10-15T08:00"))
+        ruleSet(work).nextBoundary(london("2026-10-14T20:00"), Holidays.NONE) shouldBe
+            Boundary.At(london("2026-10-15T08:00"))
     }
 
     @Test
     fun `inside a window the next boundary is its end`() {
-        ruleSet(work).nextBoundary(london("2026-10-14T10:00")) shouldBe Boundary.At(london("2026-10-14T17:00"))
+        ruleSet(work).nextBoundary(london("2026-10-14T10:00"), Holidays.NONE) shouldBe
+            Boundary.At(london("2026-10-14T17:00"))
     }
 
     @Test
     fun `the earliest boundary of any rule wins`() {
-        ruleSet(work, lunch).nextBoundary(london("2026-10-14T10:00")) shouldBe Boundary.At(london("2026-10-14T12:00"))
+        ruleSet(work, lunch).nextBoundary(london("2026-10-14T10:00"), Holidays.NONE) shouldBe
+            Boundary.At(london("2026-10-14T12:00"))
     }
 
     @Test
@@ -38,13 +42,16 @@ class BoundaryTest {
         val disabled = lunch.copy(state = RuleState.Disabled)
         val untargeted = lunch.copy(name = ruleName("Untargeted"), apps = RuleApps.NONE)
 
-        ruleSet(always, disabled, untargeted).nextBoundary(london("2026-10-14T10:00")) shouldBe Boundary.None
+        ruleSet(always, disabled, untargeted).nextBoundary(london("2026-10-14T10:00"), Holidays.NONE) shouldBe
+            Boundary.None
     }
 
     @Test
     fun `a boundary is never now`() {
-        ruleSet(work).nextBoundary(london("2026-10-14T17:00")) shouldBe Boundary.At(london("2026-10-15T08:00"))
-        ruleSet(work).nextBoundary(london("2026-10-15T08:00")) shouldBe Boundary.At(london("2026-10-15T17:00"))
+        ruleSet(work).nextBoundary(london("2026-10-14T17:00"), Holidays.NONE) shouldBe
+            Boundary.At(london("2026-10-15T08:00"))
+        ruleSet(work).nextBoundary(london("2026-10-15T08:00"), Holidays.NONE) shouldBe
+            Boundary.At(london("2026-10-15T17:00"))
     }
 
     @Test

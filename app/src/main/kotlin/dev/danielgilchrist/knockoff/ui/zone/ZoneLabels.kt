@@ -24,24 +24,16 @@ internal fun ZoneChoice.label(): String =
     }
 
 internal fun RuleZone.label(
-    default: DefaultZone,
+    default: ZoneChoice,
     device: ZoneId,
 ): String =
     when (this) {
-        RuleZone.Default -> default.label(device)
+        RuleZone.Default -> default.defaultLabel(device)
         is RuleZone.Chosen -> choice.label()
     }
 
-internal fun DefaultZone.label(device: ZoneId): String =
+private fun ZoneChoice.defaultLabel(device: ZoneId): String =
     when (this) {
-        DefaultZone.Unknown -> {
-            APP_DEFAULT
-        }
-
-        is DefaultZone.Known -> {
-            when (zone) {
-                ZoneChoice.Device -> "$DEVICE (${device.id})"
-                is ZoneChoice.Fixed -> "$APP_DEFAULT (${zone.label()})"
-            }
-        }
+        ZoneChoice.Device -> "$DEVICE (${device.id})"
+        is ZoneChoice.Fixed -> "$APP_DEFAULT (${label()})"
     }

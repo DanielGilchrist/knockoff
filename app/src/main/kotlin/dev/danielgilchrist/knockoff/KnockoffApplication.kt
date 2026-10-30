@@ -9,6 +9,9 @@ import dev.danielgilchrist.knockoff.chat.ChatDecisionsStore
 import dev.danielgilchrist.knockoff.chat.SeenChatsStore
 import dev.danielgilchrist.knockoff.group.GroupReach
 import dev.danielgilchrist.knockoff.group.KnownGroupsStore
+import dev.danielgilchrist.knockoff.holiday.CalendarAccess
+import dev.danielgilchrist.knockoff.holiday.HolidayWatch
+import dev.danielgilchrist.knockoff.holiday.calendarChanges
 import dev.danielgilchrist.knockoff.settings.AppliedRulesStore
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import dev.danielgilchrist.knockoff.ui.NotificationPermission
@@ -56,6 +59,12 @@ class KnockoffApplication : Application() {
     }
 
     val groupReach: GroupReach = GroupReach()
+
+    internal val calendarAccess: CalendarAccess by lazy { CalendarAccess(this) }
+
+    val holidayWatch: HolidayWatch by lazy {
+        HolidayWatch(calendarAccess, settingsStore, { calendarChanges(this) }, scope)
+    }
 
     val chatAnswers: ChatAnswers by lazy { ChatAnswers(settingsStore, chatDecisionsStore) }
 

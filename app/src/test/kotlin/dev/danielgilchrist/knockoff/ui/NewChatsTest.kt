@@ -5,6 +5,7 @@ import dev.danielgilchrist.knockoff.chat.ChatDecisionsLoad
 import dev.danielgilchrist.knockoff.chat.SeenChatsLoad
 import dev.danielgilchrist.knockoff.domain.chat.ChatDecisions
 import dev.danielgilchrist.knockoff.domain.chat.SeenChats
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayCalendar
 import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.rule.RuleApps
 import dev.danielgilchrist.knockoff.domain.rule.RuleSetParse
@@ -25,6 +26,7 @@ class NewChatsTest {
             Settings(
                 assertInstanceOf(RuleSetParse.Valid::class.java, Settings.DEFAULT.rules.withRules(listOf(work))).rules,
                 Settings.DEFAULT.theme,
+                HolidayCalendar.None,
             ),
             SettingsOrigin.Saved,
         )

@@ -5,6 +5,11 @@ import dev.danielgilchrist.knockoff.domain.channel.ChannelKey
 import dev.danielgilchrist.knockoff.domain.channel.ChannelKind
 import dev.danielgilchrist.knockoff.domain.channel.Importance
 import dev.danielgilchrist.knockoff.domain.channel.ReadChannel
+import dev.danielgilchrist.knockoff.domain.dayoff.DaysOff
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayRegion
+import dev.danielgilchrist.knockoff.domain.dayoff.HolidayRegionParse
+import dev.danielgilchrist.knockoff.domain.dayoff.Leave
+import dev.danielgilchrist.knockoff.domain.dayoff.LeaveParse
 import dev.danielgilchrist.knockoff.domain.group.GroupName
 import dev.danielgilchrist.knockoff.domain.group.GroupNameParse
 import dev.danielgilchrist.knockoff.domain.notification.AccountAddress
@@ -55,6 +60,7 @@ import java.time.DayOfWeek.THURSDAY
 import java.time.DayOfWeek.TUESDAY
 import java.time.DayOfWeek.WEDNESDAY
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -144,7 +150,8 @@ fun rule(
     state: RuleState = RuleState.Enabled,
     zone: RuleZone = RuleZone.Default,
     asking: Set<PackageName> = emptySet(),
-): Rule = Rule(ruleName(name), state, policy, schedule, ruleApps(targets, asking), zone)
+    daysOff: DaysOff = DaysOff.NONE,
+): Rule = Rule(ruleName(name), state, policy, schedule, ruleApps(targets, asking), zone, daysOff)
 
 fun ruleName(raw: String): RuleName =
     when (val parse = RuleName.parse(raw)) {
@@ -246,3 +253,18 @@ fun textPattern(source: String): TextPattern =
 
 fun GroupName.gmailAccount(): Target.Account =
     Target.Account(PackageName.GMAIL, ChannelGroupId("^ncg_1_account_$value"), this)
+
+fun leave(
+    first: String,
+    last: String,
+): Leave =
+    when (val parse = Leave.parse(LocalDate.parse(first), LocalDate.parse(last))) {
+        is LeaveParse.Valid -> parse.leave
+        LeaveParse.EndsBeforeStart -> error("Fixture leave ends before it starts")
+    }
+
+fun region(raw: String): HolidayRegion =
+    when (val parse = HolidayRegion.parse(raw)) {
+        is HolidayRegionParse.Valid -> parse.region
+        HolidayRegionParse.Blank -> error("Fixture region is blank")
+    }

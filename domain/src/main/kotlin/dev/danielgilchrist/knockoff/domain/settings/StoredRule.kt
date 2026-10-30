@@ -1,5 +1,7 @@
 package dev.danielgilchrist.knockoff.domain.settings
 
+import dev.danielgilchrist.knockoff.domain.dayoff.DaysOff
+import dev.danielgilchrist.knockoff.domain.dayoff.PublicHolidays
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.AppScope
 import dev.danielgilchrist.knockoff.domain.rule.Policy
@@ -23,6 +25,8 @@ internal data class StoredRule(
     private val breaks: List<StoredBreak>,
     private val zone: String,
     private val apps: List<StoredApp>,
+    private val daysOff: List<StoredLeave>,
+    private val publicHolidays: String,
 ) {
     companion object {
         fun from(rule: Rule): StoredRule =
@@ -34,6 +38,8 @@ internal data class StoredRule(
                 breaks = rule.schedule.breaks.map(StoredBreak::from),
                 zone = rule.zone.stored(),
                 apps = rule.apps.scopes.map { (packageName, scope) -> StoredApp.from(packageName, scope) },
+                daysOff = rule.daysOff.leave.map(StoredLeave::from),
+                publicHolidays = rule.daysOff.publicHolidays.name,
             )
     }
 
@@ -45,7 +51,19 @@ internal data class StoredRule(
                         schedule().then { schedule ->
                             ruleApps().then { ruleApps ->
                                 ruleZone().then { ruleZone ->
-                                    Parsed.Ok(Rule(ruleName, ruleState, rulePolicy, schedule, ruleApps, ruleZone))
+                                    ruleDaysOff().then { ruleDaysOff ->
+                                        Parsed.Ok(
+                                            Rule(
+                                                ruleName,
+                                                ruleState,
+                                                rulePolicy,
+                                                schedule,
+                                                ruleApps,
+                                                ruleZone,
+                                                ruleDaysOff,
+                                            ),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -95,6 +113,14 @@ internal data class StoredRule(
             when {
                 repeated.isEmpty() -> Parsed.Ok(RuleApps.of(parsed.toMap<PackageName, AppScope>()))
                 else -> Parsed.Failed("duplicate apps ${repeated.map { it.value }}")
+            }
+        }
+
+    private fun ruleDaysOff(): Parsed<DaysOff> =
+        daysOff.parseEach("day off") { it.parse() }.then { leave ->
+            when (val known = PublicHolidays.entries.firstOrNull { it.name == publicHolidays }) {
+                null -> Parsed.Failed("unknown public holidays \"$publicHolidays\"")
+                else -> Parsed.Ok(DaysOff(leave, known))
             }
         }
 }

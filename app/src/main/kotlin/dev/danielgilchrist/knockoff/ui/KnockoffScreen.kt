@@ -13,21 +13,25 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.danielgilchrist.knockoff.domain.group.KnownGroups
 import dev.danielgilchrist.knockoff.domain.rule.Rule
+import dev.danielgilchrist.knockoff.ui.editor.DayOffActions
 import dev.danielgilchrist.knockoff.ui.editor.RenameDialog
 import dev.danielgilchrist.knockoff.ui.editor.RuleOverviewActions
 import dev.danielgilchrist.knockoff.ui.editor.RuleOverviewScreen
 import dev.danielgilchrist.knockoff.ui.editor.RuleSectionActions
 import dev.danielgilchrist.knockoff.ui.editor.RuleSectionScreen
 import dev.danielgilchrist.knockoff.ui.editor.RuleWizardScreen
+import dev.danielgilchrist.knockoff.ui.editor.SectionFacts
 import dev.danielgilchrist.knockoff.ui.editor.WizardActions
 import dev.danielgilchrist.knockoff.ui.home.HomeActions
 import dev.danielgilchrist.knockoff.ui.home.HomeScreen
 import dev.danielgilchrist.knockoff.ui.home.NewChatsScreen
+import dev.danielgilchrist.knockoff.ui.preferences.HolidaysActions
+import dev.danielgilchrist.knockoff.ui.preferences.HolidaysScreen
 import dev.danielgilchrist.knockoff.ui.preferences.LinkActions
 import dev.danielgilchrist.knockoff.ui.preferences.LinkScreen
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesActions
 import dev.danielgilchrist.knockoff.ui.preferences.PreferencesScreen
-import dev.danielgilchrist.knockoff.ui.zone.DefaultZone
+import java.time.ZonedDateTime
 
 @Composable
 fun KnockoffScreen(
@@ -44,6 +48,8 @@ fun KnockoffScreen(
     val newChats by viewModel.newChats.collectAsStateWithLifecycle()
     val saveStatus by editor.saveStatus.collectAsStateWithLifecycle()
     val preferencesStatus by viewModel.preferences.saveStatus.collectAsStateWithLifecycle()
+    val calendars by viewModel.calendars.collectAsStateWithLifecycle()
+    val holidays by viewModel.holidays.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
 
     LifecycleResumeEffect(Unit) {
@@ -55,51 +61,80 @@ fun KnockoffScreen(
 
     LaunchedEffect(shown) { screen = shown.screen }
 
-    val home =
-        homeActions(
-            viewModel,
-            system,
-            onOpenPreferences = { screen = Screen.Preferences },
-            onOpenNewChats = { screen = Screen.NewChats },
+    val navigate: (Screen) -> Unit = { screen = it }
+    val closed: @Composable () -> Unit = {
+        ClosedScreen(
+            shown = shown,
+            state =
+                ClosedState(
+                    setup,
+                    paired,
+                    settings,
+                    saveStatus,
+                    preferencesStatus,
+                    newChats,
+                    choices.apps,
+                    calendars,
+                    holidays,
+                ),
+            home = homeActions(viewModel, system, navigate),
+            onBackToHome = { screen = Screen.Home },
+            link = LinkActions(system, onBack = { screen = Screen.Preferences }),
+            preferences = preferencesActions(viewModel, system, navigate),
+            holidays = holidaysActions(viewModel, system, navigate),
         )
+    }
 
     Surface(modifier = modifier, color = MaterialTheme.colorScheme.background) {
-        when (val current = editing) {
-            Editing.Closed -> {
-                ClosedScreen(
-                    shown = shown,
-                    state = ClosedState(setup, paired, settings, saveStatus, preferencesStatus, newChats, choices.apps),
-                    home = home,
-                    onBackToHome = { screen = Screen.Home },
-                    link = LinkActions(system, onBack = { screen = Screen.Preferences }),
-                    preferences =
-                        PreferencesActions(
-                            system = system,
-                            onDefaultZoneChange = viewModel.preferences::setDefaultZone,
-                            onThemeChange = viewModel.preferences::setTheme,
-                            onOpenLink = { screen = Screen.Link },
-                            onBack = { screen = Screen.Home },
-                        ),
+        when (val ready = settings) {
+            SettingsState.Loading, is SettingsState.Failed -> {
+                closed()
+            }
+
+            is SettingsState.Ready -> {
+                OpenScreen(
+                    editing = editing,
+                    ready = ready,
+                    facts = RuleFacts(choices, saveStatus, holidays),
+                    editor = editor,
+                    closed = closed,
                 )
             }
+        }
+    }
+}
 
-            is Editing.Viewing -> {
-                RuleOverview(current.rule, settings, choices.apps, saveStatus, editor)
-            }
+@Composable
+private fun OpenScreen(
+    editing: Editing,
+    ready: SettingsState.Ready,
+    facts: RuleFacts,
+    editor: SettingsEditor,
+    closed: @Composable () -> Unit,
+) {
+    val choices = facts.choices
 
-            is Editing.Renaming -> {
-                RuleOverview(current.rule, settings, choices.apps, saveStatus, editor) {
-                    RenameDialog(renaming = current, actions = sectionActions(editor, current.rule, choices.groups))
-                }
-            }
+    when (editing) {
+        Editing.Closed -> {
+            closed()
+        }
 
-            is Editing.Section -> {
-                SectionEditor(editing = current, choices = choices, settings = settings, editor = editor)
-            }
+        is Editing.Viewing -> {
+            RuleOverview(editing.rule, ready, facts, editor)
+        }
 
-            is Editing.Guided -> {
-                Wizard(guided = current, choices = choices, editor = editor)
+        is Editing.Renaming -> {
+            RuleOverview(editing.rule, ready, facts, editor) {
+                RenameDialog(renaming = editing, actions = sectionActions(editor, editing.rule, choices.groups))
             }
+        }
+
+        is Editing.Section -> {
+            SectionEditor(editing = editing, ready = ready, facts = facts, editor = editor)
+        }
+
+        is Editing.Guided -> {
+            Wizard(guided = editing, choices = choices, editor = editor)
         }
     }
 }
@@ -107,16 +142,20 @@ fun KnockoffScreen(
 @Composable
 private fun SectionEditor(
     editing: Editing.Section,
-    choices: TargetChoices,
-    settings: SettingsState,
+    ready: SettingsState.Ready,
+    facts: RuleFacts,
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
 ) {
+    val defaultZone = ready.settings.rules.defaultZone
+    val rule = editing.rule
+    val day = RuleDay.of(rule, ZonedDateTime.now(), defaultZone, facts.holidays.holidays)
+
     RuleSectionScreen(
         editing = editing,
-        choices = choices,
-        defaultZone = DefaultZone.of(settings),
-        actions = sectionActions(editor, editing.rule, choices.groups),
+        choices = facts.choices,
+        facts = SectionFacts(defaultZone, day.date, rule.policy, facts.holidays.describeSource()),
+        actions = sectionActions(editor, editing.rule, facts.choices.groups),
         modifier = modifier,
     )
 }
@@ -143,16 +182,44 @@ private fun Wizard(
     )
 }
 
+private fun preferencesActions(
+    viewModel: MainViewModel,
+    system: SystemActions,
+    onScreen: (Screen) -> Unit,
+): PreferencesActions =
+    PreferencesActions(
+        system = system,
+        onDefaultZoneChange = viewModel.preferences::setDefaultZone,
+        onThemeChange = viewModel.preferences::setTheme,
+        onOpenLink = { onScreen(Screen.Link) },
+        onOpenHolidays = {
+            viewModel.refreshCalendars()
+            onScreen(Screen.Holidays)
+        },
+        onBack = { onScreen(Screen.Home) },
+    )
+
+private fun holidaysActions(
+    viewModel: MainViewModel,
+    system: SystemActions,
+    onScreen: (Screen) -> Unit,
+): HolidaysActions =
+    HolidaysActions(
+        onAllowCalendar = system.onAllowCalendar,
+        onOpenAppSettings = system.onOpenAppSettings,
+        onChoose = viewModel.preferences::setHolidays,
+        onBack = { onScreen(Screen.Preferences) },
+    )
+
 private fun homeActions(
     viewModel: MainViewModel,
     system: SystemActions,
-    onOpenPreferences: () -> Unit,
-    onOpenNewChats: () -> Unit,
+    onScreen: (Screen) -> Unit,
 ): HomeActions =
     HomeActions(
         system = system,
-        onOpenPreferences = onOpenPreferences,
-        onOpenNewChats = onOpenNewChats,
+        onOpenPreferences = { onScreen(Screen.Preferences) },
+        onOpenNewChats = { onScreen(Screen.NewChats) },
         onNewRule = { viewModel.editor.show(Editing.Guided.START) },
         onEditRule = { rule -> viewModel.editor.show(Editing.Viewing(rule)) },
         onRuleChange = viewModel.editor::changeRule,
@@ -163,33 +230,31 @@ private fun homeActions(
 @Composable
 private fun RuleOverview(
     shown: Rule,
-    settings: SettingsState,
-    apps: InstalledApps,
-    saveStatus: SaveStatus,
+    ready: SettingsState.Ready,
+    facts: RuleFacts,
     editor: SettingsEditor,
     modifier: Modifier = Modifier,
     overlay: @Composable () -> Unit = {},
 ) {
-    val rule =
-        when (settings) {
-            is SettingsState.Ready -> {
-                settings.settings.rules.rules
-                    .firstOrNull { it.name == shown.name }
-            }
-
-            SettingsState.Loading, is SettingsState.Failed -> {
-                null
-            }
-        } ?: shown
+    val rules = ready.settings.rules
+    val rule = rules.rules.firstOrNull { it.name == shown.name } ?: shown
+    val day = RuleDay.of(rule, ZonedDateTime.now(), rules.defaultZone, facts.holidays.holidays)
 
     RuleOverviewScreen(
         rule = rule,
-        apps = apps,
-        saveStatus = saveStatus,
+        day = day,
+        apps = facts.choices.apps,
+        saveStatus = facts.saveStatus,
         actions =
             RuleOverviewActions(
                 onBack = { editor.show(Editing.Closed) },
                 onStateChange = { state -> editor.changeRule(rule.name, RuleChange.SetState(state)) },
+                dayOff =
+                    DayOffActions(
+                        onTakeTodayOff = { editor.changeRule(rule.name, RuleChange.TakeOff(day.date)) },
+                        onEndDayOff = { editor.changeRule(rule.name, RuleChange.BackOn(day.date)) },
+                        onEditDaysOff = { editor.show(Editing.Section.of(rule, RuleSection.DaysOff)) },
+                    ),
                 onEditSection = { section -> editor.show(Editing.Section.of(rule, section)) },
                 onRename = { editor.show(Editing.Renaming.of(rule)) },
                 onDelete = { editor.deleteRule(rule.name) },
@@ -207,6 +272,7 @@ private fun ClosedScreen(
     onBackToHome: () -> Unit,
     link: LinkActions,
     preferences: PreferencesActions,
+    holidays: HolidaysActions,
     modifier: Modifier = Modifier,
 ) {
     when (shown) {
@@ -217,6 +283,7 @@ private fun ClosedScreen(
                 saveStatus = state.saveStatus,
                 newChats = state.newChats.chats,
                 apps = state.apps,
+                holidays = state.holidays.holidays,
                 actions = home,
                 modifier = modifier,
             )
@@ -225,9 +292,21 @@ private fun ClosedScreen(
         is ShownScreen.Preferences -> {
             PreferencesScreen(
                 settings = shown.settings,
+                holidays = state.holidays,
                 setup = state.setup,
                 saveStatus = state.preferencesStatus,
                 actions = preferences,
+                modifier = modifier,
+            )
+        }
+
+        is ShownScreen.Holidays -> {
+            HolidaysScreen(
+                chosen = shown.settings.holidayCalendar,
+                calendars = state.calendars,
+                holidays = state.holidays,
+                saveStatus = state.preferencesStatus,
+                actions = holidays,
                 modifier = modifier,
             )
         }
