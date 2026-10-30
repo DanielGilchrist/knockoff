@@ -27,4 +27,8 @@ internal fun ChannelUpdate.settle(change: ChannelChange): Settlement =
         ChannelUpdate.Unbound -> {
             Settlement.Unsettled("channel ${change.describe()} skipped, listener unbound")
         }
+
+        is ChannelUpdate.Unavailable -> {
+            Settlement.Unsettled("channel ${change.describe()} skipped, the system didn't send it: $detail")
+        }
     }

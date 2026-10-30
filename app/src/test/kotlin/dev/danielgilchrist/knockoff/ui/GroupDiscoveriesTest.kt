@@ -40,6 +40,16 @@ class GroupDiscoveriesTest {
     }
 
     @Test
+    fun `a read the system couldn't send is always retried`() {
+        val unavailable = GroupDiscoveries.NONE.finished(gmail, GroupDiscovery.Unavailable("binder full"))
+
+        assertEquals(
+            DiscoveryStart.Start,
+            unavailable.retried(gmail, ListenerReach.Unbound, DeviceLink.NotLinked).start,
+        )
+    }
+
+    @Test
     fun `a read that worked, is running or never ran isn't retried`() {
         listOf(
             GroupDiscoveries.NONE,

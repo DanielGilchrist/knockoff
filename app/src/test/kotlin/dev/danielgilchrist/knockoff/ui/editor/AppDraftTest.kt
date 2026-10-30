@@ -175,11 +175,12 @@ class AppDraftTest {
         assertEquals(AccountSighting.NotChecked, unseen.sightingOf(workId, AppDiscovery.NotAsked))
         assertEquals(AccountSighting.NotChecked, unseen.sightingOf(workId, AppDiscovery.Reading))
         assertEquals(
-            listOf(AccountSighting.CouldNotCheck, AccountSighting.CouldNotCheck, AccountSighting.CouldNotCheck),
+            List(4) { AccountSighting.CouldNotCheck },
             listOf(
                 GroupDiscovery.NotLinked("no association"),
                 GroupDiscovery.Unbound,
                 GroupDiscovery.Unrecorded("disk"),
+                GroupDiscovery.Unavailable("binder full"),
             ).map { unseen.sightingOf(workId, AppDiscovery.Finished(it)) },
         )
         assertEquals(AccountSighting.NotOnPhone, unseen.sightingOf(workId, read))

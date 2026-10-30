@@ -57,6 +57,12 @@ class DiscoveryNoteTest {
             DiscoveryNote.Text("Knockoff found Maps' accounts and categories but couldn't save them: disk full"),
             DiscoveryNote.of(nothing, AppDiscovery.Finished(GroupDiscovery.Unrecorded("disk full")), linked),
         )
+        assertEquals(
+            DiscoveryNote.Text(
+                "Knockoff couldn't look for Maps' accounts and categories just now. Open this app again to retry.",
+            ),
+            DiscoveryNote.of(nothing, AppDiscovery.Finished(GroupDiscovery.Unavailable("binder full")), linked),
+        )
     }
 
     @Test

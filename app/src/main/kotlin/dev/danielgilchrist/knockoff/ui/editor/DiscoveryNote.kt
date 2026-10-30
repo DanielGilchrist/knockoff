@@ -73,6 +73,13 @@ sealed interface DiscoveryNote {
                     )
                 }
 
+                is GroupDiscovery.Unavailable -> {
+                    Text(
+                        "Knockoff couldn't look for ${possessive(facts.label)} accounts and categories just now. " +
+                            "Open this app again to retry.",
+                    )
+                }
+
                 is GroupDiscovery.Unrecorded -> {
                     Text(
                         "Knockoff found ${possessive(facts.label)} accounts and categories but couldn't save them: " +

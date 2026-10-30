@@ -13,4 +13,8 @@ internal sealed interface GroupNamesFetch {
     ) : GroupNamesFetch
 
     data object Unbound : GroupNamesFetch
+
+    data class Unavailable(
+        val detail: String,
+    ) : GroupNamesFetch
 }

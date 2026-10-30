@@ -14,6 +14,9 @@ knockoff:
       # without permission; converted to sealed outcomes (SnoozeOutcome, ChannelFetch, ChannelUpdate, AlarmSchedule,
       # CalendarQuery, CalendarWatching).
       - SecurityException
+      # A notification or channel list the system can't finish sending, such as when the binder buffer is full;
+      # converted to NotificationRead.Unavailable, ChannelFetch.Unavailable and GroupNamesFetch.Unavailable.
+      - BadParcelableException
       # Updating a channel the app deleted since it was read; converted to ChannelUpdate.Missing.
       - IllegalArgumentException
       # A time zone change broadcast naming an unknown zone; converted to ZoneExtra.Invalid.

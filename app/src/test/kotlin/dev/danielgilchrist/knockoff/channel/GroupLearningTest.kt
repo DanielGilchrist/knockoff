@@ -56,6 +56,10 @@ class GroupLearningTest {
                 GroupDiscovery.Unbound,
                 GroupLearning({ GroupNamesFetch.Unbound }, store).learn(gmail, channels),
             )
+            assertEquals(
+                GroupDiscovery.Unavailable("binder full"),
+                GroupLearning({ GroupNamesFetch.Unavailable("binder full") }, store).learn(gmail, channels),
+            )
             assertEquals(emptyList<KnownGroup>(), store.current().groupsOf(gmail))
         }
 

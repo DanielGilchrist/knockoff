@@ -6,7 +6,7 @@ import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 internal interface HeldNotifications {
     fun sweep(evaluation: Evaluation)
 
-    fun recheckSnoozed(
+    suspend fun recheckSnoozed(
         before: Baseline.Known<Evaluation>,
         after: Evaluation,
     ): RecheckStart

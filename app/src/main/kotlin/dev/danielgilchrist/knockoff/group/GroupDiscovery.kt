@@ -12,4 +12,8 @@ sealed interface GroupDiscovery {
     data class Unrecorded(
         val detail: String,
     ) : GroupDiscovery
+
+    data class Unavailable(
+        val detail: String,
+    ) : GroupDiscovery
 }

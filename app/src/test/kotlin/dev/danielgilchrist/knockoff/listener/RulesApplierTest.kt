@@ -179,7 +179,7 @@ class RulesApplierTest {
             swept += evaluation
         }
 
-        override fun recheckSnoozed(
+        override suspend fun recheckSnoozed(
             before: Baseline.Known<Evaluation>,
             after: Evaluation,
         ): RecheckStart {

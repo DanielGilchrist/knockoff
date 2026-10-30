@@ -174,6 +174,10 @@ internal class ChannelSilencer(
                 Preparation.Unavailable(rules, "listener unbound")
             }
 
+            is ChannelRead.Unavailable -> {
+                Preparation.Failed("the system didn't send the channels: ${read.detail}")
+            }
+
             is ChannelRead.Read -> {
                 learning.learn(read.channels)
                 onRead(read.channels)

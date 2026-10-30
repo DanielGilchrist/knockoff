@@ -14,4 +14,8 @@ internal sealed interface ChannelUpdate {
     data object Missing : ChannelUpdate
 
     data object Unbound : ChannelUpdate
+
+    data class Unavailable(
+        val detail: String,
+    ) : ChannelUpdate
 }

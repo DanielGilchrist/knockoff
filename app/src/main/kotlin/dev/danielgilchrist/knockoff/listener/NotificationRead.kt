@@ -15,7 +15,7 @@ sealed interface NotificationRead {
         override val detail: String,
     ) : Failure
 
-    data object Missing : Failure {
-        override val detail: String get() = "the system did not return the list"
-    }
+    data class Unavailable(
+        override val detail: String,
+    ) : Failure
 }

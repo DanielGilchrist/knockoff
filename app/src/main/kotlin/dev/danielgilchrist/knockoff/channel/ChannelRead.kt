@@ -13,4 +13,8 @@ internal sealed interface ChannelRead {
     ) : ChannelRead
 
     data object Unbound : ChannelRead
+
+    data class Unavailable(
+        val detail: String,
+    ) : ChannelRead
 }

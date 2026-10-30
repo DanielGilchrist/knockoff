@@ -25,27 +25,27 @@ internal class NotificationSweeper(
     private val holder = NotificationHolder(snoozer, SummaryDismisser(listener), ::activeGroups)
 
     override fun sweep(evaluation: Evaluation) {
-        when (val read = listener.read(NotificationList.Active)) {
-            is NotificationRead.Read -> {
-                Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
-                val active = ActiveGroups.Read(entriesOf(read.notifications))
+        scope.launch {
+            when (val read = recovering { listener.read(NotificationList.Active) }) {
+                is NotificationRead.Read -> {
+                    Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
+                    val active = ActiveGroups.Read(entriesOf(read.notifications))
 
-                read.notifications.zip(active.entries).forEach { (sbn, entry) ->
-                    scope.launch { decide(entry, entry.role { active }, evaluation) }
+                    active.entries.forEach { entry -> launch { decide(entry, entry.role { active }, evaluation) } }
                 }
-            }
 
-            is NotificationRead.Failure -> {
-                Log.e(LOG_TAG, "sweep skipped, active notifications unavailable: ${read.detail}")
+                is NotificationRead.Failure -> {
+                    Log.e(LOG_TAG, "sweep skipped, active notifications unavailable: ${read.detail}")
+                }
             }
         }
     }
 
-    override fun recheckSnoozed(
+    override suspend fun recheckSnoozed(
         before: Baseline.Known<Evaluation>,
         after: Evaluation,
     ): RecheckStart =
-        when (val read = listener.read(NotificationList.Snoozed)) {
+        when (val read = recovering { listener.read(NotificationList.Snoozed) }) {
             is NotificationRead.Read -> {
                 Log.i(LOG_TAG, "rechecking ${read.notifications.size} snoozed notifications")
                 val active = lazy { activeGroups() }
@@ -101,12 +101,12 @@ internal class NotificationSweeper(
         }
     }
 
-    private fun revisitSummariesOf(
+    private suspend fun revisitSummariesOf(
         gone: GroupEntry,
         revisit: SummaryRevisit,
         evaluation: Evaluation,
     ) {
-        when (val read = listener.read(NotificationList.Active)) {
+        when (val read = recovering { listener.read(NotificationList.Active) }) {
             is NotificationRead.Read -> {
                 read.notifications
                     .zip(entriesOf(read.notifications))

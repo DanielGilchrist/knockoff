@@ -129,6 +129,7 @@ data class AccountChoices(
 
                     is GroupDiscovery.NotLinked,
                     GroupDiscovery.Unbound,
+                    is GroupDiscovery.Unavailable,
                     is GroupDiscovery.Unrecorded,
                     -> AccountSighting.CouldNotCheck
                 }

@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.channel
 
 import android.app.NotificationChannel
+import android.os.BadParcelableException
 import android.os.Build
 import android.os.Process
 import android.service.notification.NotificationListenerService
@@ -33,13 +34,17 @@ internal class ChannelAccess(
                             ChannelRead.NotLinked(fetch.detail)
                         }
 
+                        is ChannelFetch.Unavailable -> {
+                            ChannelRead.Unavailable(fetch.detail)
+                        }
+
                         is ChannelFetch.Fetched -> {
                             ChannelRead.Read(read.channels + readingsOf(packageName, fetch.channels))
                         }
                     }
                 }
 
-                is ChannelRead.NotLinked, ChannelRead.Unbound -> {
+                is ChannelRead.NotLinked, ChannelRead.Unbound, is ChannelRead.Unavailable -> {
                     read
                 }
             }
@@ -108,6 +113,10 @@ internal class ChannelAccess(
                 ChannelUpdate.NotLinked(fetch.detail)
             }
 
+            is ChannelFetch.Unavailable -> {
+                ChannelUpdate.Unavailable(fetch.detail)
+            }
+
             is ChannelFetch.Fetched -> {
                 when (val channel = fetch.channels.firstOrNull { it.id == key.channelId.value }) {
                     null -> ChannelUpdate.Missing
@@ -154,5 +163,7 @@ internal class ChannelAccess(
             }
         } catch (exception: SecurityException) {
             ChannelFetch.NotLinked(exception.toString())
+        } catch (exception: BadParcelableException) {
+            ChannelFetch.Unavailable(exception.toString())
         }
 }

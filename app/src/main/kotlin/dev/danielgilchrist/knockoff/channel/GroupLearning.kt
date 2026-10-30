@@ -41,6 +41,10 @@ internal class GroupLearning(
             GroupNamesFetch.Unbound -> {
                 GroupDiscovery.Unbound
             }
+
+            is GroupNamesFetch.Unavailable -> {
+                GroupDiscovery.Unavailable(fetch.detail)
+            }
         }
 
     private fun groupsOf(channels: Map<ChannelKey, ReadChannel>): Map<ChannelId, ChannelGroupId> =
@@ -65,6 +69,13 @@ internal class GroupLearning(
 
             GroupDiscovery.Unbound -> {
                 Log.w(LOG_TAG, "${packageName.value} group names unread, listener unbound")
+            }
+
+            is GroupDiscovery.Unavailable -> {
+                Log.w(
+                    LOG_TAG,
+                    "${packageName.value} group names unread, the system didn't send them: ${discovery.detail}",
+                )
             }
 
             is GroupDiscovery.Unrecorded -> {

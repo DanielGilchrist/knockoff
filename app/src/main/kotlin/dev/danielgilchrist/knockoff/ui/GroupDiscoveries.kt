@@ -45,6 +45,7 @@ data class GroupDiscoveries private constructor(
             when (last) {
                 GroupDiscovery.Unbound -> reach is ListenerReach.Bound
                 is GroupDiscovery.NotLinked -> link is DeviceLink.Linked
+                is GroupDiscovery.Unavailable -> true
                 GroupDiscovery.Read, is GroupDiscovery.Unrecorded -> false
             }
 

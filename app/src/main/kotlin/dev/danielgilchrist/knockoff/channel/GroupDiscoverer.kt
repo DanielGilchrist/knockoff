@@ -16,6 +16,7 @@ internal class GroupDiscoverer(
                 is ChannelRead.Read -> learning.learn(packageName, read.channels)
                 is ChannelRead.NotLinked -> GroupDiscovery.NotLinked(read.detail)
                 ChannelRead.Unbound -> GroupDiscovery.Unbound
+                is ChannelRead.Unavailable -> GroupDiscovery.Unavailable(read.detail)
             }
         }
 }

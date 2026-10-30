@@ -12,4 +12,8 @@ internal sealed interface ChannelFetch {
     ) : ChannelFetch
 
     data object Unbound : ChannelFetch
+
+    data class Unavailable(
+        val detail: String,
+    ) : ChannelFetch
 }

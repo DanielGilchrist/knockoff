@@ -1,6 +1,7 @@
 package dev.danielgilchrist.knockoff.channel
 
 import android.app.NotificationChannelGroup
+import android.os.BadParcelableException
 import android.os.Process
 import android.service.notification.NotificationListenerService
 import dev.danielgilchrist.knockoff.domain.group.GroupName
@@ -19,6 +20,8 @@ internal class GroupNames(
             }
         } catch (exception: SecurityException) {
             GroupNamesFetch.NotLinked(exception.toString())
+        } catch (exception: BadParcelableException) {
+            GroupNamesFetch.Unavailable(exception.toString())
         }
 
     private fun namesOf(groups: List<NotificationChannelGroup>): Map<ChannelGroupId, GroupName> =
