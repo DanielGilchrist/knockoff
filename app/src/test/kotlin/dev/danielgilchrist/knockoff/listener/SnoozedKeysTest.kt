@@ -46,7 +46,7 @@ class SnoozedKeysTest {
         }
 
     @Test
-    fun `a failed read is unknown and not kept`() =
+    fun `a failed read is shared with lookups waiting on it, and later lookups read again`() =
         runTest {
             var reads = 0
             val snoozed =
@@ -56,7 +56,10 @@ class SnoozedKeysTest {
                 }
             val since = TimeSource.Monotonic.markNow()
 
-            assertEquals(SnoozedLookup.Unknown("binder full"), snoozed.lookup(held, since))
-            assertEquals(SnoozedLookup.Snoozed, snoozed.lookup(held, since))
+            val waiting = (1..10).map { async { snoozed.lookup(held, since) } }.awaitAll()
+
+            assertEquals(List(10) { SnoozedLookup.Unknown("binder full") }, waiting)
+            assertEquals(SnoozedLookup.Snoozed, snoozed.lookup(held, TimeSource.Monotonic.markNow()))
+            assertEquals(2, reads)
         }
 }

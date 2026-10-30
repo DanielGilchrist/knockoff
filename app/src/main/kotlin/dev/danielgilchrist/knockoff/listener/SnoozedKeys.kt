@@ -24,18 +24,14 @@ internal class SnoozedKeys(
 
     private fun readAndLookup(key: NotificationKey): SnoozedLookup {
         val at = TimeSource.Monotonic.markNow()
-
-        return when (val snoozed = read()) {
-            is SnoozedRead.Keys -> {
-                val snapshot = SnoozedSnapshot.Taken(at, snoozed.keys)
-
-                latest = snapshot
-                snapshot.lookup(key)
+        val snapshot =
+            when (val snoozed = read()) {
+                is SnoozedRead.Keys -> SnoozedSnapshot.Read(at, snoozed.keys)
+                is SnoozedRead.Failed -> SnoozedSnapshot.Unreadable(at, snoozed.detail)
             }
 
-            is SnoozedRead.Failed -> {
-                SnoozedLookup.Unknown(snoozed.detail)
-            }
-        }
+        latest = snapshot
+
+        return snapshot.lookup(key)
     }
 }

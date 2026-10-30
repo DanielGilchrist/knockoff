@@ -6,14 +6,27 @@ import kotlin.time.TimeSource
 internal sealed interface SnoozedSnapshot {
     data object None : SnoozedSnapshot
 
-    data class Taken(
-        val at: TimeSource.Monotonic.ValueTimeMark,
+    sealed interface Taken : SnoozedSnapshot {
+        val at: TimeSource.Monotonic.ValueTimeMark
+
+        fun lookup(key: NotificationKey): SnoozedLookup
+    }
+
+    data class Read(
+        override val at: TimeSource.Monotonic.ValueTimeMark,
         val keys: Set<NotificationKey>,
-    ) : SnoozedSnapshot {
-        fun lookup(key: NotificationKey): SnoozedLookup =
+    ) : Taken {
+        override fun lookup(key: NotificationKey): SnoozedLookup =
             when (key) {
                 in keys -> SnoozedLookup.Snoozed
                 else -> SnoozedLookup.NotSnoozed
             }
+    }
+
+    data class Unreadable(
+        override val at: TimeSource.Monotonic.ValueTimeMark,
+        val detail: String,
+    ) : Taken {
+        override fun lookup(key: NotificationKey): SnoozedLookup = SnoozedLookup.Unknown(detail)
     }
 }
