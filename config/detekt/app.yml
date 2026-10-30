@@ -5,6 +5,31 @@ knockoff:
     active: true
   NoTypeFiltering:
     active: true
+  SystemCallOutsideBoundary:
+    active: true
+    # Names that only reach Android system services. Generic names such as cancel, query, associate,
+    # registerReceiver and startActivity can't be told apart from other calls without types, so review covers those.
+    systemCalls:
+      - activeNotifications
+      - snoozedNotifications
+      - currentRanking
+      - snoozeNotification
+      - cancelNotification
+      - getNotificationChannels
+      - getNotificationChannelGroups
+      - updateNotificationChannel
+      - createConversationNotificationChannelForPackage
+      - setExactAndAllowWhileIdle
+      - setAndAllowWhileIdle
+      - queryIntentActivities
+      - getApplicationIcon
+      - myAssociations
+      - bondedDevices
+      - isNotificationListenerAccessGranted
+      - notify
+      - createNotificationChannel
+      - registerContentObserver
+      - unregisterContentObserver
   UnusedImport:
     active: true
   UnapprovedCatch:

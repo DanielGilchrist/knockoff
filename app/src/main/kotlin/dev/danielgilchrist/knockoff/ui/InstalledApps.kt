@@ -15,6 +15,8 @@ import kotlin.time.Duration.Companion.seconds
 sealed interface InstalledApps {
     companion object {
         private val RETRIES = listOf(2.seconds, 10.seconds, 1.minutes)
+        private val LAUNCHABLE: Intent get() = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+        private val MAIL: Intent get() = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
 
         suspend fun load(packageManager: PackageManager): InstalledApps =
             RETRIES.fold(loadOnce(packageManager)) { last, wait ->
@@ -32,36 +34,42 @@ sealed interface InstalledApps {
 
         private suspend fun loadOnce(packageManager: PackageManager): InstalledApps =
             withContext(Dispatchers.IO) {
-                when (val call = systemCall { listed(packageManager) }) {
-                    is SystemCall.Done -> Loaded(call.value)
-                    is SystemCall.Failed -> Unavailable(call.detail)
+                when (
+                    val mail =
+                        systemCall {
+                            packageManager
+                                .queryIntentActivities(MAIL, PackageManager.ResolveInfoFlags.of(0))
+                                .map { it.activityInfo.packageName }
+                                .toSet()
+                        }
+                ) {
+                    is SystemCall.Done -> launchable(packageManager, mail.value)
+                    is SystemCall.Failed -> Unavailable(mail.detail)
                 }
             }
 
-        private fun listed(packageManager: PackageManager): List<InstalledApp> {
-            val launchable = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-            val mail =
-                packageManager
-                    .queryIntentActivities(
-                        Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")),
-                        PackageManager.ResolveInfoFlags.of(0),
-                    ).map { it.activityInfo.packageName }
-                    .toSet()
-
-            return packageManager
-                .queryIntentActivities(launchable, PackageManager.ResolveInfoFlags.of(0))
-                .map {
-                    InstalledApp(
-                        PackageName(it.activityInfo.packageName),
-                        it.loadLabel(packageManager).toString(),
-                        when (it.activityInfo.packageName) {
-                            in mail -> AppPurpose.Mail
-                            else -> AppPurpose.Other
-                        },
-                    )
-                }.distinctBy { it.packageName }
-                .sortedBy { it.label.lowercase() }
-        }
+        private fun launchable(
+            packageManager: PackageManager,
+            mail: Set<String>,
+        ): InstalledApps =
+            when (
+                val call =
+                    systemCall {
+                        packageManager.queryIntentActivities(LAUNCHABLE, PackageManager.ResolveInfoFlags.of(0)).map {
+                            InstalledApp(
+                                PackageName(it.activityInfo.packageName),
+                                it.loadLabel(packageManager).toString(),
+                                when (it.activityInfo.packageName) {
+                                    in mail -> AppPurpose.Mail
+                                    else -> AppPurpose.Other
+                                },
+                            )
+                        }
+                    }
+            ) {
+                is SystemCall.Done -> Loaded(call.value.distinctBy { it.packageName }.sortedBy { it.label.lowercase() })
+                is SystemCall.Failed -> Unavailable(call.detail)
+            }
     }
 
     data object Loading : InstalledApps

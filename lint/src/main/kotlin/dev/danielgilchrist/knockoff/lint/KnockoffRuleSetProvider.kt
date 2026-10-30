@@ -14,6 +14,7 @@ class KnockoffRuleSetProvider : RuleSetProvider {
             mapOf(
                 RuleName("NoImportAlias") to ::NoImportAlias,
                 RuleName("NoTypeFiltering") to ::NoTypeFiltering,
+                RuleName("SystemCallOutsideBoundary") to ::SystemCallOutsideBoundary,
                 RuleName("UnapprovedCatch") to ::UnapprovedCatch,
                 RuleName("UnapprovedThrow") to ::UnapprovedThrow,
                 RuleName("UntypedResult") to ::UntypedResult,

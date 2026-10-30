@@ -161,7 +161,10 @@ class MainActivity : ComponentActivity() {
             .build()
 
     private fun link(request: AssociationRequest) {
-        when (val call = systemCall { associate(request) }) {
+        val manager = getSystemService(CompanionDeviceManager::class.java)
+        val callback = linkingCallback()
+
+        when (val call = systemCall { manager.associate(request, mainExecutor, callback) }) {
             is SystemCall.Done -> {}
 
             is SystemCall.Failed -> {
@@ -170,33 +173,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun associate(request: AssociationRequest) {
-        getSystemService(CompanionDeviceManager::class.java).associate(
-            request,
-            mainExecutor,
-            object : CompanionDeviceManager.Callback() {
-                override fun onAssociationPending(intentSender: IntentSender) {
-                    when {
-                        lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED) -> {
-                            linking.launch(IntentSenderRequest.Builder(intentSender).build())
-                        }
+    private fun linkingCallback(): CompanionDeviceManager.Callback =
+        object : CompanionDeviceManager.Callback() {
+            override fun onAssociationPending(intentSender: IntentSender) {
+                when {
+                    lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED) -> {
+                        linking.launch(IntentSenderRequest.Builder(intentSender).build())
+                    }
 
-                        else -> {
-                            Log.w(LOG_TAG, "device link chooser dropped, the screen closed first")
-                        }
+                    else -> {
+                        Log.w(LOG_TAG, "device link chooser dropped, the screen closed first")
                     }
                 }
+            }
 
-                override fun onAssociationCreated(associationInfo: AssociationInfo) {
-                    viewModel.refreshSetup()
-                }
+            override fun onAssociationCreated(associationInfo: AssociationInfo) {
+                viewModel.refreshSetup()
+            }
 
-                override fun onFailure(error: CharSequence?) {
-                    Log.w(LOG_TAG, "device link failed: $error")
-                }
-            },
-        )
-    }
+            override fun onFailure(error: CharSequence?) {
+                Log.w(LOG_TAG, "device link failed: $error")
+            }
+        }
 
     private fun barStyle(dark: Boolean): SystemBarStyle =
         when {
