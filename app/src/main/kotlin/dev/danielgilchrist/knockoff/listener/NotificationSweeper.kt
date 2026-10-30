@@ -23,6 +23,7 @@ internal class NotificationSweeper(
 ) : HeldNotifications {
     private val snoozer = Snoozer(listener)
     private val holder = NotificationHolder(snoozer, SummaryDismisser(listener), ::activeGroups)
+    private val revisits = SummaryRevisits(scope, revisit = ::revisitBatch)
 
     override fun sweep(evaluation: Evaluation) {
         scope.launch {
@@ -88,36 +89,30 @@ internal class NotificationSweeper(
                     GroupPosition.Summary, GroupPosition.AutogroupSummary -> {}
 
                     GroupPosition.Member -> {
-                        scope.launch {
-                            revisitSummariesOf(
-                                GroupEntry.of(removed, OriginGroup.Unknown),
-                                revisit,
-                                evaluation,
-                            )
-                        }
+                        revisits.add(PendingRevisit(GroupEntry.of(removed, OriginGroup.Unknown), revisit, evaluation))
                     }
                 }
             }
         }
     }
 
-    private suspend fun revisitSummariesOf(
-        gone: GroupEntry,
-        revisit: SummaryRevisit,
-        evaluation: Evaluation,
-    ) {
+    private suspend fun revisitBatch(batch: List<PendingRevisit>) {
         when (val read = recovering { listener.read(NotificationList.Active) }) {
             is NotificationRead.Read -> {
-                read.notifications
-                    .zip(entriesOf(read.notifications))
-                    .filter { (_, entry) -> revisit.covers(entry.position) && entry.sharesGroupWith(gone) }
-                    .forEach { (sbn, entry) ->
-                        scope.launch { decide(entry, entry.role(::activeGroups), evaluation) }
-                    }
+                val active = ActiveGroups.Read(entriesOf(read.notifications))
+                val evaluation = batch.last().evaluation
+
+                active.entries
+                    .filter { entry ->
+                        batch.any { it.revisit.covers(entry.position) && entry.sharesGroupWith(it.gone) }
+                    }.forEach { entry -> scope.launch { decide(entry, entry.role { active }, evaluation) } }
             }
 
             is NotificationRead.Failure -> {
-                Log.w(LOG_TAG, "summaries not revisited, active notifications unavailable: ${read.detail}")
+                Log.w(
+                    LOG_TAG,
+                    "${batch.size} summary revisits skipped, active notifications unavailable: ${read.detail}",
+                )
             }
         }
     }
