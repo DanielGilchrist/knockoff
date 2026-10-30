@@ -7,6 +7,7 @@ import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
 import kotlinx.coroutines.delay
 import java.time.Duration
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.TimeSource
 
 internal class Snoozer(
     private val listener: NotificationListenerService,
@@ -15,6 +16,8 @@ internal class Snoozer(
         private val CONFIRMATION_DELAY = 1.seconds
         private const val RELEASE_AFTER_MILLIS = 1L
     }
+
+    private val snoozed = SnoozedKeys(::readSnoozed)
 
     suspend fun snooze(
         key: NotificationKey,
@@ -52,7 +55,7 @@ internal class Snoozer(
         try {
             listener.snoozeNotification(key.value, duration.toMillis())
             delay(CONFIRMATION_DELAY)
-            when (val lookup = lookup(key)) {
+            when (val lookup = snoozed.lookup(key, TimeSource.Monotonic.markNow())) {
                 SnoozedLookup.Snoozed -> {
                     SnoozeOutcome.Confirmed
                 }
@@ -86,7 +89,7 @@ internal class Snoozer(
         try {
             listener.snoozeNotification(key.value, RELEASE_AFTER_MILLIS)
             delay(CONFIRMATION_DELAY)
-            when (val lookup = lookup(key)) {
+            when (val lookup = snoozed.lookup(key, TimeSource.Monotonic.markNow())) {
                 SnoozedLookup.NotSnoozed -> {
                     ReleaseOutcome.Released
                 }
@@ -105,17 +108,9 @@ internal class Snoozer(
             ReleaseOutcome.Rejected(exception.toString())
         }
 
-    private fun lookup(key: NotificationKey): SnoozedLookup =
+    private fun readSnoozed(): SnoozedRead =
         when (val read = listener.read(NotificationList.Snoozed)) {
-            is NotificationRead.Read -> {
-                when {
-                    read.notifications.any { it.key == key.value } -> SnoozedLookup.Snoozed
-                    else -> SnoozedLookup.NotSnoozed
-                }
-            }
-
-            is NotificationRead.Failure -> {
-                SnoozedLookup.Unknown(read.detail)
-            }
+            is NotificationRead.Read -> SnoozedRead.Keys(read.notifications.map { NotificationKey(it.key) }.toSet())
+            is NotificationRead.Failure -> SnoozedRead.Failed(read.detail)
         }
 }
