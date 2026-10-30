@@ -41,7 +41,7 @@ class KnockoffListener : NotificationListenerService() {
     private var connection: Connection = Connection.Idle
 
     private val applier by lazy {
-        RulesApplier(sweeper, silencer::request, knockoff.appliedRulesStore) { Log.i(LOG_TAG, it) }
+        RulesApplier(sweeper, silencer::request, knockoff.appliedRulesStore, scope) { Log.i(LOG_TAG, it) }
     }
 
     private val applied: Applied

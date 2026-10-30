@@ -13,6 +13,9 @@ import dev.danielgilchrist.knockoff.domain.rule.Decision
 import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.domain.rule.Recheck
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.Instant
 
@@ -22,24 +25,16 @@ internal class NotificationSweeper(
     private val knownGroups: suspend () -> KnownGroups,
 ) : HeldNotifications {
     private val snoozer = Snoozer(listener)
-    private val holder = NotificationHolder(snoozer, SummaryDismisser(listener), ::activeGroups)
+    private val entries = ActiveEntries(listener)
+    private val holder = NotificationHolder(snoozer, SummaryDismisser(listener), entries::groups)
     private val revisits = SummaryRevisits(scope, revisit = ::revisitBatch)
+    private val sweeps =
+        MutableSharedFlow<Evaluation>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST).also {
+            scope.launch { it.collectLatest(::sweepNow) }
+        }
 
     override fun sweep(evaluation: Evaluation) {
-        scope.launch {
-            when (val read = recovering { listener.read(NotificationList.Active) }) {
-                is NotificationRead.Read -> {
-                    Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
-                    val active = ActiveGroups.Read(entriesOf(read.notifications))
-
-                    active.entries.forEach { entry -> launch { decide(entry, entry.role { active }, evaluation) } }
-                }
-
-                is NotificationRead.Failure -> {
-                    Log.e(LOG_TAG, "sweep skipped, active notifications unavailable: ${read.detail}")
-                }
-            }
-        }
+        sweeps.tryEmit(evaluation)
     }
 
     override suspend fun recheckSnoozed(
@@ -49,7 +44,7 @@ internal class NotificationSweeper(
         when (val read = recovering { listener.read(NotificationList.Snoozed) }) {
             is NotificationRead.Read -> {
                 Log.i(LOG_TAG, "rechecking ${read.notifications.size} snoozed notifications")
-                val active = lazy { activeGroups() }
+                val active = lazy { entries.groups() }
 
                 RecheckStart.Started(
                     scope.launch {
@@ -73,7 +68,7 @@ internal class NotificationSweeper(
     ) {
         val entry = GroupEntry.of(sbn, posted)
 
-        decide(entry, entry.role(::activeGroups), evaluation)
+        decide(entry, entry.role(entries::groups), evaluation)
     }
 
     fun revisitSummaries(
@@ -96,10 +91,25 @@ internal class NotificationSweeper(
         }
     }
 
+    private suspend fun sweepNow(evaluation: Evaluation) {
+        when (val read = persisting { listener.read(NotificationList.Active) }) {
+            is NotificationRead.Read -> {
+                Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
+                val active = ActiveGroups.Read(entries.of(read.notifications))
+
+                active.entries.forEach { entry -> scope.launch { decide(entry, entry.role { active }, evaluation) } }
+            }
+
+            is NotificationRead.Failure -> {
+                Log.e(LOG_TAG, "sweep skipped, active notifications unavailable: ${read.detail}")
+            }
+        }
+    }
+
     private suspend fun revisitBatch(batch: List<PendingRevisit>) {
         when (val read = recovering { listener.read(NotificationList.Active) }) {
             is NotificationRead.Read -> {
-                val active = ActiveGroups.Read(entriesOf(read.notifications))
+                val active = ActiveGroups.Read(entries.of(read.notifications))
                 val evaluation = batch.last().evaluation
 
                 active.entries
@@ -196,22 +206,5 @@ internal class NotificationSweeper(
                 snoozer.release(snoozed.key)
             }
         }
-    }
-
-    private fun activeGroups(): ActiveGroups =
-        when (val read = listener.read(NotificationList.Active)) {
-            is NotificationRead.Read -> {
-                ActiveGroups.Read(entriesOf(read.notifications))
-            }
-
-            is NotificationRead.Failure -> {
-                ActiveGroups.Unavailable(read.detail)
-            }
-        }
-
-    private fun entriesOf(notifications: List<StatusBarNotification>): List<GroupEntry> {
-        val groupOf = listener.groupsNow()
-
-        return notifications.map { GroupEntry.of(it, groupOf(it)) }
     }
 }

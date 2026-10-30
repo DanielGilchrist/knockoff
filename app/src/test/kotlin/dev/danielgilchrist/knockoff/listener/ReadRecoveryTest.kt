@@ -53,4 +53,27 @@ class ReadRecoveryTest {
             }
             assertEquals(0L, currentTime)
         }
+
+    @Test
+    fun `a read still unavailable after its quick retries is tried again later`() =
+        runTest {
+            var reads = 0
+
+            assertEquals(
+                read,
+                persisting {
+                    reads++
+                    if (reads < 6) unavailable else read
+                },
+            )
+            assertEquals(6, reads)
+            assertEquals(7_000L + 30_000L + 1_000L, currentTime)
+        }
+
+    @Test
+    fun `a read that never works gives up after the last later retry`() =
+        runTest {
+            assertEquals(unavailable, persisting { unavailable })
+            assertEquals(4 * 7_000L + 30_000L + 120_000L + 600_000L, currentTime)
+        }
 }

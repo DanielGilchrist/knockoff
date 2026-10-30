@@ -9,20 +9,40 @@ import dev.danielgilchrist.knockoff.domain.rule.Evaluation
 import dev.danielgilchrist.knockoff.settings.AppliedRulesKeeper
 import dev.danielgilchrist.knockoff.settings.AppliedRulesLoad
 import dev.danielgilchrist.knockoff.settings.AppliedRulesSave
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
 internal class RulesApplier(
     private val held: HeldNotifications,
     private val requestSilencing: () -> Unit,
     private val keeper: AppliedRulesKeeper,
+    private val scope: CoroutineScope,
     private val report: (String) -> Unit,
 ) {
+    companion object {
+        private val RECHECK_RETRIES = listOf(30.seconds, 2.minutes, 10.minutes)
+    }
+
     @Volatile
     var applied: Applied = Applied.Pending
         private set
 
     private var state: BaselineState = BaselineState.NotLoaded
+    private val applyLock = Mutex()
 
     suspend fun apply(applying: Applying) {
+        applyLock.withLock { applyNow(applying, attempt = 0) }
+    }
+
+    private suspend fun applyNow(
+        applying: Applying,
+        attempt: Int,
+    ) {
         applied = Applied.Active(applying.evaluation)
         val baseline = baselineFor(applying.chats, applying.holidays)
 
@@ -50,8 +70,29 @@ internal class RulesApplier(
 
                     is RecheckStart.Skipped -> {
                         keep(step.from.skipped(applying))
+                        recheckLater(applying, attempt)
                     }
                 }
+            }
+        }
+    }
+
+    private fun recheckLater(
+        applying: Applying,
+        attempt: Int,
+    ) {
+        when {
+            attempt < RECHECK_RETRIES.size -> {
+                scope.launch {
+                    delay(RECHECK_RETRIES[attempt])
+                    applyLock.withLock {
+                        if (applied == Applied.Active(applying.evaluation)) applyNow(applying, attempt + 1)
+                    }
+                }
+            }
+
+            else -> {
+                report("recheck still skipped after ${RECHECK_RETRIES.size} retries, waiting for the next change")
             }
         }
     }

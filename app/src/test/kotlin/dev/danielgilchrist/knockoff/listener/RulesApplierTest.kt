@@ -13,13 +13,19 @@ import dev.danielgilchrist.knockoff.settings.AppliedRulesLoad
 import dev.danielgilchrist.knockoff.settings.AppliedRulesSave
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import java.time.ZoneId
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class RulesApplierTest {
     private val zone = ZoneId.of("Europe/London")
     private val s = AppliedRules(Settings.DEFAULT.rules, zone)
@@ -31,7 +37,7 @@ class RulesApplierTest {
         runTest {
             val held = FakeHeld()
             val keeper = FakeKeeper(AppliedRulesLoad.Missing)
-            val applier = RulesApplier(held, {}, keeper) {}
+            val applier = RulesApplier(held, {}, keeper, backgroundScope) {}
 
             applier.apply(applying(s))
 
@@ -47,7 +53,7 @@ class RulesApplierTest {
             val held = FakeHeld()
             val keeper = FakeKeeper(AppliedRulesLoad.Loaded(Baseline.Known.of(s)))
 
-            RulesApplier(held, {}, keeper) {}.apply(applying(s))
+            RulesApplier(held, {}, keeper, backgroundScope) {}.apply(applying(s))
 
             assertEquals(emptyList<Pair<Baseline.Known<Evaluation>, Evaluation>>(), held.rechecked)
             assertEquals(emptyList<Baseline.Known<AppliedRules>>(), keeper.saved)
@@ -59,7 +65,7 @@ class RulesApplierTest {
             val job = Job()
             val held = FakeHeld(RecheckStart.Started(job))
             val keeper = FakeKeeper(AppliedRulesLoad.Loaded(Baseline.Known.of(s)))
-            val applier = RulesApplier(held, {}, keeper) {}
+            val applier = RulesApplier(held, {}, keeper, backgroundScope) {}
 
             val applying = launch(start = CoroutineStart.UNDISPATCHED) { applier.apply(applying(a)) }
 
@@ -77,7 +83,7 @@ class RulesApplierTest {
         runTest {
             val held = FakeHeld(RecheckStart.Skipped("unavailable"), RecheckStart.Started(completed()))
             val keeper = FakeKeeper(AppliedRulesLoad.Loaded(Baseline.Known.of(s)))
-            val applier = RulesApplier(held, {}, keeper) {}
+            val applier = RulesApplier(held, {}, keeper, backgroundScope) {}
 
             applier.apply(applying(a))
             assertEquals(listOf(Baseline.Known(s, listOf(a))), keeper.saved)
@@ -95,6 +101,42 @@ class RulesApplierTest {
         }
 
     @Test
+    fun `a skipped recheck is retried later while the same rules apply`() =
+        runTest {
+            val held =
+                FakeHeld(
+                    RecheckStart.Skipped("unavailable"),
+                    RecheckStart.Skipped("unavailable"),
+                    RecheckStart.Started(completed()),
+                )
+            val keeper = FakeKeeper(AppliedRulesLoad.Loaded(Baseline.Known.of(s)))
+            val applier = RulesApplier(held, {}, keeper, backgroundScope) {}
+
+            applier.apply(applying(a))
+            advanceTimeBy(30.seconds + 1.milliseconds)
+            assertEquals(2, held.rechecked.size)
+            advanceTimeBy(2.minutes)
+            assertEquals(3, held.rechecked.size)
+
+            assertEquals(List(2) { Baseline.Known(ev(s), listOf(ev(a))) to ev(a) }, held.rechecked.drop(1))
+            assertEquals(Baseline.Known.of(a), keeper.saved.last())
+        }
+
+    @Test
+    fun `a skipped recheck isn't retried once newer rules apply`() =
+        runTest {
+            val held = FakeHeld(RecheckStart.Skipped("unavailable"), RecheckStart.Started(completed()))
+            val keeper = FakeKeeper(AppliedRulesLoad.Loaded(Baseline.Known.of(s)))
+            val applier = RulesApplier(held, {}, keeper, backgroundScope) {}
+
+            applier.apply(applying(a))
+            applier.apply(applying(b))
+            advanceTimeBy(15.minutes)
+
+            assertEquals(2, held.rechecked.size)
+        }
+
+    @Test
     fun `the last applied rules are read once, on the first rules`() =
         runTest {
             val keeper = FakeKeeper(AppliedRulesLoad.Loaded(Baseline.Known.of(s)))
@@ -103,6 +145,7 @@ class RulesApplierTest {
                     FakeHeld(RecheckStart.Started(completed()), RecheckStart.Started(completed())),
                     {},
                     keeper,
+                    backgroundScope,
                 ) {}
 
             applier.apply(applying(a))
@@ -117,7 +160,12 @@ class RulesApplierTest {
             val reports = mutableListOf<String>()
             var silencing = 0
             val applier =
-                RulesApplier(FakeHeld(), { silencing += 1 }, FakeKeeper(AppliedRulesLoad.Failed("broken"))) {
+                RulesApplier(
+                    FakeHeld(),
+                    { silencing += 1 },
+                    FakeKeeper(AppliedRulesLoad.Failed("broken")),
+                    backgroundScope,
+                ) {
                     reports += it
                 }
 
@@ -132,7 +180,7 @@ class RulesApplierTest {
         runTest {
             val held = FakeHeld(RecheckStart.Skipped("unavailable"), RecheckStart.Started(completed()))
             val keeper = FakeKeeper(AppliedRulesLoad.Loaded(Baseline.Known.of(s)))
-            val applier = RulesApplier(held, {}, keeper) {}
+            val applier = RulesApplier(held, {}, keeper, backgroundScope) {}
 
             applier.apply(applying(a))
             applier.apply(applying(s))
@@ -147,7 +195,7 @@ class RulesApplierTest {
             val held = FakeHeld(RecheckStart.Started(completed()))
             val keeper = FakeKeeper(AppliedRulesLoad.Loaded(Baseline.Known(s, listOf(a))))
 
-            RulesApplier(held, {}, keeper) {}.apply(applying(s))
+            RulesApplier(held, {}, keeper, backgroundScope) {}.apply(applying(s))
 
             assertEquals(listOf(Baseline.Known(ev(s), listOf(ev(a))) to ev(s)), held.rechecked)
             assertEquals(listOf(Baseline.Known.of(s)), keeper.saved)

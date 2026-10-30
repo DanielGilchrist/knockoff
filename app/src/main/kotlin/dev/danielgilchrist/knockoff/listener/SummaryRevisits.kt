@@ -14,16 +14,15 @@ internal class SummaryRevisits(
         private val QUIET = 500.milliseconds
     }
 
-    private val pending = Channel<PendingRevisit>(Channel.UNLIMITED)
-
-    init {
-        scope.launch {
-            for (first in pending) {
-                delay(QUIET)
-                revisit(listOf(first) + drained())
+    private val pending =
+        Channel<PendingRevisit>(Channel.UNLIMITED).also { pending ->
+            scope.launch {
+                for (first in pending) {
+                    delay(QUIET)
+                    revisit(listOf(first) + drained())
+                }
             }
         }
-    }
 
     fun add(revisit: PendingRevisit) {
         pending.trySend(revisit)
