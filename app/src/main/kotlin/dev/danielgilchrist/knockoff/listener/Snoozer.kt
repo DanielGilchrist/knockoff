@@ -15,26 +15,27 @@ internal class Snoozer(
     companion object {
         private val CONFIRMATION_DELAY = 1.seconds
         private const val RELEASE_AFTER_MILLIS = 1L
+        private val RETRIES = listOf(2.seconds, 5.seconds)
     }
 
-    private val snoozed = SnoozedKeys(::readSnoozed)
+    private val keys = SnoozedKeys(calls::snoozedKeys)
 
     suspend fun snooze(
         key: NotificationKey,
         duration: Duration,
     ) {
-        when (val outcome = attemptSnooze(key, duration)) {
+        when (val outcome = snoozed(key, duration)) {
             SnoozeOutcome.Confirmed -> Log.i(LOG_TAG, "key=${key.value} snooze confirmed")
             is SnoozeOutcome.Rejected -> Log.e(LOG_TAG, "key=${key.value} snooze rejected: ${outcome.detail}")
             is SnoozeOutcome.Unconfirmed -> Log.w(LOG_TAG, "key=${key.value} snooze unconfirmed: ${outcome.detail}")
         }
     }
 
-    fun resnooze(
+    suspend fun resnooze(
         key: NotificationKey,
         duration: Duration,
     ) {
-        when (val outcome = attemptResnooze(key, duration)) {
+        when (val outcome = resnoozed(key, duration)) {
             ResnoozeOutcome.Requested -> Log.i(LOG_TAG, "key=${key.value} re-snooze requested")
             is ResnoozeOutcome.Rejected -> Log.e(LOG_TAG, "key=${key.value} re-snooze rejected: ${outcome.detail}")
             is ResnoozeOutcome.Unavailable -> Log.w(LOG_TAG, "key=${key.value} re-snooze unsent: ${outcome.detail}")
@@ -42,12 +43,60 @@ internal class Snoozer(
     }
 
     suspend fun release(key: NotificationKey) {
-        when (val outcome = attemptRelease(key)) {
+        when (val outcome = released(key)) {
             ReleaseOutcome.Released -> Log.i(LOG_TAG, "key=${key.value} released")
             is ReleaseOutcome.Rejected -> Log.e(LOG_TAG, "key=${key.value} release rejected: ${outcome.detail}")
             is ReleaseOutcome.Unconfirmed -> Log.w(LOG_TAG, "key=${key.value} release unconfirmed: ${outcome.detail}")
         }
     }
+
+    internal suspend fun snoozed(
+        key: NotificationKey,
+        duration: Duration,
+    ): SnoozeOutcome =
+        RETRIES.fold(attemptSnooze(key, duration)) { last, wait ->
+            when (last) {
+                is SnoozeOutcome.Unconfirmed -> {
+                    delay(wait)
+                    attemptSnooze(key, duration)
+                }
+
+                SnoozeOutcome.Confirmed, is SnoozeOutcome.Rejected -> {
+                    last
+                }
+            }
+        }
+
+    internal suspend fun resnoozed(
+        key: NotificationKey,
+        duration: Duration,
+    ): ResnoozeOutcome =
+        RETRIES.fold(attemptResnooze(key, duration)) { last, wait ->
+            when (last) {
+                is ResnoozeOutcome.Unavailable -> {
+                    delay(wait)
+                    attemptResnooze(key, duration)
+                }
+
+                ResnoozeOutcome.Requested, is ResnoozeOutcome.Rejected -> {
+                    last
+                }
+            }
+        }
+
+    internal suspend fun released(key: NotificationKey): ReleaseOutcome =
+        RETRIES.fold(attemptRelease(key)) { last, wait ->
+            when (last) {
+                is ReleaseOutcome.Unconfirmed -> {
+                    delay(wait)
+                    attemptRelease(key)
+                }
+
+                ReleaseOutcome.Released, is ReleaseOutcome.Rejected -> {
+                    last
+                }
+            }
+        }
 
     private suspend fun attemptSnooze(
         key: NotificationKey,
@@ -65,7 +114,7 @@ internal class Snoozer(
             is SystemCall.Done -> {
                 delay(CONFIRMATION_DELAY)
 
-                when (val lookup = snoozed.lookup(key, TimeSource.Monotonic.markNow())) {
+                when (val lookup = keys.lookup(key, TimeSource.Monotonic.markNow())) {
                     SnoozedLookup.Snoozed -> {
                         SnoozeOutcome.Confirmed
                     }
@@ -106,7 +155,7 @@ internal class Snoozer(
             is SystemCall.Done -> {
                 delay(CONFIRMATION_DELAY)
 
-                when (val lookup = snoozed.lookup(key, TimeSource.Monotonic.markNow())) {
+                when (val lookup = keys.lookup(key, TimeSource.Monotonic.markNow())) {
                     SnoozedLookup.NotSnoozed -> {
                         ReleaseOutcome.Released
                     }
@@ -122,11 +171,5 @@ internal class Snoozer(
                     }
                 }
             }
-        }
-
-    private fun readSnoozed(): SnoozedRead =
-        when (val read = calls.read(NotificationList.Snoozed)) {
-            is NotificationRead.Read -> SnoozedRead.Keys(read.notifications.map { NotificationKey(it.key) }.toSet())
-            is NotificationRead.Failure -> SnoozedRead.Failed(read.detail)
         }
 }

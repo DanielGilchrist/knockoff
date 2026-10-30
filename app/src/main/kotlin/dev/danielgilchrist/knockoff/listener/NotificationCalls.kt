@@ -8,6 +8,8 @@ import dev.danielgilchrist.knockoff.system.SystemCall
 internal interface NotificationCalls {
     fun read(list: NotificationList): NotificationRead
 
+    fun snoozedKeys(): SnoozedRead
+
     fun groups(): (StatusBarNotification) -> OriginGroup
 
     fun snooze(

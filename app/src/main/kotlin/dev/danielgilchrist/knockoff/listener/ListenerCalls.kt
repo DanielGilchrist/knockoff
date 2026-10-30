@@ -25,6 +25,12 @@ internal class ListenerCalls(
             is SystemCall.Unavailable -> NotificationRead.Unavailable(call.detail)
         }
 
+    override fun snoozedKeys(): SnoozedRead =
+        when (val read = read(NotificationList.Snoozed)) {
+            is NotificationRead.Read -> SnoozedRead.Keys(read.notifications.map { NotificationKey(it.key) }.toSet())
+            is NotificationRead.Failure -> SnoozedRead.Failed(read.detail)
+        }
+
     override fun groups(): (StatusBarNotification) -> OriginGroup =
         when (val call = systemCall { listener.currentRanking }) {
             is SystemCall.Done -> call.value?.let { it::groupOf } ?: { _ -> OriginGroup.Unknown }
