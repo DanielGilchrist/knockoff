@@ -32,7 +32,7 @@ sealed interface InstalledApps {
                 }
             }
 
-        private suspend fun loadOnce(packageManager: PackageManager): InstalledApps =
+        suspend fun loadOnce(packageManager: PackageManager): InstalledApps =
             withContext(Dispatchers.IO) {
                 when (
                     val mail =

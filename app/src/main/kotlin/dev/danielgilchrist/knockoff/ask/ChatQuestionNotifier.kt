@@ -58,7 +58,7 @@ class ChatQuestionNotifier(
     ) {
         when (permission) {
             NotificationPermission.Granted -> {
-                val view = QuestionView.of(first, rest, InstalledApps.load(context.packageManager)::labelOf)
+                val view = QuestionView.of(first, rest, InstalledApps.loadOnce(context.packageManager)::labelOf)
 
                 report(
                     systemCall {
