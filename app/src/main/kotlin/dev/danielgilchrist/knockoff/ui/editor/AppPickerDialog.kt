@@ -46,6 +46,15 @@ internal fun AppPickerDialog(
                 item { Caption(text = "Loading installed apps…", modifier = Modifier.padding(16.dp)) }
             }
 
+            is InstalledApps.Unavailable -> {
+                item {
+                    Caption(
+                        text = "Android couldn't list your apps. Leave Knockoff and come back to try again.",
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+            }
+
             is InstalledApps.Loaded -> {
                 val addable = apps.apps.filter { it.packageName !in added }
                 val matching = addable.filter { it.matches(query) }

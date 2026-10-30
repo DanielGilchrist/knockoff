@@ -45,7 +45,7 @@ internal fun LinkScreen(
         item { SectionHeader(text = "What the link does") }
         item { LinkFacts() }
         when (link) {
-            is DeviceLink.Linked -> {}
+            is DeviceLink.Linked, is DeviceLink.Unknown -> {}
 
             DeviceLink.NotLinked -> {
                 devicePicker(paired, actions)
@@ -116,6 +116,14 @@ private fun LazyListScope.status(link: DeviceLink) {
                     title = "Not linked",
                     body = "Held notifications still buzz or ring before Knockoff hides them.",
                     tone = NoticeTone.Nudge,
+                )
+            }
+
+            is DeviceLink.Unknown -> {
+                NoticeCard(
+                    title = "Couldn't check the link",
+                    body = "Android didn't answer just now. Leave this screen and come back to try again.",
+                    tone = NoticeTone.Problem,
                 )
             }
         }

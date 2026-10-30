@@ -1,6 +1,5 @@
 package dev.danielgilchrist.knockoff.listener
 
-import android.service.notification.NotificationListenerService
 import android.service.notification.NotificationListenerService.Ranking
 import android.service.notification.NotificationListenerService.RankingMap
 import android.service.notification.StatusBarNotification
@@ -27,12 +26,6 @@ internal fun RankingMap.groupOf(sbn: StatusBarNotification): OriginGroup {
         }
     }
 }
-
-internal fun NotificationListenerService.groupsNow(): (StatusBarNotification) -> OriginGroup =
-    when (val rankings = currentRanking) {
-        null -> { _ -> OriginGroup.Unknown }
-        else -> rankings::groupOf
-    }
 
 internal fun KnownGroups.groupOf(sbn: StatusBarNotification): OriginGroup =
     when (val channel = sbn.notification.channelId) {

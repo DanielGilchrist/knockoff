@@ -7,6 +7,8 @@ import android.os.Looper
 import android.provider.CalendarContract
 import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -26,10 +28,10 @@ internal fun calendarChanges(context: Context): Flow<Unit> =
         awaitClose {
             when (watching) {
                 CalendarWatching.Watching -> {
-                    context.contentResolver.unregisterContentObserver(observer)
+                    systemCall { context.contentResolver.unregisterContentObserver(observer) }
                 }
 
-                CalendarWatching.NotAllowed -> {}
+                CalendarWatching.NotWatching -> {}
             }
         }
     }.conflate()
@@ -38,10 +40,16 @@ private fun watch(
     context: Context,
     observer: ContentObserver,
 ): CalendarWatching =
-    try {
-        context.contentResolver.registerContentObserver(CalendarContract.CONTENT_URI, true, observer)
-        CalendarWatching.Watching
-    } catch (_: SecurityException) {
-        Log.w(LOG_TAG, "not watching calendars: no calendar permission")
-        CalendarWatching.NotAllowed
+    when (
+        val call =
+            systemCall { context.contentResolver.registerContentObserver(CalendarContract.CONTENT_URI, true, observer) }
+    ) {
+        is SystemCall.Done -> {
+            CalendarWatching.Watching
+        }
+
+        is SystemCall.Failed -> {
+            Log.w(LOG_TAG, "not watching calendars: ${call.detail}")
+            CalendarWatching.NotWatching
+        }
     }

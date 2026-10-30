@@ -8,12 +8,15 @@ import dev.detekt.api.config
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtCatchClause
 import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtUserType
+import org.jetbrains.kotlin.psi.psiUtil.parents
 
 class UnapprovedCatch(
     config: Config,
 ) : Rule(config, "Only catch exception types this module approves, with a justification, in its detekt config.") {
     private val allowedExceptions: List<String> by config(emptyList())
+    private val allowedOnlyIn: List<String> by config(emptyList())
 
     override fun visitCatchSection(catchClause: KtCatchClause) {
         super.visitCatchSection(catchClause)
@@ -21,8 +24,17 @@ class UnapprovedCatch(
         val caught = catchClause.catchParameter?.typeReference?.typeElement
 
         when {
-            caught !is KtUserType -> report(catchClause, "This catch has no named exception type.")
-            caught.referencedName !in allowedExceptions -> report(catchClause, unapproved(caught.referencedName))
+            caught !is KtUserType -> {
+                report(catchClause, "This catch has no named exception type.")
+            }
+
+            caught.referencedName in allowedExceptions -> {}
+
+            "${caught.referencedName} in ${ownerOf(catchClause)}" in allowedOnlyIn -> {}
+
+            else -> {
+                report(catchClause, unapproved(caught.referencedName, ownerOf(catchClause)))
+            }
         }
     }
 
@@ -38,9 +50,17 @@ class UnapprovedCatch(
         }
     }
 
-    private fun unapproved(type: String?): String =
+    private fun unapproved(
+        type: String?,
+        owner: String?,
+    ): String =
         "Catching $type isn't approved here. Return a sealed result from the boundary that can fail, or approve the " +
-            "type with a justification under allowedExceptions."
+            "type with a justification under allowedExceptions, or as \"$type in $owner\" under allowedOnlyIn."
+
+    private fun ownerOf(element: KtElement): String? =
+        element.parents
+            .filterIsInstance<KtNamedDeclaration>()
+            .firstNotNullOfOrNull { it.fqName?.asString() }
 
     private fun report(
         element: KtElement,

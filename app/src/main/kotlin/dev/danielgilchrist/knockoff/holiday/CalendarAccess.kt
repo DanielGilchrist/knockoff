@@ -10,6 +10,8 @@ import android.provider.CalendarContract
 import dev.danielgilchrist.knockoff.domain.dayoff.CalendarId
 import dev.danielgilchrist.knockoff.domain.dayoff.HolidayEvent
 import dev.danielgilchrist.knockoff.domain.dayoff.HolidayKind
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -109,13 +111,22 @@ internal class CalendarAccess(
         selection: String?,
         read: (Cursor) -> T,
     ): CalendarQuery<T> =
-        try {
-            when (val cursor = context.contentResolver.query(uri, columns, selection, null, null)) {
-                null -> CalendarQuery.Failed("the calendar provider returned nothing for $uri")
-                else -> cursor.use { CalendarQuery.Rows(read(it)) }
-            }
-        } catch (_: SecurityException) {
-            CalendarQuery.NoPermission
+        when (
+            val call =
+                systemCall {
+                    context.contentResolver
+                        .query(
+                            uri,
+                            columns,
+                            selection,
+                            null,
+                            null,
+                        )?.use { CalendarQuery.Rows(read(it)) }
+                }
+        ) {
+            is SystemCall.Done -> call.value ?: CalendarQuery.Failed("the calendar provider returned nothing for $uri")
+            is SystemCall.Refused -> CalendarQuery.NoPermission
+            is SystemCall.Unavailable -> CalendarQuery.Failed(call.detail)
         }
 
     private fun calendarsIn(cursor: Cursor): List<DeviceCalendar> =

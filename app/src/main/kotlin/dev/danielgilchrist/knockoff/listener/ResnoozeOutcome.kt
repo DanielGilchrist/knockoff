@@ -6,4 +6,8 @@ sealed interface ResnoozeOutcome {
     data class Rejected(
         val detail: String,
     ) : ResnoozeOutcome
+
+    data class Unavailable(
+        val detail: String,
+    ) : ResnoozeOutcome
 }

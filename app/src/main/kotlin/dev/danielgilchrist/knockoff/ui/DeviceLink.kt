@@ -1,7 +1,10 @@
 package dev.danielgilchrist.knockoff.ui
 
+import android.companion.AssociationInfo
 import android.companion.CompanionDeviceManager
 import android.content.Context
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 
 sealed interface DeviceLink {
     data class Linked(
@@ -10,14 +13,29 @@ sealed interface DeviceLink {
 
     data object NotLinked : DeviceLink
 
+    data class Unknown(
+        val detail: String,
+    ) : DeviceLink
+
     companion object {
         private const val UNNAMED = "a device"
 
         fun of(context: Context): DeviceLink =
             when (
-                val association =
-                    context.getSystemService(CompanionDeviceManager::class.java).myAssociations.firstOrNull()
+                val call =
+                    systemCall {
+                        context
+                            .getSystemService(
+                                CompanionDeviceManager::class.java,
+                            ).myAssociations
+                    }
             ) {
+                is SystemCall.Done -> of(call.value.firstOrNull())
+                is SystemCall.Failed -> Unknown(call.detail)
+            }
+
+        private fun of(association: AssociationInfo?): DeviceLink =
+            when (association) {
                 null -> {
                     NotLinked
                 }

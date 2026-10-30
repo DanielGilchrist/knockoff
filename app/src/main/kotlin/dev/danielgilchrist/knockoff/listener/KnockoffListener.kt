@@ -37,7 +37,7 @@ import java.time.ZoneId
 
 class KnockoffListener : NotificationListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val sweeper = NotificationSweeper(this, scope) { knockoff.knownGroupsStore.current() }
+    private val sweeper = NotificationSweeper(ListenerCalls(this), scope) { knockoff.knownGroupsStore.current() }
     private var connection: Connection = Connection.Idle
 
     private val applier by lazy {

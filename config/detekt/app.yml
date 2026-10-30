@@ -10,13 +10,6 @@ knockoff:
   UnapprovedCatch:
     active: true
     allowedExceptions:
-      # Listener calls refuse an unapproved or unlinked listener, exact alarms and the calendar provider refuse
-      # without permission; converted to sealed outcomes (SnoozeOutcome, ChannelFetch, ChannelUpdate, AlarmSchedule,
-      # CalendarQuery, CalendarWatching).
-      - SecurityException
-      # A notification or channel list the system can't finish sending, such as when the binder buffer is full;
-      # converted to NotificationRead.Unavailable, ChannelFetch.Unavailable and GroupNamesFetch.Unavailable.
-      - BadParcelableException
       # Updating a channel the app deleted since it was read; converted to ChannelUpdate.Missing.
       - IllegalArgumentException
       # A time zone change broadcast naming an unknown zone; converted to ZoneExtra.Invalid.
@@ -31,10 +24,32 @@ knockoff:
       - ActivityNotFoundException
       # PackageIconSource: an app uninstalled since it was listed; converted to AppIcon.Missing.
       - NameNotFoundException
+    allowedOnlyIn:
+      # A system service refusing an unapproved or unlinked listener, or a missing permission; SystemCall.Refused.
+      - SecurityException in dev.danielgilchrist.knockoff.system.systemCall
+      # A list the system can't finish sending, such as when the binder buffer is full; SystemCall.Unavailable.
+      - BadParcelableException in dev.danielgilchrist.knockoff.system.systemCall
+      # Android rethrows binder failures from system services as RuntimeExceptions (a hidden
+      # DeadSystemRuntimeException, or one caused by a RemoteException); those become SystemCall.Unavailable and
+      # anything else is rethrown.
+      - RuntimeException in dev.danielgilchrist.knockoff.system.systemCall
   UnapprovedThrow:
     active: true
     allowedDeclarations:
       # Reading LocalAppIcons outside MainActivity's provider is a wiring bug that must crash loudly.
       - dev.danielgilchrist.knockoff.ui.appicon.LocalAppIcons
+      # systemCall catches RuntimeException to find binder failures; anything else is a bug and is rethrown as is.
+      - dev.danielgilchrist.knockoff.system.unavailableOrRethrown(RuntimeException)
   UntypedResult:
     active: true
+exceptions:
+  TooGenericExceptionCaught:
+    # RuntimeException is left to knockoff's UnapprovedCatch, which approves it only inside systemCall.
+    exceptionNames:
+      - ArrayIndexOutOfBoundsException
+      - Error
+      - Exception
+      - IllegalMonitorStateException
+      - IndexOutOfBoundsException
+      - NullPointerException
+      - Throwable

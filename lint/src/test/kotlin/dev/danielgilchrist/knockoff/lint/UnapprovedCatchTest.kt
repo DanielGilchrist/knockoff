@@ -6,7 +6,13 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 class UnapprovedCatchTest {
-    private val rule = UnapprovedCatch(TestConfig("allowedExceptions" to listOf("IOException")))
+    private val rule =
+        UnapprovedCatch(
+            TestConfig(
+                "allowedExceptions" to listOf("IOException"),
+                "allowedOnlyIn" to listOf("RuntimeException in boundary.read"),
+            ),
+        )
 
     @Test
     fun `an approved exception type passes`() {
@@ -23,9 +29,23 @@ class UnapprovedCatchTest {
         assertEquals(
             listOf(
                 "Catching IllegalStateException isn't approved here. Return a sealed result from the boundary that " +
-                    "can fail, or approve the type with a justification under allowedExceptions.",
+                    "can fail, or approve the type with a justification under allowedExceptions, or as " +
+                    "\"IllegalStateException in read\" under allowedOnlyIn.",
             ),
             messages(catching("IllegalStateException")),
+        )
+    }
+
+    @Test
+    fun `an exception approved only in one declaration passes there and nowhere else`() {
+        assertEquals(emptyList<String>(), messages("package boundary\n\n" + catching("RuntimeException")))
+        assertEquals(
+            listOf(
+                "Catching RuntimeException isn't approved here. Return a sealed result from the boundary that " +
+                    "can fail, or approve the type with a justification under allowedExceptions, or as " +
+                    "\"RuntimeException in elsewhere.read\" under allowedOnlyIn.",
+            ),
+            messages("package elsewhere\n\n" + catching("RuntimeException")),
         )
     }
 

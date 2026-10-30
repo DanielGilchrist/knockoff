@@ -46,6 +46,10 @@ internal class ChatChannels(
             is ChannelCreation.NotLinked -> {
                 Log.w(LOG_TAG, "${describe(chat)} not created, not linked: ${creation.detail}")
             }
+
+            is ChannelCreation.Unavailable -> {
+                Log.w(LOG_TAG, "${describe(chat)} not created yet, the system was busy: ${creation.detail}")
+            }
         }
 
         return ChatChannelsCreation.NoneCreated

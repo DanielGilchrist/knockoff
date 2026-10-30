@@ -4,6 +4,8 @@ import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import dev.danielgilchrist.knockoff.listener.KnockoffListener
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 
 enum class ListenerAccess {
     Granted,
@@ -15,9 +17,9 @@ enum class ListenerAccess {
             val manager = context.getSystemService(NotificationManager::class.java)
             val listener = ComponentName(context, KnockoffListener::class.java)
 
-            return when {
-                manager.isNotificationListenerAccessGranted(listener) -> Granted
-                else -> NotGranted
+            return when (val call = systemCall { manager.isNotificationListenerAccessGranted(listener) }) {
+                is SystemCall.Done -> if (call.value) Granted else NotGranted
+                is SystemCall.Failed -> NotGranted
             }
         }
     }

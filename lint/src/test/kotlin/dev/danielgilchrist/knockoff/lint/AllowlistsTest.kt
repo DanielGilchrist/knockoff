@@ -25,6 +25,17 @@ class AllowlistsTest {
 
     @ParameterizedTest
     @ValueSource(strings = ["domain", "app"])
+    fun `every exception approved only in one place is still caught there`(module: String) {
+        val caught =
+            findings(module, UnapprovedCatch(TestConfig()))
+                .map { it.substringAfter("as \"").substringBefore("\" under") }
+                .toSet()
+
+        assertEquals(emptyList<String>(), optionalEntries(module, "allowedOnlyIn").filterNot { it in caught })
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["domain", "app"])
     fun `every approved declaration still throws`(module: String) {
         val throwing =
             findings(module, UnapprovedThrow(TestConfig()))
@@ -44,6 +55,15 @@ class AllowlistsTest {
             .flatMap { rule.lint(it.readText()) }
             .map { it.message }
             .toList()
+
+    private fun optionalEntries(
+        module: String,
+        key: String,
+    ): List<String> =
+        when {
+            File(root, "config/detekt/$module.yml").readLines().any { it.trim() == "$key:" } -> entries(module, key)
+            else -> emptyList()
+        }
 
     private fun entries(
         module: String,

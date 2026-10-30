@@ -5,6 +5,8 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.Drawable
 import androidx.compose.ui.graphics.asImageBitmap
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -14,7 +16,10 @@ class PackageIconSource(
     override suspend fun load(key: IconKey): AppIcon.Settled =
         withContext(Dispatchers.IO) {
             try {
-                AppIcon.Loaded(packageManager.getApplicationIcon(key.app.value).rendered(key.px).asImageBitmap())
+                when (val call = systemCall { packageManager.getApplicationIcon(key.app.value) }) {
+                    is SystemCall.Done -> AppIcon.Loaded(call.value.rendered(key.px).asImageBitmap())
+                    is SystemCall.Failed -> AppIcon.Missing
+                }
             } catch (_: PackageManager.NameNotFoundException) {
                 AppIcon.Missing
             }

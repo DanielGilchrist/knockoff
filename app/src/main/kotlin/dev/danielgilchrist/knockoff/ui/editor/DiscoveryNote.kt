@@ -106,7 +106,7 @@ sealed interface DiscoveryNote {
 
                 is LinkState.Known -> {
                     when (link.link) {
-                        is DeviceLink.Linked -> false
+                        is DeviceLink.Linked, is DeviceLink.Unknown -> false
                         DeviceLink.NotLinked -> true
                     }
                 }

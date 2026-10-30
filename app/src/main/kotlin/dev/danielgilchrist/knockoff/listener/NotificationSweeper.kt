@@ -1,6 +1,5 @@
 package dev.danielgilchrist.knockoff.listener
 
-import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
@@ -20,13 +19,13 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 
 internal class NotificationSweeper(
-    private val listener: NotificationListenerService,
+    private val calls: NotificationCalls,
     private val scope: CoroutineScope,
     private val knownGroups: suspend () -> KnownGroups,
 ) : HeldNotifications {
-    private val snoozer = Snoozer(listener)
-    private val entries = ActiveEntries(listener)
-    private val holder = NotificationHolder(snoozer, SummaryDismisser(listener), entries::groups)
+    private val snoozer = Snoozer(calls)
+    private val entries = ActiveEntries(calls)
+    private val holder = NotificationHolder(snoozer, SummaryDismisser(calls), entries::groups)
     private val revisits = SummaryRevisits(scope, revisit = ::revisitBatch)
     private val sweeps =
         MutableSharedFlow<Evaluation>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST).also {
@@ -41,7 +40,7 @@ internal class NotificationSweeper(
         before: Baseline.Known<Evaluation>,
         after: Evaluation,
     ): RecheckStart =
-        when (val read = recovering { listener.read(NotificationList.Snoozed) }) {
+        when (val read = recovering { calls.read(NotificationList.Snoozed) }) {
             is NotificationRead.Read -> {
                 Log.i(LOG_TAG, "rechecking ${read.notifications.size} snoozed notifications")
                 val active = lazy { entries.groups() }
@@ -92,7 +91,7 @@ internal class NotificationSweeper(
     }
 
     private suspend fun sweepNow(evaluation: Evaluation) {
-        when (val read = persisting { listener.read(NotificationList.Active) }) {
+        when (val read = persisting { calls.read(NotificationList.Active) }) {
             is NotificationRead.Read -> {
                 Log.i(LOG_TAG, "sweeping ${read.notifications.size} active notifications")
                 val active = ActiveGroups.Read(entries.of(read.notifications))
@@ -107,7 +106,7 @@ internal class NotificationSweeper(
     }
 
     private suspend fun revisitBatch(batch: List<PendingRevisit>) {
-        when (val read = recovering { listener.read(NotificationList.Active) }) {
+        when (val read = recovering { calls.read(NotificationList.Active) }) {
             is NotificationRead.Read -> {
                 val active = ActiveGroups.Read(entries.of(read.notifications))
                 val evaluation = batch.last().evaluation

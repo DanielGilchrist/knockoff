@@ -1,16 +1,16 @@
 package dev.danielgilchrist.knockoff.listener
 
-import android.service.notification.NotificationListenerService
 import android.util.Log
 import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.domain.notification.NotificationKey
+import dev.danielgilchrist.knockoff.system.SystemCall
 import kotlinx.coroutines.delay
 import java.time.Duration
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
 internal class Snoozer(
-    private val listener: NotificationListenerService,
+    private val calls: NotificationCalls,
 ) {
     companion object {
         private val CONFIRMATION_DELAY = 1.seconds
@@ -37,6 +37,7 @@ internal class Snoozer(
         when (val outcome = attemptResnooze(key, duration)) {
             ResnoozeOutcome.Requested -> Log.i(LOG_TAG, "key=${key.value} re-snooze requested")
             is ResnoozeOutcome.Rejected -> Log.e(LOG_TAG, "key=${key.value} re-snooze rejected: ${outcome.detail}")
+            is ResnoozeOutcome.Unavailable -> Log.w(LOG_TAG, "key=${key.value} re-snooze unsent: ${outcome.detail}")
         }
     }
 
@@ -52,64 +53,79 @@ internal class Snoozer(
         key: NotificationKey,
         duration: Duration,
     ): SnoozeOutcome =
-        try {
-            listener.snoozeNotification(key.value, duration.toMillis())
-            delay(CONFIRMATION_DELAY)
-            when (val lookup = snoozed.lookup(key, TimeSource.Monotonic.markNow())) {
-                SnoozedLookup.Snoozed -> {
-                    SnoozeOutcome.Confirmed
-                }
+        when (val call = calls.snooze(key, duration.toMillis())) {
+            is SystemCall.Refused -> {
+                SnoozeOutcome.Rejected(call.detail)
+            }
 
-                SnoozedLookup.NotSnoozed -> {
-                    SnoozeOutcome.Unconfirmed(
-                        "not in the snoozed list after $CONFIRMATION_DELAY",
-                    )
-                }
+            is SystemCall.Unavailable -> {
+                SnoozeOutcome.Unconfirmed(call.detail)
+            }
 
-                is SnoozedLookup.Unknown -> {
-                    SnoozeOutcome.Unconfirmed(lookup.detail)
+            is SystemCall.Done -> {
+                delay(CONFIRMATION_DELAY)
+
+                when (val lookup = snoozed.lookup(key, TimeSource.Monotonic.markNow())) {
+                    SnoozedLookup.Snoozed -> {
+                        SnoozeOutcome.Confirmed
+                    }
+
+                    SnoozedLookup.NotSnoozed -> {
+                        SnoozeOutcome.Unconfirmed(
+                            "not in the snoozed list after $CONFIRMATION_DELAY",
+                        )
+                    }
+
+                    is SnoozedLookup.Unknown -> {
+                        SnoozeOutcome.Unconfirmed(lookup.detail)
+                    }
                 }
             }
-        } catch (exception: SecurityException) {
-            SnoozeOutcome.Rejected(exception.toString())
         }
 
     private fun attemptResnooze(
         key: NotificationKey,
         duration: Duration,
     ): ResnoozeOutcome =
-        try {
-            listener.snoozeNotification(key.value, duration.toMillis())
-            ResnoozeOutcome.Requested
-        } catch (exception: SecurityException) {
-            ResnoozeOutcome.Rejected(exception.toString())
+        when (val call = calls.snooze(key, duration.toMillis())) {
+            is SystemCall.Done -> ResnoozeOutcome.Requested
+            is SystemCall.Refused -> ResnoozeOutcome.Rejected(call.detail)
+            is SystemCall.Unavailable -> ResnoozeOutcome.Unavailable(call.detail)
         }
 
     private suspend fun attemptRelease(key: NotificationKey): ReleaseOutcome =
-        try {
-            listener.snoozeNotification(key.value, RELEASE_AFTER_MILLIS)
-            delay(CONFIRMATION_DELAY)
-            when (val lookup = snoozed.lookup(key, TimeSource.Monotonic.markNow())) {
-                SnoozedLookup.NotSnoozed -> {
-                    ReleaseOutcome.Released
-                }
+        when (val call = calls.snooze(key, RELEASE_AFTER_MILLIS)) {
+            is SystemCall.Refused -> {
+                ReleaseOutcome.Rejected(call.detail)
+            }
 
-                SnoozedLookup.Snoozed -> {
-                    ReleaseOutcome.Unconfirmed(
-                        "still in the snoozed list after $CONFIRMATION_DELAY",
-                    )
-                }
+            is SystemCall.Unavailable -> {
+                ReleaseOutcome.Unconfirmed(call.detail)
+            }
 
-                is SnoozedLookup.Unknown -> {
-                    ReleaseOutcome.Unconfirmed(lookup.detail)
+            is SystemCall.Done -> {
+                delay(CONFIRMATION_DELAY)
+
+                when (val lookup = snoozed.lookup(key, TimeSource.Monotonic.markNow())) {
+                    SnoozedLookup.NotSnoozed -> {
+                        ReleaseOutcome.Released
+                    }
+
+                    SnoozedLookup.Snoozed -> {
+                        ReleaseOutcome.Unconfirmed(
+                            "still in the snoozed list after $CONFIRMATION_DELAY",
+                        )
+                    }
+
+                    is SnoozedLookup.Unknown -> {
+                        ReleaseOutcome.Unconfirmed(lookup.detail)
+                    }
                 }
             }
-        } catch (exception: SecurityException) {
-            ReleaseOutcome.Rejected(exception.toString())
         }
 
     private fun readSnoozed(): SnoozedRead =
-        when (val read = listener.read(NotificationList.Snoozed)) {
+        when (val read = calls.read(NotificationList.Snoozed)) {
             is NotificationRead.Read -> SnoozedRead.Keys(read.notifications.map { NotificationKey(it.key) }.toSet())
             is NotificationRead.Failure -> SnoozedRead.Failed(read.detail)
         }

@@ -18,7 +18,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -32,6 +31,7 @@ class MainViewModel(
     private var nearbyAsk = PermissionAsk.Askable
     private var calendarAsk = PermissionAsk.Askable
     private val mutableCalendars = MutableStateFlow<CalendarChoices>(CalendarChoices.Loading)
+    private val installed = MutableStateFlow<InstalledApps>(InstalledApps.Loading)
     private val mutablePaired = MutableStateFlow(PairedDevices.of(application, nearbyAsk))
 
     private val knockoff = application as KnockoffApplication
@@ -47,11 +47,7 @@ class MainViewModel(
 
     val choices: StateFlow<TargetChoices> =
         combine(
-            flow<InstalledApps> {
-                emit(
-                    InstalledApps.load(application.packageManager),
-                )
-            }.onStart { emit(InstalledApps.Loading) },
+            installed,
             knockoff.seenChatsStore.loads
                 .map(SeenChatsState::of)
                 .onStart { emit(SeenChatsState.Loading) },
@@ -97,6 +93,8 @@ class MainViewModel(
     }
 
     init {
+        loadApps()
+
         val focus = editor.editing.map(AppFocus::of).distinctUntilChanged()
 
         viewModelScope.launch {
@@ -164,7 +162,18 @@ class MainViewModel(
         knockoff.holidayWatch.refresh()
     }
 
+    private fun loadApps() {
+        viewModelScope.launch { installed.value = InstalledApps.load(getApplication<Application>().packageManager) }
+    }
+
     fun refreshSetup() {
+        when (installed.value) {
+            is InstalledApps.Unavailable -> {
+                loadApps()
+            }
+
+            InstalledApps.Loading, is InstalledApps.Loaded -> {}
+        }
         mutableSetup.value = Setup.of(getApplication())
         refreshPaired()
         getApplication<KnockoffApplication>().requestSilencing()

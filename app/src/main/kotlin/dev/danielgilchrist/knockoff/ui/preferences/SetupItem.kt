@@ -42,6 +42,10 @@ data class SetupItem(
                         SetupStatus.Needed("Set up"),
                     )
                 }
+
+                is DeviceLink.Unknown -> {
+                    SetupItem(SetupAction.Link, "Couldn't check the link just now.", SetupStatus.Explained)
+                }
             }
 
         private fun notifications(permission: NotificationPermission): SetupItem =

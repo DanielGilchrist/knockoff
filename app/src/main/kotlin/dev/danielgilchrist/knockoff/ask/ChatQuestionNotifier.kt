@@ -6,10 +6,14 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.util.Log
+import dev.danielgilchrist.knockoff.LOG_TAG
 import dev.danielgilchrist.knockoff.MainActivity
 import dev.danielgilchrist.knockoff.R
 import dev.danielgilchrist.knockoff.domain.chat.ChatAnswer
 import dev.danielgilchrist.knockoff.domain.chat.ChatQuestion
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 import dev.danielgilchrist.knockoff.ui.InstalledApps
 import dev.danielgilchrist.knockoff.ui.NotificationPermission
 
@@ -26,6 +30,10 @@ class ChatQuestionNotifier(
     }
 
     private val manager = context.getSystemService(NotificationManager::class.java)
+    private val channel =
+        NotificationChannel(CHANNEL_ID, "New chats", NotificationManager.IMPORTANCE_LOW).apply {
+            description = "Asks whether new chats should join a rule"
+        }
 
     suspend fun show(
         prompt: ChatPrompt,
@@ -36,7 +44,7 @@ class ChatQuestionNotifier(
 
             is ChatPrompt.Ready -> {
                 when (val first = prompt.questions.firstOrNull()) {
-                    null -> manager.cancel(NOTIFICATION_ID)
+                    null -> report(systemCall { manager.cancel(NOTIFICATION_ID) }, "cleared")
                     else -> post(first, prompt.questions.drop(1), permission)
                 }
             }
@@ -51,20 +59,35 @@ class ChatQuestionNotifier(
         when (permission) {
             NotificationPermission.Granted -> {
                 val view = QuestionView.of(first, rest, InstalledApps.load(context.packageManager)::labelOf)
-                manager.notify(NOTIFICATION_ID, notification(view))
+
+                report(
+                    systemCall {
+                        manager.createNotificationChannel(channel)
+                        manager.notify(NOTIFICATION_ID, notification(view))
+                    },
+                    "posted",
+                )
             }
 
             NotificationPermission.NotGranted -> {}
         }
     }
 
-    private fun notification(view: QuestionView): Notification {
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "New chats", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Asks whether new chats should join a rule"
-            },
-        )
-        return Notification
+    private fun report(
+        call: SystemCall<Unit>,
+        what: String,
+    ) {
+        when (call) {
+            is SystemCall.Done -> {}
+
+            is SystemCall.Failed -> {
+                Log.w(LOG_TAG, "new chats notification not $what: ${call.detail}")
+            }
+        }
+    }
+
+    private fun notification(view: QuestionView): Notification =
+        Notification
             .Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_new_chat)
             .setContentTitle(view.title)
@@ -81,7 +104,6 @@ class ChatQuestionNotifier(
                     } + action(AnswerLabels.LET_THROUGH, answering(LET_THROUGH_REQUEST, view.letThrough))
                 ).toTypedArray(),
             ).build()
-    }
 
     private fun action(
         title: String,

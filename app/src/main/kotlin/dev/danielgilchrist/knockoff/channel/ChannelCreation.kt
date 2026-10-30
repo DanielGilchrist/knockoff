@@ -10,4 +10,8 @@ internal sealed interface ChannelCreation {
     data class NotLinked(
         val detail: String,
     ) : ChannelCreation
+
+    data class Unavailable(
+        val detail: String,
+    ) : ChannelCreation
 }

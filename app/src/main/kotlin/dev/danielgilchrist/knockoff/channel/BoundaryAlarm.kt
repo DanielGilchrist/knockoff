@@ -5,6 +5,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import dev.danielgilchrist.knockoff.domain.rule.Boundary
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 import java.time.ZonedDateTime
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
@@ -31,25 +33,61 @@ internal class BoundaryAlarm(
 
         return when (boundary) {
             Boundary.None -> {
-                alarms.cancel(reached)
-                AlarmSchedule.Cleared
+                when (val call = systemCall { alarms.cancel(reached) }) {
+                    is SystemCall.Done -> AlarmSchedule.Cleared
+                    is SystemCall.Failed -> AlarmSchedule.Unset(call.detail)
+                }
             }
 
             is Boundary.At -> {
-                try {
-                    alarms.setExactAndAllowWhileIdle(
-                        AlarmManager.RTC_WAKEUP,
-                        boundary.time.toInstant().toEpochMilli(),
-                        reached,
-                    )
-                    AlarmSchedule.Exact(boundary.time)
-                } catch (exception: SecurityException) {
-                    val at = minOf(boundary.time, now.plus(INEXACT_STEP))
+                val exact =
+                    systemCall {
+                        alarms.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP,
+                            boundary.time.toInstant().toEpochMilli(),
+                            reached,
+                        )
+                    }
 
-                    alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toInstant().toEpochMilli(), reached)
-                    AlarmSchedule.Inexact(at, exception.toString())
+                when (exact) {
+                    is SystemCall.Done -> {
+                        AlarmSchedule.Exact(boundary.time)
+                    }
+
+                    is SystemCall.Refused -> {
+                        inexact(
+                            alarms,
+                            minOf(boundary.time, now.plus(INEXACT_STEP)),
+                            reached,
+                            exact,
+                        )
+                    }
+
+                    is SystemCall.Unavailable -> {
+                        AlarmSchedule.Unset(exact.detail)
+                    }
                 }
             }
         }
     }
+
+    private fun inexact(
+        alarms: AlarmManager,
+        at: ZonedDateTime,
+        reached: PendingIntent,
+        refused: SystemCall.Refused,
+    ): AlarmSchedule =
+        when (
+            val call =
+                systemCall {
+                    alarms.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP,
+                        at.toInstant().toEpochMilli(),
+                        reached,
+                    )
+                }
+        ) {
+            is SystemCall.Done -> AlarmSchedule.Inexact(at, refused.detail)
+            is SystemCall.Failed -> AlarmSchedule.Unset(call.detail)
+        }
 }

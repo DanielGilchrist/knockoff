@@ -4,6 +4,8 @@ import android.Manifest
 import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.content.pm.PackageManager
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 
 sealed interface PairedDevices {
     data object NotAllowed : PairedDevices
@@ -40,7 +42,21 @@ sealed interface PairedDevices {
                 }
 
                 else -> {
-                    listed(adapter.bondedDevices.map { PairedDevice.of(it.alias, BluetoothAddress(it.address)) })
+                    when (
+                        val call =
+                            systemCall {
+                                adapter.bondedDevices.map {
+                                    PairedDevice.of(
+                                        it.alias,
+                                        BluetoothAddress(it.address),
+                                    )
+                                }
+                            }
+                    ) {
+                        is SystemCall.Done -> listed(call.value)
+                        is SystemCall.Refused -> refused(ask)
+                        is SystemCall.Unavailable -> BluetoothOff
+                    }
                 }
             }
         }

@@ -32,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.danielgilchrist.knockoff.listener.KnockoffListener
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 import dev.danielgilchrist.knockoff.ui.Appearance
 import dev.danielgilchrist.knockoff.ui.KnockoffScreen
 import dev.danielgilchrist.knockoff.ui.MainViewModel
@@ -159,6 +161,16 @@ class MainActivity : ComponentActivity() {
             .build()
 
     private fun link(request: AssociationRequest) {
+        when (val call = systemCall { associate(request) }) {
+            is SystemCall.Done -> {}
+
+            is SystemCall.Failed -> {
+                Log.w(LOG_TAG, "device link not started: ${call.detail}")
+            }
+        }
+    }
+
+    private fun associate(request: AssociationRequest) {
         getSystemService(CompanionDeviceManager::class.java).associate(
             request,
             mainExecutor,

@@ -1,7 +1,6 @@
 package dev.danielgilchrist.knockoff.channel
 
 import android.app.NotificationChannel
-import android.os.BadParcelableException
 import android.os.Build
 import android.os.Process
 import android.service.notification.NotificationListenerService
@@ -17,6 +16,8 @@ import dev.danielgilchrist.knockoff.domain.notification.ChannelId
 import dev.danielgilchrist.knockoff.domain.notification.ConversationId
 import dev.danielgilchrist.knockoff.domain.notification.PackageName
 import dev.danielgilchrist.knockoff.domain.rule.Target
+import dev.danielgilchrist.knockoff.system.SystemCall
+import dev.danielgilchrist.knockoff.system.systemCall
 
 internal class ChannelAccess(
     private val listener: NotificationListenerService,
@@ -58,20 +59,20 @@ internal class ChannelAccess(
 
     @RequiresApi(Build.VERSION_CODES.BAKLAVA)
     private fun createConversation(chat: Target.Chat): ChannelCreation =
-        try {
-            when (
-                listener.createConversationNotificationChannelForPackage(
-                    chat.packageName.value,
-                    Process.myUserHandle(),
-                    chat.channel.value,
-                    chat.id.value,
-                )
-            ) {
-                null -> ChannelCreation.Refused
-                else -> ChannelCreation.Created
-            }
-        } catch (exception: SecurityException) {
-            ChannelCreation.NotLinked(exception.toString())
+        when (
+            val call =
+                systemCall {
+                    listener.createConversationNotificationChannelForPackage(
+                        chat.packageName.value,
+                        Process.myUserHandle(),
+                        chat.channel.value,
+                        chat.id.value,
+                    )
+                }
+        ) {
+            is SystemCall.Done -> if (call.value == null) ChannelCreation.Refused else ChannelCreation.Created
+            is SystemCall.Refused -> ChannelCreation.NotLinked(call.detail)
+            is SystemCall.Unavailable -> ChannelCreation.Unavailable(call.detail)
         }
 
     fun apply(change: ChannelChange): ChannelUpdate = channel(change.key) { update(change, it) }
@@ -82,13 +83,19 @@ internal class ChannelAccess(
     ): ChannelUpdate {
         channel.importance = AndroidImportance.level(change.to)
 
-        return try {
-            listener.updateNotificationChannel(change.key.packageName.value, Process.myUserHandle(), channel)
-            confirm(change)
-        } catch (exception: SecurityException) {
-            ChannelUpdate.NotLinked(exception.toString())
-        } catch (_: IllegalArgumentException) {
-            ChannelUpdate.Missing
+        val call =
+            try {
+                systemCall {
+                    listener.updateNotificationChannel(change.key.packageName.value, Process.myUserHandle(), channel)
+                }
+            } catch (_: IllegalArgumentException) {
+                return ChannelUpdate.Missing
+            }
+
+        return when (call) {
+            is SystemCall.Done -> confirm(change)
+            is SystemCall.Refused -> ChannelUpdate.NotLinked(call.detail)
+            is SystemCall.Unavailable -> ChannelUpdate.Unavailable(call.detail)
         }
     }
 
@@ -156,14 +163,9 @@ internal class ChannelAccess(
     }
 
     private fun fetch(packageName: PackageName): ChannelFetch =
-        try {
-            when (val channels = listener.getNotificationChannels(packageName.value, Process.myUserHandle())) {
-                null -> ChannelFetch.Unbound
-                else -> ChannelFetch.Fetched(channels)
-            }
-        } catch (exception: SecurityException) {
-            ChannelFetch.NotLinked(exception.toString())
-        } catch (exception: BadParcelableException) {
-            ChannelFetch.Unavailable(exception.toString())
+        when (val call = systemCall { listener.getNotificationChannels(packageName.value, Process.myUserHandle()) }) {
+            is SystemCall.Done -> call.value?.let(ChannelFetch::Fetched) ?: ChannelFetch.Unbound
+            is SystemCall.Refused -> ChannelFetch.NotLinked(call.detail)
+            is SystemCall.Unavailable -> ChannelFetch.Unavailable(call.detail)
         }
 }
