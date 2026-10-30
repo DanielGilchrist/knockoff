@@ -18,6 +18,11 @@ internal sealed interface Preparation {
         val detail: String,
     ) : Preparation
 
+    data class Busy(
+        val rules: RuleSet,
+        val detail: String,
+    ) : Preparation
+
     data class Failed(
         val detail: String,
     ) : Preparation

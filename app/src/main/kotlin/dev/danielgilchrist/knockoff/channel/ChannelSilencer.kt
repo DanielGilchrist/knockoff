@@ -16,8 +16,10 @@ import dev.danielgilchrist.knockoff.holiday.HolidayWatch
 import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import java.time.ZonedDateTime
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -35,6 +37,7 @@ internal class ChannelSilencer(
     companion object {
         private val RESTORE_GRACE = 5.seconds
         private val RETRY = 15.minutes.toJavaDuration()
+        private val BUSY_RETRY = 30.seconds
     }
 
     private val requests = Channel<Unit>(Channel.CONFLATED)
@@ -45,42 +48,77 @@ internal class ChannelSilencer(
     }
 
     suspend fun run() {
-        for (request in requests) {
-            pass()
+        coroutineScope {
+            for (request in requests) {
+                when (val schedule = pass()) {
+                    is AlarmSchedule.Unset -> {
+                        launch {
+                            delay(BUSY_RETRY)
+                            request()
+                        }
+                    }
+
+                    is AlarmSchedule.Exact, is AlarmSchedule.Inexact, AlarmSchedule.Cleared -> {}
+                }
+            }
         }
     }
 
-    private suspend fun pass() {
-        when (val first = prepare()) {
-            is Preparation.Unavailable -> {
-                Log.w(LOG_TAG, "channels unchanged: ${first.detail}")
-                val now = ZonedDateTime.now()
-
-                alarm.schedule(first.rules.nextBoundary(now, holidays.current()), now).report()
-            }
-
-            is Preparation.Failed -> {
-                Log.e(LOG_TAG, "channels unchanged: ${first.detail}")
-                val now = ZonedDateTime.now()
-
-                alarm.schedule(Boundary.None.noLaterThan(now.plus(RETRY)), now).report()
-            }
-
-            is Preparation.Ready -> {
-                val silencing = apply(first.plan.silence)
-                val settlement =
-                    when {
-                        first.plan.restore.isEmpty() -> silencing
-                        else -> silencing.and(finish())
-                    }
-
-                if (first.plan.restore.isNotEmpty() && settlement == Settlement.Settled &&
-                    first.waitingChats.isNotEmpty()
-                ) {
-                    request()
+    private suspend fun pass(): AlarmSchedule {
+        val target =
+            when (val first = prepare()) {
+                is Preparation.Unavailable -> {
+                    Log.w(LOG_TAG, "channels unchanged: ${first.detail}")
+                    first.rules.nextBoundary(ZonedDateTime.now(), holidays.current())
                 }
 
-                schedule(first, settlement)
+                is Preparation.Busy -> {
+                    Log.w(LOG_TAG, "channels unchanged, retrying soon: ${first.detail}")
+                    val now = ZonedDateTime.now()
+
+                    first.rules.nextBoundary(now, holidays.current()).noLaterThan(now.plus(BUSY_RETRY.toJavaDuration()))
+                }
+
+                is Preparation.Failed -> {
+                    Log.e(LOG_TAG, "channels unchanged: ${first.detail}")
+                    Boundary.None.noLaterThan(ZonedDateTime.now().plus(RETRY))
+                }
+
+                is Preparation.Ready -> {
+                    settled(first)
+                }
+            }
+
+        return alarm.schedule(target, ZonedDateTime.now()).also { it.report() }
+    }
+
+    private suspend fun settled(ready: Preparation.Ready): Boundary {
+        val silencing = apply(ready.plan.silence)
+        val settlement =
+            when {
+                ready.plan.restore.isEmpty() -> silencing
+                else -> silencing.and(finish())
+            }
+
+        if (ready.plan.restore.isNotEmpty() && settlement == Settlement.Settled && ready.waitingChats.isNotEmpty()) {
+            request()
+        }
+
+        val boundary = ready.rules.nextBoundary(ready.now, holidays.current())
+
+        return when (settlement) {
+            Settlement.Settled -> {
+                boundary
+            }
+
+            is Settlement.Busy -> {
+                Log.w(LOG_TAG, "channels unsettled, retrying soon: ${settlement.detail}")
+                boundary.noLaterThan(ready.now.plus(BUSY_RETRY.toJavaDuration()))
+            }
+
+            is Settlement.Unsettled -> {
+                Log.e(LOG_TAG, "channels unsettled, retrying: ${settlement.detail}")
+                boundary.noLaterThan(ready.now.plus(RETRY))
             }
         }
     }
@@ -90,29 +128,10 @@ internal class ChannelSilencer(
 
         return when (val second = prepare()) {
             is Preparation.Unavailable -> Settlement.Unsettled(second.detail)
+            is Preparation.Busy -> Settlement.Busy(second.detail)
             is Preparation.Failed -> Settlement.Unsettled(second.detail)
             is Preparation.Ready -> apply(second.plan.silence + second.plan.restore)
         }
-    }
-
-    private suspend fun schedule(
-        ready: Preparation.Ready,
-        settlement: Settlement,
-    ) {
-        val boundary = ready.rules.nextBoundary(ready.now, holidays.current())
-        val alarmAt =
-            when (settlement) {
-                Settlement.Settled -> {
-                    boundary
-                }
-
-                is Settlement.Unsettled -> {
-                    Log.e(LOG_TAG, "channels unsettled, retrying: ${settlement.detail}")
-                    boundary.noLaterThan(ready.now.plus(RETRY))
-                }
-            }
-
-        alarm.schedule(alarmAt, ZonedDateTime.now()).report()
     }
 
     private suspend fun prepare(): Preparation =
@@ -175,7 +194,7 @@ internal class ChannelSilencer(
             }
 
             is ChannelRead.Unavailable -> {
-                Preparation.Failed("the system didn't send the channels: ${read.detail}")
+                Preparation.Busy(rules, "the system didn't send the channels: ${read.detail}")
             }
 
             is ChannelRead.Read -> {

@@ -7,9 +7,14 @@ internal sealed interface Settlement {
         val detail: String,
     ) : Settlement
 
+    data class Busy(
+        val detail: String,
+    ) : Settlement
+
     fun and(other: Settlement): Settlement =
         when (this) {
             Settled -> other
-            is Unsettled -> this
+            is Busy -> this
+            is Unsettled -> if (other is Busy) other else this
         }
 }

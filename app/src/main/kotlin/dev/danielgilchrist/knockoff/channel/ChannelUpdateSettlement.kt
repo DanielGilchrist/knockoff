@@ -29,6 +29,6 @@ internal fun ChannelUpdate.settle(change: ChannelChange): Settlement =
         }
 
         is ChannelUpdate.Unavailable -> {
-            Settlement.Unsettled("channel ${change.describe()} skipped, the system didn't send it: $detail")
+            Settlement.Busy("channel ${change.describe()} skipped, the system didn't send it: $detail")
         }
     }
