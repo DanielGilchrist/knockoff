@@ -8,10 +8,12 @@ import dev.danielgilchrist.knockoff.settings.SettingsLoad
 import dev.danielgilchrist.knockoff.settings.SettingsStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -21,7 +23,9 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.launch
 import java.time.LocalDate
+import kotlin.time.Duration.Companion.minutes
 
 class HolidayWatch internal constructor(
     private val access: CalendarAccess,
@@ -29,6 +33,10 @@ class HolidayWatch internal constructor(
     changes: () -> Flow<Unit>,
     scope: CoroutineScope,
 ) {
+    companion object {
+        private val FAILED_RETRY = 5.minutes
+    }
+
     private val refreshes = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -40,6 +48,7 @@ class HolidayWatch internal constructor(
                 HolidaysState.Loading,
             ) { previous, calendar -> loaded(calendar, previous) }
             .stateIn(scope, SharingStarted.Eagerly, HolidaysState.Loading)
+            .also { states -> scope.launch { states.collectLatest(::retryAfterFailure) } }
 
     val holidays: Flow<Holidays> =
         state
@@ -58,6 +67,23 @@ class HolidayWatch internal constructor(
     }
 
     suspend fun current(): Holidays = holidays.first()
+
+    private suspend fun retryAfterFailure(state: HolidaysState) {
+        when (state) {
+            HolidaysState.Loading, HolidaysState.NotChosen -> {}
+
+            is HolidaysState.Chosen -> {
+                when (state.read) {
+                    is HolidayRead.Failed -> {
+                        delay(FAILED_RETRY)
+                        refresh()
+                    }
+
+                    is HolidayRead.Read, HolidayRead.NoPermission, HolidayRead.Missing -> {}
+                }
+            }
+        }
+    }
 
     private fun loaded(
         calendar: HolidayCalendar,
